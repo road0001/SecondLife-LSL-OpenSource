@@ -4,6 +4,10 @@ Author: JMRY
 Description: A better menu management system, use link_message to operate menus.
 
 ***更新记录***
+- 1.1 20250625
+    - 加入菜单页数显示。
+    - 分离语言处理功能，使用LinkSetData处理语言。
+    - 修复使用过简易菜单后，正常菜单失效的bug。
 - 1.0.14 20250618
     - 优化菜单端口，现在只会随机生成一次端口号。
     - 修复菜单按钮文字超长而报错的bug。
@@ -148,62 +152,35 @@ string list2Data(list d){
 设置语言（文字KEY，文字值），返回：当前语言的KEY对应文字
 获取语言（文字KEY），返回：当前语言的KEY对应文字
 */
-list lanKeyValList=[];
-// list lanKeyList=[];
-// list lanValList=[];
-integer findLanguageKey(string k){
-    integer kIndex=llListFindList(lanKeyValList, [k]);
-    if(kIndex%2==0){ // key从0开始，偶数
-        return kIndex;
-    }else{
-        return -1;
-    }
-    // return llListFindList(lanKeyList, [k]);
+string lanLinkHeader="LAN_";
+integer clearLanguage(){
+    return llLinksetDataDeleteFound(lanLinkHeader, "");
 }
-integer findLanguageVal(string v){
-    integer vIndex=llListFindList(lanKeyValList, [v]);
-    if(vIndex%2!=0){ // val从1开始，奇数
-        return vIndex;
-    }else{
-        return -1;
-    }
-    // return llListFindList(lanValList, [v]);
-}
-string setLanguage(string k, string v){
-    integer kIndex=findLanguageKey(k);
-    if(!~kIndex){ // 未找到key时，插入
-        lanKeyValList+=[k, v];
-    }else{ // 找到key时，更新
-        lanKeyValList = llListReplaceList(lanKeyValList, [v], kIndex+1, kIndex+1);
-    }
-    return v;
-    // if(!~kIndex){ // 未找到key时，插入
-    //     lanKeyList+=[k];
-    //     lanValList+=[v];
-    // }else{ // 找到key时，更新
-    //     lanValList = llListReplaceList(lanValList, [v], kIndex, kIndex);
-    // }
-    // return v;
+
+integer setLanguage(string k, string v){
+	return llLinksetDataWrite(lanLinkHeader+k, v);
 }
 
 string getLanguage(string k){
-    // 处理\n换行
-    k=replace(replace(k,"\\n","\n"),"\n","\\n"); // 替换换行符\n。将转义的\\n替换回去再替换
-    integer kIndex=findLanguageKey(k);
-    if(!~kIndex){ // 未找到key时，返回原key值
-        return replace(k,"\\n","\n");
-    }else{ // 找到key时，返回key对应val值
-        return replace(llList2String(lanKeyValList, kIndex+1),"\\n","\n");
-    }
+	k=replace(replace(k,"\\n","\n"),"\n","\\n"); // 替换换行符\n。将转义的\\n替换回去再替换
+	string curVal=llLinksetDataRead(lanLinkHeader+k);
+	if(curVal){
+		return replace(curVal,"\\n","\n");
+	}else{
+		return replace(k,"\\n","\n");
+	}
 }
 
 string getLanguageKey(string v){
-    integer vIndex=findLanguageVal(v);
-    if(!~vIndex){
-        return v;
-    }else{
-        return llList2String(lanKeyValList, vIndex-1);
-    }
+	list lanKeyList=llLinksetDataFindKeys(lanLinkHeader, 0, 0);
+	integer i;
+	for(i=0; i<llGetListLength(lanKeyList); i++){
+		string curKey=llList2String(lanKeyList, i);
+		string curVal=llLinksetDataRead(curKey);
+		if(curVal==v){
+			return curKey;
+		}
+	}
 }
 
 string getLanguageVar(string k){ // 拼接字符串方法，用于首尾拼接变量等内容。格式：Text text %1 %2.%%var1;var2
@@ -239,45 +216,6 @@ string getLanguageBool(string k){ // 拼接字符串方法之开关，根据传�
     }
 }
 
-integer clearLanguage(){
-    lanKeyValList=[];
-    return TRUE;
-}
-
-string lanHeader="lan_"; // 语言文件名记事卡前缀lan_语言名（英文），如：lan_CN，lan_EN，lan_JP等
-list getLanguageNotecards(){
-    list lanList=[];
-    integer count = llGetInventoryNumber(INVENTORY_NOTECARD);
-    integer i;
-    for (i=0; i<count; i++){
-        string notecardName = llGetInventoryName(INVENTORY_NOTECARD, i);
-        if(llGetSubString(notecardName, 0, 3)==lanHeader){
-            lanList+=[llGetSubString(notecardName, 4, -1)];
-        }
-    }
-    return lanList;
-}
-
-key readLanQuery=NULL_KEY;
-integer readLanLine=0;
-string readLanName="";
-string curLanName="";
-integer readLanguageNotecards(string lname){
-    readLanLine=0;
-    curLanName=lname;
-    readLanName=lanHeader+lname;
-    if (llGetInventoryType(readLanName) == INVENTORY_NOTECARD) {
-        // llRegionSayTo(showMenuUser, 0, "Begin reading language "+lname+".");
-        llRegionSayTo(showMenuUser, 0, getLanguageVar("Begin reading language %1.%%;"+lname));
-        clearLanguage();
-        readLanQuery=llGetNotecardLine(readLanName, readLanLine); // 通过给readLanQuery赋llGetNotecardLine的key，从而触发datasever事件
-        // 后续功能交给下方datasever处理
-        return TRUE;
-    }else{
-        return FALSE;
-    }
-}
-
 integer applyLanguage(){
     string switchStr=getLanguage("ButtonSwitch"); // 更改开关样式。格式：关|开
     if(switchStr=="ButtonSwitch"){ // 如果返回的是buttonSwitch（即不存在此字段，则应用默认样式）
@@ -287,17 +225,6 @@ integer applyLanguage(){
     }
     return TRUE;
 }
-
-string languageMenu="languageMenu";
-showLanguageMenu(string parent, key user){
-    string menuName=languageMenu;
-    string menuText="Set menu language, current: %1.%%;"+llGetSubString(readLanName, 4, -1);
-    list menuList=getLanguageNotecards();
-    string menuParent=parent;
-    registMenu(menuName, menuText, menuList, menuParent);
-    executeMenu(menuName, TRUE, user);
-}
-
 
 /*
 注册菜单通用方法。
@@ -368,7 +295,7 @@ integer executeMenu(string mname, integer reset, key user){
         string menuText=llList2String(menuRegistList, menuIndex+1);
         list menuItem=data2List(llList2String(menuRegistList, menuIndex+2));
         string menuParent=llList2String(menuRegistList, menuIndex+3);
-        showMenu(menuName, menuText, menuItem, menuParent, menuType, user);
+        showMenu(menuName, menuText, menuItem, menuParent, TRUE, user); // menuType必须传TRUE，不然会回到原生菜单
         // string menuText=llList2String(menuTextList, menuIndex);
         // // list menuItem=llParseStringKeepNulls(llList2String(menuItemList, menuIndex), ["|"], []);
         // list menuItem=data2List(llList2String(menuItemList, menuIndex));
@@ -388,7 +315,7 @@ integer reshowMenu(string mname, key user){
 自动重排：传入菜单按从上到下顺序，显示菜单按从下到上顺序，因此进行重排
 */
 integer menuListenHandle;
-integer menuType=TRUE;
+integer showMenuType=TRUE;
 integer menuChannel;
 string showMenuName="";
 string showMenuText="";
@@ -404,12 +331,12 @@ integer showMenu(string mname, string mtext, list mlist, string mparent, integer
     showMenuList=[];
     showMenuParent="";
     showMenuUser=NULL_KEY;
+    showMenuType=mtype;
     // llListenRemove(menuListenHandle);
     llSetTimerEvent(0);
     if(mname==""){
         return FALSE;
     }
-    menuType=mtype;
     if(!menuChannel){
         menuChannel=(integer)(llFrand(1000000000.0) - 9000000000.0);
         // menuChannel=(integer)(llFrand(-1000000000.0) - 1000000000.0);
@@ -417,7 +344,7 @@ integer showMenu(string mname, string mtext, list mlist, string mparent, integer
     showMenuName=mname;
     showMenuText=getLanguageVar(mtext);
     showMenuUser=user;
-    // menuType>0时为菜单，小于等于0时为输入框
+    // showMenuType>0时为菜单，小于等于0时为输入框
     if(mtype>0){
         showMenuList=mlist;
         showMenuParent=mparent;
@@ -448,6 +375,10 @@ integer showMenu(string mname, string mtext, list mlist, string mparent, integer
             }else{
                 back=llList2String(pageBu,3);
             }
+
+            if(totalPages>1){
+                showMenuText+="\n"+(string)showMenuPage+" / "+totalPages;
+            }
             
             integer i;
             for(i=0; i<buttonsPerPage; i++){
@@ -465,9 +396,9 @@ integer showMenu(string mname, string mtext, list mlist, string mparent, integer
                 getLanguageBool(llList2String(menuItems,3)), getLanguageBool(llList2String(menuItems,4)), getLanguageBool(llList2String(menuItems,5)), // 第二行
                 getLanguageBool(llList2String(menuItems,0)), getLanguageBool(llList2String(menuItems,1)), getLanguageBool(llList2String(menuItems,2))  // 第一行
             ];
-            for(i=0; i<llGetListLength(menuItems); i++){
-                llListReplaceList(menuItems, [llGetSubString(llList2String(menuItems, i), 0, 23)], i, i);
-            }
+            // for(i=0; i<llGetListLength(menuItems); i++){
+            //     llListReplaceList(menuItems, [llGetSubString(llList2String(menuItems, i), 0, 23)], i, i);
+            // }
         }
         // 简易菜单，只处理按钮的语言
         else if(mtype==2){
@@ -492,29 +423,29 @@ integer showMenu(string mname, string mtext, list mlist, string mparent, integer
 
 showMenuHandle(string message, key user){
     list pageBu=msg2List(pageBuStr);
-    if(menuType>0 && message == " "){
-        showMenu(showMenuName, showMenuText, showMenuList, showMenuParent, menuType, user);
+    if(showMenuType>0 && message == " "){
+        showMenu(showMenuName, showMenuText, showMenuList, showMenuParent, showMenuType, user);
         return;
     }
-    if(menuType>0){
+    if(showMenuType>0){
         message=getLanguageKey(trim(message));
     }else{
         message=llStringTrim(message,STRING_TRIM); // trim会做一些别的事情，因此使用LL函数trim字符串
     }
-    if (menuType>0 && message == llList2String(pageBu,0)){ // 上一页
+    if (showMenuType>0 && message == llList2String(pageBu,0)){ // 上一页
         showMenuPage--;
-        showMenu(showMenuName, showMenuText, showMenuList, showMenuParent, menuType, user);
+        showMenu(showMenuName, showMenuText, showMenuList, showMenuParent, showMenuType, user);
         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.PREV", user);
-    }else if (menuType>0 && message == llList2String(pageBu,1)){ // 下一页
+    }else if (showMenuType>0 && message == llList2String(pageBu,1)){ // 下一页
         showMenuPage++;
-        showMenu(showMenuName, showMenuText, showMenuList, showMenuParent, menuType, user);
+        showMenu(showMenuName, showMenuText, showMenuList, showMenuParent, showMenuType, user);
         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.NEXT", user);
-    }else if(menuType>0 && message == llList2String(pageBu,2)){ // 返回
+    }else if(showMenuType>0 && message == llList2String(pageBu,2)){ // 返回
         removeMenu(showMenuName); // 返回上级菜单时，移除当前菜单
         executeMenu(showMenuParent, TRUE, user);
         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.BACK", user);
-    }else if(menuType>0 && message == llList2String(pageBu,3)){ // 关闭
-        showMenu("", "", [], "", menuType, user);
+    }else if(showMenuType>0 && message == llList2String(pageBu,3)){ // 关闭
+        showMenu("", "", [], "", TRUE, user);
         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.CLOSE", user);
         clearMenu(); // 关闭菜单时，清空菜单
         llListenRemove(menuListenHandle);
@@ -530,6 +461,7 @@ showMenuHandle(string message, key user){
 }
 
 integer MENU_MSG_NUM=1000;
+integer LAN_MSG_NUM=1003;
 default{
     state_entry(){
     }
@@ -546,13 +478,13 @@ default{
     }
 
     timer(){ // 超时关闭菜单并重置
-        showMenu("", "", [], "", menuType, NULL_KEY);
+        showMenu("", "", [], "", TRUE, NULL_KEY);
         clearMenu();
         llListenRemove(menuListenHandle);
     }
 
     link_message(integer sender_num, integer num, string msg, key user){
-        if(num!=MENU_MSG_NUM){
+        if(num!=MENU_MSG_NUM && num!=LAN_MSG_NUM){
             return;
         }
         /*
@@ -582,21 +514,6 @@ default{
         MENU.REMOVE | subMenu
         清空菜单，格式：标头
         MENU.CLEAR
-        切换语言
-        MENU.LAN.CHANGE | CN
-        MENU.LANGUAGE.CHANGE | CN
-        获取语言文本
-        MENU.LAN.GET | Key1; Key2; Key3
-        MENU.LAN.GETV | Key1; Key2; Key3
-        MENU.LANGUAGE.GET | Key1; Key2; Key3
-        MENU.LANGUAGE.GETV | Key1; Key2; Key3
-        MENU.LANGUAGE.GETKEY | Lan1; Lan2; Lan3
-        MENU.LANGUAGE.GETNAME
-        返回格式：
-        MENU.EXEC | MENU.LAN.GET | Lan1; Lan2; Lan3
-        MENU.EXEC | MENU.LAN.GETV | Lan1; Lan2; Lan3
-        MENU.EXEC | MENU.LAN.GETKEY | Key1; Key2; Key3
-        MENU.EXEC | MENU.LAN.GETNAME | CN
         按钮激活格式：llMessageLinked(LINK_SET, 1000, 指令, 操作者UUID)
         MENU.ACTIVE | mainMenu | Button 1
         MENU.ACTIVE | confirmMenu | OK
@@ -663,63 +580,6 @@ default{
                 else if(menuCmdSub=="CLEAR"){
                     result=(string)clearMenu();
                 }
-                else if(menuCmdSub=="LAN" || menuCmdSub=="LANGUAGE"){
-                    if(menuCmdExt=="LOAD"){
-                        result=(string)readLanguageNotecards(menuName);
-                    }
-                    else if(menuCmdExt=="GET"){
-                        list kList=data2List(menuName);
-                        integer count=llGetListLength(kList);
-                        if(count>0){
-                            list lList=[];
-                            integer i;
-                            for(i=0; i<count; i++){
-                                lList+=getLanguage(llList2String(kList,i)); // 此处获取的是原始的语言文本，不能拼接变量，因此用gl而不是glv
-                            }
-                            result=list2Data(lList);
-                        }else{
-                            result=list2Data(lanKeyValList); // GET参数为空时，返回所有语言key、val的list
-                        }
-                    }
-                    else if(menuCmdExt=="GETV"){
-                        list kList=data2List(menuName);
-                        list lList=[];
-                        integer count=llGetListLength(kList);
-                        integer i;
-                        for(i=0; i<count; i++){
-                            lList+=getLanguageVar(llList2String(kList,i)); // 此处获取的是拼接变量的语言文本
-                        }
-                        result=list2Data(lList);
-                    }
-                    else if(menuCmdExt=="GETKEY"){
-                        list lList=data2List(menuName);
-                        list kList=[];
-                        integer count=llGetListLength(kList);
-                        integer i;
-                        for(i=0; i<count; i++){
-                            kList+=getLanguageKey(llList2String(lList,i));
-                        }
-                        result=list2Data(kList);
-                    }
-                    else if(menuCmdExt=="GETNAME"){
-                        result=curLanName;
-                    }
-                    else if(menuCmdExt=="CHANGE"){
-                        result=(string)readLanguageNotecards(menuName);
-                    }
-                }
-                else if(menuCmdSub=="ACTIVE"){
-                    if(menuName=="languageMenu" && menuText!=""){
-                        //readLanguageNotecards(menuText);
-                        list lanChanList=[
-                            "MENU.LAN.CHANGE",
-                            menuText
-                        ];
-                        llMessageLinked(LINK_SET, MENU_MSG_NUM, list2Msg(lanChanList), user);
-                    }else if(menuText=="Language"){
-                        showLanguageMenu(menuName, user);
-                    }
-                }
                 
                 if(result!=""){
                     list menuExeResult=[
@@ -729,31 +589,13 @@ default{
                     //llMessageLinked(LINK_SET, 0, list2Msg(menuExeResult), user); // 菜单处理完成后的回调
                 }
             }
+            else if (llGetSubString(str, 0, 2) == "LAN" && includes(str, "ACTIVE")) {
+                applyLanguage();
+            }
         }
         if(llGetListLength(resultList)>0){
             llMessageLinked(LINK_SET, MENU_MSG_NUM, list2Bundle(resultList), user); // 菜单处理完成后的回调
         }
         // llOwnerSay("Menu Memory Used: "+(string)llGetUsedMemory()+" Free: "+(string)llGetFreeMemory());
-    }
-
-    dataserver(key query_id, string data){
-        if (query_id == readLanQuery) { // 通过readLanguageNotecards触发读取记事卡事件，按行读取指定语言文本（readLanName）并设置语言。
-            if (data == EOF) {
-                // llRegionSayTo(showMenuUser, 0, "Finished reading language "+readLanName+".");
-                llRegionSayTo(showMenuUser, 0, getLanguageVar("Finished reading language %1.%%;"+curLanName));
-                applyLanguage();
-                readLanQuery=NULL_KEY;
-            } else {
-                // data: language key=language value
-                list lanStrSp=llParseStringKeepNulls(data, ["="], []);
-                string lanKey=llList2String(lanStrSp,0);
-                string lanVal=llList2String(lanStrSp,1);
-                setLanguage(lanKey, lanVal);
-                // increment line count
-                ++readLanLine;
-                //request next line of notecard.
-                readLanQuery=llGetNotecardLine(readLanName, readLanLine);
-            }
-        }
     }
 }
