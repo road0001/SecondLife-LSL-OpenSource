@@ -234,8 +234,6 @@ MENU.EXEC | 菜单指令 | 处理结果
 MENU.EXEC | MENU.REG.OPEN | 1
 MENU.EXEC | MENU.OPEN | 1
 MENU.EXEC | MENU.REM | 1
-MENU.EXEC | MENU.LAN.GET | 语言1; 语言2; 语言3
-MENU.EXEC | MENU.LAN.GETKEY | Key1; Key2; Key3
 ```
 
 ## 扩展用法
