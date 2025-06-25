@@ -4,7 +4,7 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
-1.0.11 20250120
+- 1.0.11 20250120
     - 优化锁定逻辑，修复锁定时无法从家具上站起来的bug。
 
 - 1.0.10 20250118
