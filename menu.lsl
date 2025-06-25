@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better menu management system, use link_message to operate menus.
 
 ***更新记录***
+- 1.1.1 20250626
+    - 修复菜单系统报错的bug。
+    - 修复页数会多次显示的bug。
 - 1.1 20250625
     - 加入菜单页数显示。
     - 分离语言处理功能，使用LinkSetData处理语言。
@@ -154,33 +157,35 @@ string list2Data(list d){
 */
 string lanLinkHeader="LAN_";
 integer clearLanguage(){
-    return llLinksetDataDeleteFound(lanLinkHeader, "");
+    llLinksetDataDeleteFound(lanLinkHeader, "");
+    return TRUE;
 }
 
 integer setLanguage(string k, string v){
-	return llLinksetDataWrite(lanLinkHeader+k, v);
+    return llLinksetDataWrite(lanLinkHeader+k, v);
 }
 
 string getLanguage(string k){
-	k=replace(replace(k,"\\n","\n"),"\n","\\n"); // 替换换行符\n。将转义的\\n替换回去再替换
-	string curVal=llLinksetDataRead(lanLinkHeader+k);
-	if(curVal){
-		return replace(curVal,"\\n","\n");
-	}else{
-		return replace(k,"\\n","\n");
-	}
+    k=replace(replace(k,"\\n","\n"),"\n","\\n"); // 替换换行符\n。将转义的\\n替换回去再替换
+    string curVal=llLinksetDataRead(lanLinkHeader+k);
+    if(curVal){
+        return replace(curVal,"\\n","\n");
+    }else{
+        return replace(k,"\\n","\n");
+    }
 }
 
 string getLanguageKey(string v){
-	list lanKeyList=llLinksetDataFindKeys(lanLinkHeader, 0, 0);
-	integer i;
-	for(i=0; i<llGetListLength(lanKeyList); i++){
-		string curKey=llList2String(lanKeyList, i);
-		string curVal=llLinksetDataRead(curKey);
-		if(curVal==v){
-			return curKey;
-		}
-	}
+    list lanKeyList=llLinksetDataFindKeys(lanLinkHeader, 0, 0);
+    integer i;
+    for(i=0; i<llGetListLength(lanKeyList); i++){
+        string curKey=llList2String(lanKeyList, i);
+        string curVal=llLinksetDataRead(curKey);
+        if(curVal==v){
+            return curKey;
+        }
+    }
+    return v;
 }
 
 string getLanguageVar(string k){ // 拼接字符串方法，用于首尾拼接变量等内容。格式：Text text %1 %2.%%var1;var2
@@ -343,6 +348,7 @@ integer showMenu(string mname, string mtext, list mlist, string mparent, integer
     }
     showMenuName=mname;
     showMenuText=getLanguageVar(mtext);
+    string showMenuTextInner=showMenuText;
     showMenuUser=user;
     // showMenuType>0时为菜单，小于等于0时为输入框
     if(mtype>0){
@@ -377,7 +383,7 @@ integer showMenu(string mname, string mtext, list mlist, string mparent, integer
             }
 
             if(totalPages>1){
-                showMenuText+="\n"+(string)showMenuPage+" / "+totalPages;
+                showMenuTextInner=showMenuText+"\n"+(string)showMenuPage+" / "+(string)totalPages;
             }
             
             integer i;
@@ -412,9 +418,9 @@ integer showMenu(string mname, string mtext, list mlist, string mparent, integer
                 menuItems=llListReplaceList(menuItems,[getLanguageBool(llList2String(menuItems, i))], i, i);
             }
         }
-        llDialog(user, showMenuText, menuItems, menuChannel);
+        llDialog(user, showMenuTextInner, menuItems, menuChannel);
     }else{
-        llTextBox(user, showMenuText, menuChannel);
+        llTextBox(user, showMenuTextInner, menuChannel);
     }
     menuListenHandle=llListen(menuChannel, "", user, "");
     llSetTimerEvent(60);
