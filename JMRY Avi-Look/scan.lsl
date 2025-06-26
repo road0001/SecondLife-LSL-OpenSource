@@ -122,6 +122,13 @@ default{
     }
     timer(){
         updateCastRay();
-        llSetText(llList2String(g_objDetails,0), <1.0,1.0,1.0>, 1);
+        string objText=llList2String(g_objDetails,0);
+        if(llList2Key(g_objDetails,2)!=NULL_KEY){
+            objText+="\nCreater: "+llKey2Name(llList2Key(g_objDetails,2));
+        }
+        if(llList2Key(g_objDetails,3)!=NULL_KEY){
+            objText+="\nOwner: "+llKey2Name(llList2Key(g_objDetails,3));
+        }
+        llSetText(objText, <1.0,1.0,1.0>, 0.5);
     }
 }
