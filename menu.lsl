@@ -4,6 +4,8 @@ Author: JMRY
 Description: A better menu management system, use link_message to operate menus.
 
 ***更新记录***
+- 1.1.2 20250627
+    - 调整语言系统算法，当语言系统不存在时，跳过语言功能。
 - 1.1.1 20250626
     - 修复菜单系统报错的bug。
     - 修复页数会多次显示的bug。
@@ -155,17 +157,17 @@ string list2Data(list d){
 设置语言（文字KEY，文字值），返回：当前语言的KEY对应文字
 获取语言（文字KEY），返回：当前语言的KEY对应文字
 */
+int hasLanguage=FALSE;
+initLanguage(){
+    hasLanguage=FALSE;
+    llMessageLinked(LINK_SET, LAN_MSG_NUM, "LANGUAGE.INIT", llGetOwner()); // 得到语言系统初始化确认时，将hasLanguage置为TRUE。
+}
+
 string lanLinkHeader="LAN_";
-integer clearLanguage(){
-    llLinksetDataDeleteFound(lanLinkHeader, "");
-    return TRUE;
-}
-
-integer setLanguage(string k, string v){
-    return llLinksetDataWrite(lanLinkHeader+k, v);
-}
-
 string getLanguage(string k){
+    if(!hasLanguage){
+        return k;
+    }
     k=replace(replace(k,"\\n","\n"),"\n","\\n"); // 替换换行符\n。将转义的\\n替换回去再替换
     string curVal=llLinksetDataRead(lanLinkHeader+k);
     if(curVal){
@@ -176,6 +178,9 @@ string getLanguage(string k){
 }
 
 string getLanguageKey(string v){
+    if(!hasLanguage){
+        return v;
+    }
     list lanKeyList=llLinksetDataFindKeys(lanLinkHeader, 0, 0);
     integer i;
     for(i=0; i<llGetListLength(lanKeyList); i++){
@@ -470,10 +475,14 @@ integer MENU_MSG_NUM=1000;
 integer LAN_MSG_NUM=1003;
 default{
     state_entry(){
+        initLanguage();
     }
     changed(integer change){
         if(change & CHANGED_OWNER){
             llResetScript();
+        }
+        if(change & CHANGED_INVENTORY){
+            initLanguage();
         }
     }
 
@@ -595,7 +604,10 @@ default{
                     //llMessageLinked(LINK_SET, 0, list2Msg(menuExeResult), user); // 菜单处理完成后的回调
                 }
             }
-            else if (llGetSubString(str, 0, 2) == "LAN" && includes(str, "ACTIVE")) {
+            else if (llGetSubString(str, 0, 2) == "LAN" && includes(str, "INIT")) { // 接收语言系统INIT回调，并启用语言功能
+                hasLanguage=TRUE;
+            }
+            else if (llGetSubString(str, 0, 2) == "LAN" && includes(str, "ACTIVE")) { // 接收语言系统ACTIVE回调，并应用语言数据
                 applyLanguage();
             }
         }

@@ -4,6 +4,8 @@ Author: JMRY
 Description: A better language management system, use link_message to operate languages.
 
 ***更新记录***
+- 1.0.1 20250627
+    - 加入语言系统初始化及回调功能。
 - 1.0 20250625
     - 从菜单模块迁移语言功能。
 ***更新记录***
@@ -83,8 +85,14 @@ string list2Data(list d){
 */
 
 /*
-请将如下脚本复制到需要语言功能的场合，并在语言发生变更（LANGUAGE.ACTIVE | CN）时调用applyLanguage
+请将如下脚本复制到需要语言功能的场合，并在语言发生变更（LANGUAGE.ACTIVE | LAN_NAME）时调用applyLanguage
 */
+int hasLanguage=FALSE;
+initLanguage(){
+    hasLanguage=FALSE;
+    llMessageLinked(LINK_SET, LAN_MSG_NUM, "LANGUAGE.INIT", llGetOwner()); // 得到语言系统初始化确认时，将hasLanguage置为TRUE。
+}
+
 string lanLinkHeader="LAN_";
 integer clearLanguage(){
     return llLinksetDataDeleteFound(lanLinkHeader, "");
@@ -95,6 +103,9 @@ integer setLanguage(string k, string v){
 }
 
 string getLanguage(string k){
+    if(!hasLanguage){
+        return k;
+    }
 	k=replace(replace(k,"\\n","\n"),"\n","\\n"); // 替换换行符\n。将转义的\\n替换回去再替换
 	string curVal=llLinksetDataRead(lanLinkHeader+k);
 	if(curVal){
@@ -105,6 +116,9 @@ string getLanguage(string k){
 }
 
 string getLanguageKey(string v){
+    if(!hasLanguage){
+        return v;
+    }
 	list lanKeyList=llLinksetDataFindKeys(lanLinkHeader, 0, 0);
 	integer i;
 	for(i=0; i<llGetListLength(lanKeyList); i++){
@@ -216,12 +230,14 @@ integer MENU_MSG_NUM=1000;
 integer LAN_MSG_NUM=1003;
 default{
     state_entry(){
+        hasLanguage=TRUE;
     }
 	changed(integer change){
         if(change & CHANGED_OWNER){
             llResetScript();
         }
 		if(change & CHANGED_INVENTORY){
+            hasLanguage=TRUE;
 			if(!curLanName) return;
 			key user=llGetOwner();
 			list lanChanList=[
@@ -236,6 +252,8 @@ default{
             return;
         }
 		/*
+        初始化语言系统
+        LAN.INIT
 		加载语言
 		LAN.LOAD | CN
 		LANGUAGE.LOAD | CN
@@ -279,6 +297,10 @@ default{
 				string result="";
 
 				if(lanCmd=="LAN" || lanCmd=="LANGUAGE"){
+                    if(lanCmdSub=="INIT"){
+                        hasLanguage=TRUE;
+                        result=(string)TRUE;
+                    }
                     if(lanCmdSub=="LOAD" || lanCmdSub=="CHANGE"){
                         result=(string)readLanguageNotecards(lanName, user);
                     }
