@@ -4,6 +4,8 @@ Author: JMRY
 Description: A better menu management system, use link_message to operate menus.
 
 ***更新记录***
+- 1.1.3 20250701
+    - 加入多级菜单翻页记忆功能。
 - 1.1.2 20250627
     - 调整语言系统算法，当语言系统不存在时，跳过语言功能。
 - 1.1.1 20250626
@@ -272,6 +274,7 @@ integer registMenu(string mname, string mtext, list mlist, string mparent){
 }
 
 integer removeMenu(string mname){
+    setShowMenuPageList(mname,-1);
     integer menuIndex=findMenu(mname);
     if(~menuIndex){
         menuRegistList=llDeleteSubList(menuRegistList, menuIndex, menuIndex+3);
@@ -285,6 +288,7 @@ integer removeMenu(string mname){
     }
 }
 integer clearMenu(){
+    setShowMenuPageList("",-1);
     menuRegistList=[];
     // menuNameList=[];
     // menuTextList=[];
@@ -300,6 +304,13 @@ integer executeMenu(string mname, integer reset, key user){
     if(~menuIndex){
         if(reset>0){ // reset=FALSE用于reshow菜单
             showMenuPage=reset; // 执行菜单时，重置页数
+            setShowMenuPageList(mname, reset);
+        }else{
+            showMenuPage=getShowMenuPageList(mname);
+            if(!~showMenuPage){
+                showMenuPage=1;
+                setShowMenuPageList(mname, showMenuPage);
+            }
         }
         string menuName=mname;
         string menuText=llList2String(menuRegistList, menuIndex+1);
@@ -318,6 +329,34 @@ integer executeMenu(string mname, integer reset, key user){
 }
 integer reshowMenu(string mname, key user){
     return executeMenu(mname, FALSE, user);
+}
+
+list showMenuPageList=[];
+integer setShowMenuPageList(string mname, integer mpage){
+    if(mname=="" && mpage<0){ // 同时传空字符串和-1表示清空
+        showMenuPageList=[];
+        return mpage;
+    }
+    integer menuIndex=llListFindList(showMenuPageList, [mname]);
+    if(menuIndex%2==0){
+        if(mpage>=0){
+            llListReplaceList(showMenuPageList, [mpage], menuIndex+1, menuIndex+1); // 页数大于0时，修改
+        }else{
+            llDeleteSubList(showMenuPageList, menuIndex, menuIndex+1); // 页数小于0时，删除
+        }
+    }else if(mpage>=0){
+        showMenuPageList+=[mname, mpage]; // 未找到时，添加
+    }
+    return mpage;
+}
+
+integer getShowMenuPageList(string mname){
+    integer menuIndex=llListFindList(showMenuPageList, [mname]);
+    if(menuIndex%2==0){
+        return llList2String(showMenuPageList, menuIndex+1);
+    }else{
+        return -1;
+    }
 }
 /*
 显示菜单通用方法。
@@ -445,21 +484,23 @@ showMenuHandle(string message, key user){
     }
     if (showMenuType>0 && message == llList2String(pageBu,0)){ // 上一页
         showMenuPage--;
+        setShowMenuPageList(showMenuName,showMenuPage);
         showMenu(showMenuName, showMenuText, showMenuList, showMenuParent, showMenuType, user);
         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.PREV", user);
     }else if (showMenuType>0 && message == llList2String(pageBu,1)){ // 下一页
         showMenuPage++;
+        setShowMenuPageList(showMenuName,showMenuPage);
         showMenu(showMenuName, showMenuText, showMenuList, showMenuParent, showMenuType, user);
         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.NEXT", user);
     }else if(showMenuType>0 && message == llList2String(pageBu,2)){ // 返回
         removeMenu(showMenuName); // 返回上级菜单时，移除当前菜单
-        executeMenu(showMenuParent, TRUE, user);
+        executeMenu(showMenuParent, FALSE, user);
         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.BACK", user);
     }else if(showMenuType>0 && message == llList2String(pageBu,3)){ // 关闭
         showMenu("", "", [], "", TRUE, user);
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.CLOSE", user);
         clearMenu(); // 关闭菜单时，清空菜单
         llListenRemove(menuListenHandle);
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.CLOSE", user);
     }else{
         list menuCmdList=[
             "MENU.ACTIVE",
