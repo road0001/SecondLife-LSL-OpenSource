@@ -4,6 +4,8 @@ Author: JMRY
 Description: A better menu management system, use link_message to operate menus.
 
 ***更新记录***
+- 1.1.4 20250702
+    - 修复报错的bug。
 - 1.1.3 20250701
     - 加入多级菜单翻页记忆功能。
 - 1.1.2 20250627
@@ -159,7 +161,7 @@ string list2Data(list d){
 设置语言（文字KEY，文字值），返回：当前语言的KEY对应文字
 获取语言（文字KEY），返回：当前语言的KEY对应文字
 */
-int hasLanguage=FALSE;
+integer hasLanguage=FALSE;
 initLanguage(){
     hasLanguage=FALSE;
     llMessageLinked(LINK_SET, LAN_MSG_NUM, "LANGUAGE.INIT", llGetOwner()); // 得到语言系统初始化确认时，将hasLanguage置为TRUE。
@@ -340,7 +342,7 @@ integer setShowMenuPageList(string mname, integer mpage){
     integer menuIndex=llListFindList(showMenuPageList, [mname]);
     if(menuIndex%2==0){
         if(mpage>=0){
-            llListReplaceList(showMenuPageList, [mpage], menuIndex+1, menuIndex+1); // 页数大于0时，修改
+            showMenuPageList=llListReplaceList(showMenuPageList, [mpage], menuIndex+1, menuIndex+1); // 页数大于0时，修改
         }else{
             llDeleteSubList(showMenuPageList, menuIndex, menuIndex+1); // 页数小于0时，删除
         }
@@ -353,7 +355,7 @@ integer setShowMenuPageList(string mname, integer mpage){
 integer getShowMenuPageList(string mname){
     integer menuIndex=llListFindList(showMenuPageList, [mname]);
     if(menuIndex%2==0){
-        return llList2String(showMenuPageList, menuIndex+1);
+        return llList2Integer(showMenuPageList, menuIndex+1);
     }else{
         return -1;
     }
