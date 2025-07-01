@@ -1,4 +1,4 @@
-string  version="1.0.6";
+string  version="1.0.7";
 list    g_allUserKeys=[];
 list    g_allUserNames=[];
 string  g_activeUser="";
@@ -113,15 +113,16 @@ outputAttachments(key id){
         }
         llOwnerSay("\""+objName+"\" by "+objAuthor+" on "+objPoint+", Permission: "+objPerm);
     }
-    llOwnerSay("========== Attachments found on secondlife:///app/agent/"+(string)id+"/about =========="); // 由于系统限制，只能使用SLURL
 }
 
 outputAttachmentsRepeat(key id, integer repeat){
     integer i;
     for(i=0; i<repeat; i++){
         outputAttachments(id);
-        llSleep(0.25);
+        //llSleep(0.25);
     }
+    llOwnerSay("========== Attachments found on secondlife:///app/agent/"+(string)id+"/about =========="); // 由于系统限制，只能使用SLURL
+    llSleep(0.25);
     llOwnerSay("========== ATTACHMENTS_END ==========\n\n\n");
 }
 
