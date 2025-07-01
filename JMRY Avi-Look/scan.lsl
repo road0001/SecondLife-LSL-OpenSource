@@ -9,6 +9,10 @@ integer g_listenHandle;
 integer g_menuChannel=288078820;
 integer g_outputInChat=TRUE;
 
+// list g_agentList=[];
+// key createrAgent;
+// key ownerAgent;
+
 string getAttachPerm(integer perm){
     list permStr=[];
     if(PERM_COPY & perm){
@@ -61,6 +65,7 @@ list updateCastRay(){
 default{
     state_entry(){
         llRequestPermissions(llGetOwner(), PERMISSION_TRACK_CAMERA);
+        llSetTimerEvent(1);
     }
     
     attach(key user){
@@ -123,10 +128,22 @@ default{
     timer(){
         updateCastRay();
         string objText=llList2String(g_objDetails,0);
-        if(llList2Key(g_objDetails,2)!=NULL_KEY){
-            objText+="\nCreater: "+llKey2Name(llList2Key(g_objDetails,2));
-            objText+="\nOwner: "+llKey2Name(llList2Key(g_objDetails,3));
-        }
+        // if(llList2Key(g_objDetails,2)!=NULL_KEY){
+        //     // objText+="\nCreater: "+llKey2Name(llList2Key(g_agentList,0));
+        //     // objText+="\nOwner: "+llKey2Name(llList2Key(g_agentList,1));
+        //     createrAgent=llRequestAgentData(llList2Key(g_objDetails, 2), DATA_NAME);
+        //     ownerAgent=llRequestAgentData(llList2Key(g_objDetails, 3), DATA_NAME);
+        //     objText+="\nCreater: "+llList2String(g_agentList,0);
+        //     objText+="\nOwner: "+llList2String(g_agentList,1);
+        // }
         llSetText(objText, <1.0,1.0,1.0>, 0.5);
     }
+    // dataserver(key queryid, string data){
+    //     if(queryid == createrAgent){
+    //         llListReplaceList([data], g_agentList, 0, 0);
+    //     }
+    //     if(queryid == ownerAgent){
+    //         llListReplaceList([data], g_agentList, 1, 1);
+    //     }
+    // }
 }

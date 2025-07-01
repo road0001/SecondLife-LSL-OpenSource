@@ -1,4 +1,4 @@
-string  version="1.0.5";
+string  version="1.0.6";
 list    g_allUserKeys=[];
 list    g_allUserNames=[];
 string  g_activeUser="";
@@ -113,6 +113,7 @@ outputAttachments(key id){
         }
         llOwnerSay("\""+objName+"\" by "+objAuthor+" on "+objPoint+", Permission: "+objPerm);
     }
+    llOwnerSay("========== Attachments found on secondlife:///app/agent/"+(string)id+"/about =========="); // 由于系统限制，只能使用SLURL
 }
 
 outputAttachmentsRepeat(key id, integer repeat){
@@ -158,16 +159,19 @@ showUserMenu(string username, key user){
 }
 
 default{
-    state_entry(){}
+    state_entry(){
+        // llSetTimerEvent(1);
+    }
     attach(key user){
-        if(user!=NULL_KEY){
-            llSetTimerEvent(1);
-        }
+        // if(user!=NULL_KEY){
+        //     llSetTimerEvent(1);
+        // }
     }
     timer(){
         scanAvatar();
     }
     touch_start(integer total_number){
+        scanAvatar();
         string menuStr="MENU.REG.OPEN.RESET|aviLookMenu|Version: "+version+"\nChecked "+(string)g_numberOfKeys+" users.|"+llDumpList2String(g_allUserNames,";");
         llMessageLinked(LINK_SET, 1000, menuStr, llGetOwner());
     }
