@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 1.0.12 20250703
+    - 修复rez的RLV道具回复消息中uuid错误的bug。
+
 - 1.0.11 20250120
     - 优化锁定逻辑，修复锁定时无法从家具上站起来的bug。
 
@@ -727,7 +730,7 @@ default{
         }
         // Rez模式与Relay的交互
         if(RLV_MODE>0 && channel==RLVRS){
-            list dataList=data2List(message);
+            list dataList=data2List(message); // header,uuid,main,ext
             string cmdHeader=llList2String(dataList, 0);
             key    cmdUuid=llList2Key(dataList, 1);
             string cmdMain=llList2String(dataList, 2);
@@ -737,14 +740,14 @@ default{
             // Relay:  ping,VICTIM_UUID,ping,ping
             // Object: ping,OBJECT_UUID,!pong
             if(cmdMain=="ping" && cmdExt=="ping" && cmdUuid==llGetKey()){ // Relay发送ping,ping，道具回复!pong
-                replyList=[cmdHeader, llGetOwner(), "!pong"];
+                replyList=[cmdHeader, llGetKey(), "!pong"];
             }
             // Relay:  BunchoCommands,VICTIM_UUID,!release
             // Object: BunchoCommands,OBJECT_UUID,!release,ok
             else if(cmdMain=="!release"){ // Relay发送释放指令，道具回复ok
                 setRLV("clear","");
                 VICTIM_UUID=NULL_KEY;
-                replyList=[cmdHeader, llGetOwner(), cmdMain, "ok"];
+                replyList=[cmdHeader, llGetKey(), cmdMain, "ok"];
             }
             // Object: BunchoCommands,VICTIM_UUID,@remoutfit:shoes=force
             // Relay:  BunchoCommands,OBJECT_UUID,@remoutfit:shoes=force,ko
