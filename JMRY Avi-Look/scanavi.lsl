@@ -8,7 +8,7 @@ key    g_targetObjKey;
 integer g_listenHandle;
 integer g_menuChannel=288078820;
 integer g_outputInChat=TRUE;
-string g_outputType="OBJECT";
+string g_outputType="AGENT";
 
 // list g_agentList=[];
 // key createrAgent;

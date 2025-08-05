@@ -1,4 +1,4 @@
-string  version="1.0.7";
+string  version="1.0.8";
 list    g_allUserKeys=[];
 list    g_allUserNames=[];
 string  g_activeUser="";
