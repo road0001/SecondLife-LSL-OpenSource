@@ -1,4 +1,4 @@
-string g_outputType="OBJECT";
+string g_outputType="AGENT";
 vector g_camPos;
 vector g_camDir;
 vector g_targetPoint;
@@ -147,7 +147,7 @@ default{
         //     objText+="\nCreater: "+llList2String(g_agentList,0);
         //     objText+="\nOwner: "+llList2String(g_agentList,1);
         // }
-        llSetText(objText, <1.0,1.0,1.0>, 0.5);
+        llSetText(objText, <1.0,1.0,0.0>, 0.5);
     }
     // dataserver(key queryid, string data){
     //     if(queryid == createrAgent){
