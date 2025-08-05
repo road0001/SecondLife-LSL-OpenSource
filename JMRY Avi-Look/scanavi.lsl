@@ -1,3 +1,4 @@
+string g_outputType="AGENT";
 vector g_camPos;
 vector g_camDir;
 vector g_targetPoint;
@@ -8,7 +9,6 @@ key    g_targetObjKey;
 integer g_listenHandle;
 integer g_menuChannel=288078820;
 integer g_outputInChat=TRUE;
-string g_outputType="AGENT";
 
 // list g_agentList=[];
 // key createrAgent;
@@ -53,16 +53,19 @@ list updateCastRay(){
     g_camDir = llRot2Fwd(llGetCameraRot());
     g_targetPoint = g_camPos + (g_camDir * 100.0);
     integer rejectTypes=RC_REJECT_LAND;
+    integer detectPhantom=TRUE;
     if(g_outputType=="OBJECT"){
         rejectTypes=RC_REJECT_LAND | RC_REJECT_AGENTS;
+        detectPhantom=TRUE;
     }
     else if(g_outputType=="AGENT"){
         rejectTypes=RC_REJECT_LAND | RC_REJECT_PHYSICAL | RC_REJECT_NONPHYSICAL;
+        detectPhantom=FALSE;
     }
     g_castRayRs=llCastRay(g_camPos, g_targetPoint, [
         RC_REJECT_TYPES, rejectTypes, 
         RC_DATA_FLAGS, RC_GET_ROOT_KEY, 
-        RC_DETECT_PHANTOM, TRUE,
+        RC_DETECT_PHANTOM, detectPhantom,
         RC_MAX_HITS, 1
     ]);
     g_targetObjKey=llList2Key(g_castRayRs, 0);
@@ -144,7 +147,7 @@ default{
         //     objText+="\nCreater: "+llList2String(g_agentList,0);
         //     objText+="\nOwner: "+llList2String(g_agentList,1);
         // }
-        llSetText(objText, <1.0,1.0,1.0>, 0.5);
+        llSetText(objText, <1.0,1.0,0.0>, 0.5);
     }
     // dataserver(key queryid, string data){
     //     if(queryid == createrAgent){
