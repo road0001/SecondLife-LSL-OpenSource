@@ -119,10 +119,12 @@ default{
             llDialog(user, llDumpList2String(msg,""), buttons, g_menuChannel);
             g_listenHandle=llListen(g_menuChannel,"",llGetOwner(),"");
         }else{
-            if(name!="" && creater==NULL_KEY){
-                getUserAttachments(g_targetObjKey);
-            }else{
-                getObjectInfo(msg);
+            if(name!=""){
+                if(creater==NULL_KEY){
+                    getUserAttachments(g_targetObjKey);
+                }else{
+                    getObjectInfo(msg);
+                }
             }
         }
     }

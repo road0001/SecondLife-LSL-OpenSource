@@ -119,10 +119,12 @@ default{
             llDialog(user, llDumpList2String(msg,""), buttons, g_menuChannel);
             g_listenHandle=llListen(g_menuChannel,"",llGetOwner(),"");
         }else{
-            if(name!="" && creater==NULL_KEY){
-                getUserAttachments(g_targetObjKey);
-            }else{
-                getObjectInfo(msg);
+            if(name!=""){
+                if(creater==NULL_KEY){
+                    getUserAttachments(g_targetObjKey);
+                }else{
+                    getObjectInfo(msg);
+                }
             }
         }
     }
@@ -147,7 +149,7 @@ default{
         //     objText+="\nCreater: "+llList2String(g_agentList,0);
         //     objText+="\nOwner: "+llList2String(g_agentList,1);
         // }
-        llSetText(objText, <1.0,1.0,1.0>, 0.5);
+        llSetText(objText, <0.0,1.0,0.0>, 0.5);
     }
     // dataserver(key queryid, string data){
     //     if(queryid == createrAgent){
