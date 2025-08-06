@@ -11,7 +11,7 @@
 
 ## 自动化语言系统
 自动化菜单系统支持设置、获取语言，支持变量和开关拼接，内置语言管理菜单。
-[菜单文档](README.Language.md)
+[语言文档](README.Language.md)
 
 ******language.lsl******
 
