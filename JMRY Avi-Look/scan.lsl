@@ -1,10 +1,13 @@
-string g_outputType="OBJECT";
-vector g_camPos;
-vector g_camDir;
-vector g_targetPoint;
-list   g_castRayRs;
-list   g_objDetails;
-key    g_targetObjKey;
+integer SCAN_TYPE_OBJECT=1100;
+integer SCAN_TYPE_AGENT=1101;
+integer g_outputType=SCAN_TYPE_OBJECT;
+
+vector  g_camPos;
+vector  g_camDir;
+vector  g_targetPoint;
+list    g_castRayRs;
+list    g_objDetails;
+key     g_targetObjKey;
 
 integer g_listenHandle;
 integer g_menuChannel=288078820;
@@ -55,15 +58,15 @@ list updateCastRay(){
     integer rejectTypes=RC_REJECT_LAND;
     integer detectPhantom=TRUE;
     integer dataFlags=RC_GET_ROOT_KEY;
-    if(g_outputType=="OBJECT"){
+    if(g_outputType==SCAN_TYPE_OBJECT){
         rejectTypes=RC_REJECT_LAND | RC_REJECT_AGENTS;
         detectPhantom=TRUE;
         dataFlags=RC_GET_ROOT_KEY;
     }
-    else if(g_outputType=="AGENT"){
+    else if(g_outputType==SCAN_TYPE_AGENT){
         rejectTypes=RC_REJECT_LAND | RC_REJECT_PHYSICAL | RC_REJECT_NONPHYSICAL;
         detectPhantom=FALSE;
-        dataFlags=FALSE;
+        dataFlags=RC_GET_NORMAL;
     }
     g_castRayRs=llCastRay(g_camPos, g_targetPoint, [
         RC_REJECT_TYPES, rejectTypes, 
@@ -83,6 +86,7 @@ default{
     }
     
     attach(key user){
+        llSetTimerEvent(0);
         if(user!=NULL_KEY){
             llRequestPermissions(llGetOwner(), PERMISSION_TRACK_CAMERA);
             llSetTimerEvent(1);
@@ -122,12 +126,10 @@ default{
             llDialog(user, llDumpList2String(msg,""), buttons, g_menuChannel);
             g_listenHandle=llListen(g_menuChannel,"",llGetOwner(),"");
         }else{
-            if(name!=""){
-                if(creater==NULL_KEY){
-                    getUserAttachments(g_targetObjKey);
-                }else{
-                    getObjectInfo(msg);
-                }
+            if(name!="" && creater==NULL_KEY){
+                getUserAttachments(g_targetObjKey);
+            }else if(creater!=NULL_KEY){
+                getObjectInfo(msg);
             }
         }
     }
@@ -144,6 +146,15 @@ default{
     timer(){
         updateCastRay();
         string objText=llList2String(g_objDetails,0);
+        if(g_outputType==SCAN_TYPE_OBJECT || llList2String(g_objDetails, 2)!=NULL_KEY){
+            llSetText(objText, <0.0,1.0,0.0>, 0.5);
+        }
+        else if(g_outputType==SCAN_TYPE_AGENT || llList2String(g_objDetails, 2)==NULL_KEY){
+            llSetText(objText, <1.0,1.0,0.0>, 0.5);
+        }
+        else{
+            llSetText(objText, <1.0,1.0,1.0>, 0.5);
+        }
         // if(llList2Key(g_objDetails,2)!=NULL_KEY){
         //     // objText+="\nCreater: "+llKey2Name(llList2Key(g_agentList,0));
         //     // objText+="\nOwner: "+llKey2Name(llList2Key(g_agentList,1));
@@ -152,7 +163,6 @@ default{
         //     objText+="\nCreater: "+llList2String(g_agentList,0);
         //     objText+="\nOwner: "+llList2String(g_agentList,1);
         // }
-        llSetText(objText, <0.0,1.0,0.0>, 0.5);
     }
     // dataserver(key queryid, string data){
     //     if(queryid == createrAgent){
