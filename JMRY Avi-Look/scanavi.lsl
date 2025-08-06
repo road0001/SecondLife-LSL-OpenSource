@@ -54,17 +54,20 @@ list updateCastRay(){
     g_targetPoint = g_camPos + (g_camDir * 100.0);
     integer rejectTypes=RC_REJECT_LAND;
     integer detectPhantom=TRUE;
+    integer dataFlags=RC_GET_ROOT_KEY;
     if(g_outputType=="OBJECT"){
         rejectTypes=RC_REJECT_LAND | RC_REJECT_AGENTS;
         detectPhantom=TRUE;
+        dataFlags=RC_GET_ROOT_KEY;
     }
     else if(g_outputType=="AGENT"){
         rejectTypes=RC_REJECT_LAND | RC_REJECT_PHYSICAL | RC_REJECT_NONPHYSICAL;
         detectPhantom=FALSE;
+        dataFlags=FALSE;
     }
     g_castRayRs=llCastRay(g_camPos, g_targetPoint, [
         RC_REJECT_TYPES, rejectTypes, 
-        RC_DATA_FLAGS, RC_GET_ROOT_KEY, 
+        RC_DATA_FLAGS, dataFlags, 
         RC_DETECT_PHANTOM, detectPhantom,
         RC_MAX_HITS, 1
     ]);
