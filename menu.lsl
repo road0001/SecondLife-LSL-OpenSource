@@ -4,23 +4,32 @@ Author: JMRY
 Description: A better menu management system, use link_message to operate menus.
 
 ***更新记录***
+- 1.1.5 20250806
+    - 优化菜单性能和内存占用。
+
 - 1.1.4 20250702
     - 修复报错的bug。
+
 - 1.1.3 20250701
     - 加入多级菜单翻页记忆功能。
+
 - 1.1.2 20250627
     - 调整语言系统算法，当语言系统不存在时，跳过语言功能。
+
 - 1.1.1 20250626
     - 修复菜单系统报错的bug。
     - 修复页数会多次显示的bug。
+
 - 1.1 20250625
     - 加入菜单页数显示。
     - 分离语言处理功能，使用LinkSetData处理语言。
     - 修复使用过简易菜单后，正常菜单失效的bug。
+
 - 1.0.14 20250618
     - 优化菜单端口，现在只会随机生成一次端口号。
     - 修复菜单按钮文字超长而报错的bug。
     - 修复部分情况下，菜单监听失效的bug。
+    
 - 1.0.13 20250122
     - 加入语言变量拼接嵌套。
     - 加入获取所有语言数据接口。
@@ -113,7 +122,7 @@ integer includes(string src, string target){
 string trim(string k){
     string t=k;
     integer i;
-    list boolList=llParseStringKeepNulls(boolStrList,["|"],[""]);
+    // list boolList=llParseStringKeepNulls(boolStrList,["|"],[""]);
     for(i=0; i<llGetListLength(boolList); i++){
         t=replace(t,llList2String(boolList, i)+" ", "");
     }
@@ -133,28 +142,28 @@ string strJoin(list m, string sp){
     return llDumpList2String(m, sp);
 }
 
-string bundleSplit="&&";
+// string bundleSplit="&&";
 list bundle2List(string b){
-    return strSplit(b, bundleSplit);
+    return strSplit(b, "&&");
 }
 string list2Bundle(list b){
-    return strJoin(b, bundleSplit);
+    return strJoin(b, "&&");
 }
 
-string messageSplit="|";
+// string messageSplit="|";
 list msg2List(string m){
-    return strSplit(m, messageSplit);
+    return strSplit(m, "|");
 }
 string list2Msg(list m){
-    return strJoin(m, messageSplit);
+    return strJoin(m, "|");
 }
 
-string dataSplit=";";
+// string dataSplit=";";
 list data2List(string d){
-    return strSplit(d, dataSplit);
+    return strSplit(d, ";");
 }
 string list2Data(list d){
-    return strJoin(d, dataSplit);
+    return strJoin(d, ";");
 }
 /*
 菜单多语言通用方法。
@@ -211,10 +220,11 @@ string getLanguageVar(string k){ // 拼接字符串方法，用于首尾拼接�
 }
 
 string defaultBoolStrList="◇|◆";
-string boolStrList=defaultBoolStrList;
+list boolList=msg2List(defaultBoolStrList);
+// string boolStrList=defaultBoolStrList;
 string getLanguageBool(string k){ // 拼接字符串方法之开关，根据传入字符串来判断开关并显示。格式：[0/1]BUTTON_NAME，返回：◇ 按钮名 / ◆ 按钮名
     //return getLanguageVar(k, LVPOS_BEFORE, llList2String(boolStrList,bool));
-    list boolList=msg2List(boolStrList);
+    // list boolList=msg2List(boolStrList);
     integer bool=FALSE;
     if(includes(k, "[1]")){
         bool=TRUE;
@@ -233,9 +243,11 @@ string getLanguageBool(string k){ // 拼接字符串方法之开关，根据传�
 integer applyLanguage(){
     string switchStr=getLanguage("ButtonSwitch"); // 更改开关样式。格式：关|开
     if(switchStr=="ButtonSwitch"){ // 如果返回的是buttonSwitch（即不存在此字段，则应用默认样式）
-        boolStrList=defaultBoolStrList;
+        boolList=msg2List(defaultBoolStrList);
+        // boolStrList=defaultBoolStrList;
     }else{
-        boolStrList=switchStr;
+        boolList=msg2List(switchStr);
+        // boolStrList=switchStr;
     }
     return TRUE;
 }
@@ -244,7 +256,7 @@ integer applyLanguage(){
 注册菜单通用方法。
 参数：菜单名，菜单文字，菜单按钮表，父级菜单名（顶层菜单用空字符串）
 */
-list menuRegistList=[];
+list menuRegistList=[]; // mname, mtext, mlist, mparent, mpage。由于list里不能嵌套list，因此mlist保持字符串原形
 // list menuNameList=[];
 // list menuTextList=[];
 // list menuItemList=[];
@@ -257,16 +269,17 @@ integer findMenu(string mname){
         return -1;
     }
 }
-integer registMenu(string mname, string mtext, list mlist, string mparent){
+integer registMenu(string mname, string mtext, string mlist, string mparent){
     integer menuIndex=findMenu(mname);
-    string menuItem=list2Data(mlist);
+    // string menuItem=list2Data(mlist);
     if(~menuIndex){ // 菜单名存在时，覆盖 ~menuIndex等价于menuIndex!=-1，速度更快
-        menuRegistList = llListReplaceList(menuRegistList, [mtext, menuItem, mparent], menuIndex+1, menuIndex+3);
+        menuRegistList = llListReplaceList(menuRegistList, [mtext, mlist, mparent, 1], menuIndex+1, menuIndex+4);
         // menuTextList = llListReplaceList(menuTextList, [mtext], menuIndex, menuIndex);
         // menuItemList = llListReplaceList(menuItemList, [menuItem], menuIndex, menuIndex);
         // menuParentList=llListReplaceList(menuParentList, [mparent], menuIndex, menuIndex);
     }else{ // 菜单名不存在时，插入
-        menuRegistList+=[mname, mtext, menuItem, mparent];
+        menuRegistList+=[mname, mtext, mlist, mparent, 1];
+        // menuRegistList+=[mname, mtext, menuItem, mparent];
         // menuNameList+=[mname];
         // menuTextList+=[mtext];
         // menuItemList+=[menuItem];
@@ -276,10 +289,10 @@ integer registMenu(string mname, string mtext, list mlist, string mparent){
 }
 
 integer removeMenu(string mname){
-    setShowMenuPageList(mname,-1);
+    // setShowMenuPageList(mname,-1);
     integer menuIndex=findMenu(mname);
     if(~menuIndex){
-        menuRegistList=llDeleteSubList(menuRegistList, menuIndex, menuIndex+3);
+        menuRegistList=llDeleteSubList(menuRegistList, menuIndex, menuIndex+4);
         // menuNameList=llDeleteSubList(menuNameList, menuIndex, menuIndex);
         // menuTextList=llDeleteSubList(menuTextList, menuIndex, menuIndex);
         // menuItemList=llDeleteSubList(menuItemList, menuIndex, menuIndex);
@@ -290,7 +303,7 @@ integer removeMenu(string mname){
     }
 }
 integer clearMenu(){
-    setShowMenuPageList("",-1);
+    // setShowMenuPageList("",-1);
     menuRegistList=[];
     // menuNameList=[];
     // menuTextList=[];
@@ -314,11 +327,7 @@ integer executeMenu(string mname, integer reset, key user){
                 setShowMenuPageList(mname, showMenuPage);
             }
         }
-        string menuName=mname;
-        string menuText=llList2String(menuRegistList, menuIndex+1);
-        list menuItem=data2List(llList2String(menuRegistList, menuIndex+2));
-        string menuParent=llList2String(menuRegistList, menuIndex+3);
-        showMenu(menuName, menuText, menuItem, menuParent, TRUE, user); // menuType必须传TRUE，不然会回到原生菜单
+        showMenu(mname, llList2String(menuRegistList, menuIndex+1), llList2String(menuRegistList, menuIndex+2), llList2String(menuRegistList, menuIndex+3), TRUE, user); // menuType必须传TRUE，不然会回到原生菜单
         // string menuText=llList2String(menuTextList, menuIndex);
         // // list menuItem=llParseStringKeepNulls(llList2String(menuItemList, menuIndex), ["|"], []);
         // list menuItem=data2List(llList2String(menuItemList, menuIndex));
@@ -333,32 +342,45 @@ integer reshowMenu(string mname, key user){
     return executeMenu(mname, FALSE, user);
 }
 
-list showMenuPageList=[];
+// list showMenuPageList=[];
 integer setShowMenuPageList(string mname, integer mpage){
-    if(mname=="" && mpage<0){ // 同时传空字符串和-1表示清空
-        showMenuPageList=[];
+    integer menuIndex=findMenu(mname);
+    if(~menuIndex){
+        showMenuPageList=llListReplaceList(menuRegistList, [mpage], menuIndex+4, menuIndex+4); // 页数大于0时，修改
         return mpage;
-    }
-    integer menuIndex=llListFindList(showMenuPageList, [mname]);
-    if(menuIndex%2==0){
-        if(mpage>=0){
-            showMenuPageList=llListReplaceList(showMenuPageList, [mpage], menuIndex+1, menuIndex+1); // 页数大于0时，修改
-        }else{
-            llDeleteSubList(showMenuPageList, menuIndex, menuIndex+1); // 页数小于0时，删除
-        }
-    }else if(mpage>=0){
-        showMenuPageList+=[mname, mpage]; // 未找到时，添加
-    }
-    return mpage;
-}
-
-integer getShowMenuPageList(string mname){
-    integer menuIndex=llListFindList(showMenuPageList, [mname]);
-    if(menuIndex%2==0){
-        return llList2Integer(showMenuPageList, menuIndex+1);
     }else{
         return -1;
     }
+    // if(mname=="" && mpage<0){ // 同时传空字符串和-1表示清空
+    //     showMenuPageList=[];
+    //     return mpage;
+    // }
+    // integer menuIndex=llListFindList(showMenuPageList, [mname]);
+    // if(menuIndex%2==0){
+    //     if(mpage>=0){
+    //         showMenuPageList=llListReplaceList(showMenuPageList, [mpage], menuIndex+1, menuIndex+1); // 页数大于0时，修改
+    //     }else{
+    //         llDeleteSubList(showMenuPageList, menuIndex, menuIndex+1); // 页数小于0时，删除
+    //     }
+    // }else if(mpage>=0){
+    //     showMenuPageList+=[mname, mpage]; // 未找到时，添加
+    // }
+    // return mpage;
+}
+
+integer getShowMenuPageList(string mname){
+    integer menuIndex=findMenu(mname);
+    if(~menuIndex){
+        return llList2Integer(menuRegistList, menuIndex+4);
+    }else{
+        return -1;
+    }
+    // integer menuIndex=llListFindList(showMenuPageList, [mname]);
+    // if(menuIndex%2==0){
+    //     return llList2Integer(showMenuPageList, menuIndex+1);
+    // }else{
+    //     return -1;
+    // }
 }
 /*
 显示菜单通用方法。
@@ -372,11 +394,11 @@ string showMenuName="";
 string showMenuText="";
 string showMenuParent="";
 key showMenuUser=NULL_KEY;
-// list pageBu=["←","→","BACK","CLOSE"]; // 上一页，下一页，返回，关闭的文本
-string pageBuStr="←|→|BACK|CLOSE"; // 上一页，下一页，返回，关闭的文本
-list showMenuList=[];
+list pageBu=["←","→","BACK","CLOSE"]; // 上一页，下一页，返回，关闭的文本
+// string pageBuStr="←|→|BACK|CLOSE"; // 上一页，下一页，返回，关闭的文本
+string showMenuList=[];
 integer showMenuPage=1;
-integer showMenu(string mname, string mtext, list mlist, string mparent, integer mtype, key user){
+integer showMenu(string mname, string mtext, string mlist, string mparent, integer mtype, key user){
     showMenuName="";
     showMenuText="";
     showMenuList=[];
@@ -398,7 +420,7 @@ integer showMenu(string mname, string mtext, list mlist, string mparent, integer
     showMenuUser=user;
     // showMenuType>0时为菜单，小于等于0时为输入框
     if(mtype>0){
-        showMenuList=mlist;
+        showMenuList=data2List(mlist);
         showMenuParent=mparent;
         // 初始化菜单列表，根据页数载入9个
         list menuItems=[];
@@ -406,7 +428,7 @@ integer showMenu(string mname, string mtext, list mlist, string mparent, integer
         if(mtype==1){
             // 计算总页数（向上取整）和偏移数（从0开始计算（0~8，9~17……）
             integer buttonsPerPage=9;
-            integer totalPages=llCeil((float)llGetListLength(mlist) / (float)buttonsPerPage); // 向上取整，需要将数值转换成float再算
+            integer totalPages=llCeil((float)llGetListLength(showMenuList) / (float)buttonsPerPage); // 向上取整，需要将数值转换成float再算
 
             //llOwnerSay("Total page: "+(string)totalPages+" CurPage: "+(string)showMenuPage+" Items: "+(string)llGetListLength(showMenuList)+" Calc: "+(string)(llGetListLength(showMenuList) / buttonsPerPage + 1));
 
@@ -415,7 +437,7 @@ integer showMenu(string mname, string mtext, list mlist, string mparent, integer
             string prev=" ";
             string next=" ";
             string back=" ";
-            list pageBu=msg2List(pageBuStr);
+            // list pageBu=msg2List(pageBuStr);
             if(showMenuPage>1){
                 prev=llList2String(pageBu,0);
             }
@@ -434,7 +456,7 @@ integer showMenu(string mname, string mtext, list mlist, string mparent, integer
             
             integer i;
             for(i=0; i<buttonsPerPage; i++){
-                string curMenu=llList2String(mlist,i+offset);
+                string curMenu=llList2String(showMenuList,i+offset);
                 if(curMenu!=""){
                     menuItems+=curMenu;
                 }else{
@@ -454,7 +476,7 @@ integer showMenu(string mname, string mtext, list mlist, string mparent, integer
         }
         // 简易菜单，只处理按钮的语言
         else if(mtype==2){
-            menuItems=mlist;
+            menuItems=showMenuList;
             integer menuCount=llGetListLength(menuItems);
             if(menuCount==1 && llList2String(menuItems,0)==""){
                 menuItems=["OK"];
@@ -474,7 +496,7 @@ integer showMenu(string mname, string mtext, list mlist, string mparent, integer
 }
 
 showMenuHandle(string message, key user){
-    list pageBu=msg2List(pageBuStr);
+    // list pageBu=msg2List(pageBuStr);
     if(showMenuType>0 && message == " "){
         showMenu(showMenuName, showMenuText, showMenuList, showMenuParent, showMenuType, user);
         return;
@@ -597,7 +619,8 @@ default{
     
                 string menuName=llList2String(menuCmdList, 1);
                 string menuText=llList2String(menuCmdList, 2);
-                list menuButtons=data2List(llList2String(menuCmdList, 3));
+                string menuButtons=llList2String(menuCmdList, 3);
+                // list menuButtons=data2List(llList2String(menuCmdList, 3));
                 string menuParent=llList2String(menuCmdList, 4);
     
                 string result="";

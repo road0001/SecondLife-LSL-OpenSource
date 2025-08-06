@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 1.0.13 20250806
+    - 优化内存占用。
+
 - 1.0.12 20250703
     - 修复rez的RLV道具回复消息中uuid错误的bug。
 
@@ -109,36 +112,36 @@ string strJoin(list m, string sp){
     return llDumpList2String(m, sp);
 }
 
-string bundleSplit="&&";
+// string bundleSplit="&&";
 list bundle2List(string b){
-    return strSplit(b, bundleSplit);
+    return strSplit(b, "&&");
 }
 string list2Bundle(list b){
-    return strJoin(b, bundleSplit);
+    return strJoin(b, "&&");
 }
 
-string messageSplit="|";
+// string messageSplit="|";
 list msg2List(string m){
-    return strSplit(m, messageSplit);
+    return strSplit(m, "|");
 }
 string list2Msg(list m){
-    return strJoin(m, messageSplit);
+    return strJoin(m, "|");
 }
 
-string dataSplit=",";
+// string dataSplit=",";
 list data2List(string d){
-    return strSplit(d, dataSplit);
+    return strSplit(d, ",");
 }
 string list2Data(list d){
-    return strJoin(d, dataSplit);
+    return strJoin(d, ",");
 }
 
-string mdataSplit=";";
+// string mdataSplit=";";
 list menuData2List(string d){
-    return strSplit(d, mdataSplit);
+    return strSplit(d, ";");
 }
 string list2MenuData(list d){
-    return strJoin(d, mdataSplit);
+    return strJoin(d, ";");
 }
 
 /*
