@@ -96,7 +96,7 @@ default{
     touch_start(integer total_number){
         key user=llDetectedKey(0);
         key this=llGetKey();
-        updateCastRay();
+        // updateCastRay();
         
         string name=llList2String(g_objDetails, 0);
         string desc=llList2String(g_objDetails, 1);

@@ -1,4 +1,4 @@
-string  version="1.0.10";
+string  version="1.0.11";
 list    g_allUserKeys=[];
 list    g_allUserNames=[];
 string  g_activeUser="";
@@ -121,9 +121,9 @@ outputAttachmentsRepeat(key id, integer repeat){
         outputAttachments(id);
         //llSleep(0.25);
     }
-    llSleep(0.5);
+    llSleep(0.25);
     llOwnerSay("========== Attachments found on secondlife:///app/agent/"+(string)id+"/about =========="); // 由于系统限制，只能使用SLURL
-    llSleep(0.5);
+    llSleep(1);
     llOwnerSay("========== ATTACHMENTS_END ==========\n\n\n");
 }
 
