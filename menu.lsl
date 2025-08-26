@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better menu management system, use link_message to operate menus.
 
 ***更新记录***
+1.1.6 20250825
+    - 修复菜单报错的bug。
+
 - 1.1.5 20250806
     - 优化菜单性能和内存占用。
 
@@ -220,11 +223,12 @@ string getLanguageVar(string k){ // 拼接字符串方法，用于首尾拼接�
 }
 
 string defaultBoolStrList="◇|◆";
-list boolList=msg2List(defaultBoolStrList);
+list boolList;
 // string boolStrList=defaultBoolStrList;
 string getLanguageBool(string k){ // 拼接字符串方法之开关，根据传入字符串来判断开关并显示。格式：[0/1]BUTTON_NAME，返回：◇ 按钮名 / ◆ 按钮名
     //return getLanguageVar(k, LVPOS_BEFORE, llList2String(boolStrList,bool));
     // list boolList=msg2List(boolStrList);
+    list boolList=msg2List(defaultBoolStrList);
     integer bool=FALSE;
     if(includes(k, "[1]")){
         bool=TRUE;
@@ -346,7 +350,7 @@ integer reshowMenu(string mname, key user){
 integer setShowMenuPageList(string mname, integer mpage){
     integer menuIndex=findMenu(mname);
     if(~menuIndex){
-        showMenuPageList=llListReplaceList(menuRegistList, [mpage], menuIndex+4, menuIndex+4); // 页数大于0时，修改
+        menuRegistList=llListReplaceList(menuRegistList, [mpage], menuIndex+4, menuIndex+4); // 页数大于0时，修改
         return mpage;
     }else{
         return -1;
@@ -396,12 +400,12 @@ string showMenuParent="";
 key showMenuUser=NULL_KEY;
 list pageBu=["←","→","BACK","CLOSE"]; // 上一页，下一页，返回，关闭的文本
 // string pageBuStr="←|→|BACK|CLOSE"; // 上一页，下一页，返回，关闭的文本
-string showMenuList=[];
+string showMenuListStr="";
 integer showMenuPage=1;
 integer showMenu(string mname, string mtext, string mlist, string mparent, integer mtype, key user){
     showMenuName="";
     showMenuText="";
-    showMenuList=[];
+    showMenuListStr="";
     showMenuParent="";
     showMenuUser=NULL_KEY;
     showMenuType=mtype;
@@ -418,9 +422,11 @@ integer showMenu(string mname, string mtext, string mlist, string mparent, integ
     showMenuText=getLanguageVar(mtext);
     string showMenuTextInner=showMenuText;
     showMenuUser=user;
+
     // showMenuType>0时为菜单，小于等于0时为输入框
     if(mtype>0){
-        showMenuList=data2List(mlist);
+        showMenuListStr=mlist;
+        list showMenuList=data2List(mlist);
         showMenuParent=mparent;
         // 初始化菜单列表，根据页数载入9个
         list menuItems=[];
@@ -476,7 +482,7 @@ integer showMenu(string mname, string mtext, string mlist, string mparent, integ
         }
         // 简易菜单，只处理按钮的语言
         else if(mtype==2){
-            menuItems=showMenuList;
+            menuItems=data2List(showMenuList);
             integer menuCount=llGetListLength(menuItems);
             if(menuCount==1 && llList2String(menuItems,0)==""){
                 menuItems=["OK"];
@@ -498,7 +504,7 @@ integer showMenu(string mname, string mtext, string mlist, string mparent, integ
 showMenuHandle(string message, key user){
     // list pageBu=msg2List(pageBuStr);
     if(showMenuType>0 && message == " "){
-        showMenu(showMenuName, showMenuText, showMenuList, showMenuParent, showMenuType, user);
+        showMenu(showMenuName, showMenuText, showMenuListStr, showMenuParent, showMenuType, user);
         return;
     }
     if(showMenuType>0){
@@ -509,12 +515,12 @@ showMenuHandle(string message, key user){
     if (showMenuType>0 && message == llList2String(pageBu,0)){ // 上一页
         showMenuPage--;
         setShowMenuPageList(showMenuName,showMenuPage);
-        showMenu(showMenuName, showMenuText, showMenuList, showMenuParent, showMenuType, user);
+        showMenu(showMenuName, showMenuText, showMenuListStr, showMenuParent, showMenuType, user);
         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.PREV", user);
     }else if (showMenuType>0 && message == llList2String(pageBu,1)){ // 下一页
         showMenuPage++;
         setShowMenuPageList(showMenuName,showMenuPage);
-        showMenu(showMenuName, showMenuText, showMenuList, showMenuParent, showMenuType, user);
+        showMenu(showMenuName, showMenuText, showMenuListStr, showMenuParent, showMenuType, user);
         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.NEXT", user);
     }else if(showMenuType>0 && message == llList2String(pageBu,2)){ // 返回
         removeMenu(showMenuName); // 返回上级菜单时，移除当前菜单
