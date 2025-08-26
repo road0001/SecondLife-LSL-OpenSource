@@ -4,7 +4,11 @@ Author: JMRY
 Description: A better menu management system, use link_message to operate menus.
 
 ***更新记录***
-1.1.6 20250825
+- 1.1.7 20250826
+    - 优化菜单性能和内存占用。
+    - 修复菜单报错的bug。
+
+- 1.1.6 20250825
     - 修复菜单报错的bug。
 
 - 1.1.5 20250806
@@ -317,7 +321,7 @@ integer clearMenu(){
 }
 integer executeMenu(string mname, integer reset, key user){
     if(mname==""){
-        mname=showMenuName;
+        mname=llList2String(showMenuData,0);
     }
     integer menuIndex=findMenu(mname);
     if(~menuIndex){
@@ -392,23 +396,13 @@ integer getShowMenuPageList(string mname){
 自动重排：传入菜单按从上到下顺序，显示菜单按从下到上顺序，因此进行重排
 */
 integer menuListenHandle;
-integer showMenuType=TRUE;
 integer menuChannel;
-string showMenuName="";
-string showMenuText="";
-string showMenuParent="";
-key showMenuUser=NULL_KEY;
 list pageBu=["←","→","BACK","CLOSE"]; // 上一页，下一页，返回，关闭的文本
 // string pageBuStr="←|→|BACK|CLOSE"; // 上一页，下一页，返回，关闭的文本
-string showMenuListStr="";
+list showMenuData=["", "", "", "", TRUE, NULL_KEY]; // showMenuName, showMenuText, showMenuListStr, showMenuParent, showMenuType, showMenuUser
 integer showMenuPage=1;
 integer showMenu(string mname, string mtext, string mlist, string mparent, integer mtype, key user){
-    showMenuName="";
-    showMenuText="";
-    showMenuListStr="";
-    showMenuParent="";
-    showMenuUser=NULL_KEY;
-    showMenuType=mtype;
+    showMenuData=[mname, mtext, mlist, mparent, mtype, user];
     // llListenRemove(menuListenHandle);
     llSetTimerEvent(0);
     if(mname==""){
@@ -418,20 +412,14 @@ integer showMenu(string mname, string mtext, string mlist, string mparent, integ
         menuChannel=(integer)(llFrand(1000000000.0) - 9000000000.0);
         // menuChannel=(integer)(llFrand(-1000000000.0) - 1000000000.0);
     }
-    showMenuName=mname;
-    showMenuText=getLanguageVar(mtext);
-    string showMenuTextInner=showMenuText;
-    showMenuUser=user;
-
+    string showMenuTextInner=getLanguageVar(mtext);
     // showMenuType>0时为菜单，小于等于0时为输入框
     if(mtype>0){
-        showMenuListStr=mlist;
-        list showMenuList=data2List(mlist);
-        showMenuParent=mparent;
         // 初始化菜单列表，根据页数载入9个
         list menuItems=[];
         // 正常菜单，处理翻页情况
         if(mtype==1){
+            list showMenuList=data2List(mlist);
             // 计算总页数（向上取整）和偏移数（从0开始计算（0~8，9~17……）
             integer buttonsPerPage=9;
             integer totalPages=llCeil((float)llGetListLength(showMenuList) / (float)buttonsPerPage); // 向上取整，需要将数值转换成float再算
@@ -450,14 +438,14 @@ integer showMenu(string mname, string mtext, string mlist, string mparent, integ
             if(showMenuPage<totalPages){
                 next=llList2String(pageBu,1);
             }
-            if(showMenuParent!=""){
+            if(mparent!=""){
                 back=llList2String(pageBu,2);
             }else{
                 back=llList2String(pageBu,3);
             }
 
             if(totalPages>1){
-                showMenuTextInner=showMenuText+"\n"+(string)showMenuPage+" / "+(string)totalPages;
+                showMenuTextInner=showMenuTextInner+"\n"+(string)showMenuPage+" / "+(string)totalPages;
             }
             
             integer i;
@@ -482,7 +470,7 @@ integer showMenu(string mname, string mtext, string mlist, string mparent, integ
         }
         // 简易菜单，只处理按钮的语言
         else if(mtype==2){
-            menuItems=data2List(showMenuList);
+            menuItems=data2List(mlist);
             integer menuCount=llGetListLength(menuItems);
             if(menuCount==1 && llList2String(menuItems,0)==""){
                 menuItems=["OK"];
@@ -503,8 +491,11 @@ integer showMenu(string mname, string mtext, string mlist, string mparent, integ
 
 showMenuHandle(string message, key user){
     // list pageBu=msg2List(pageBuStr);
+    string showMenuName=llList2String(showMenuData,0);
+    integer showMenuType=llList2Integer(showMenuData,4);
     if(showMenuType>0 && message == " "){
-        showMenu(showMenuName, showMenuText, showMenuListStr, showMenuParent, showMenuType, user);
+        // showMenu(showMenuName, showMenuText, showMenuListStr, showMenuParent, showMenuType, user);
+        showMenu(showMenuName, llList2String(showMenuData,1), llList2String(showMenuData,2), llList2String(showMenuData,3), showMenuType, llList2Key(showMenuData,5));
         return;
     }
     if(showMenuType>0){
@@ -515,19 +506,21 @@ showMenuHandle(string message, key user){
     if (showMenuType>0 && message == llList2String(pageBu,0)){ // 上一页
         showMenuPage--;
         setShowMenuPageList(showMenuName,showMenuPage);
-        showMenu(showMenuName, showMenuText, showMenuListStr, showMenuParent, showMenuType, user);
+        showMenu(showMenuName, llList2String(showMenuData,1), llList2String(showMenuData,2), llList2String(showMenuData,3), showMenuType, llList2Key(showMenuData,5));
+        // showMenu(showMenuName, showMenuText, showMenuListStr, showMenuParent, showMenuType, user);
         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.PREV", user);
     }else if (showMenuType>0 && message == llList2String(pageBu,1)){ // 下一页
         showMenuPage++;
         setShowMenuPageList(showMenuName,showMenuPage);
-        showMenu(showMenuName, showMenuText, showMenuListStr, showMenuParent, showMenuType, user);
+        showMenu(showMenuName, llList2String(showMenuData,1), llList2String(showMenuData,2), llList2String(showMenuData,3), showMenuType, llList2Key(showMenuData,5));
+        // showMenu(showMenuName, showMenuText, showMenuListStr, showMenuParent, showMenuType, user);
         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.NEXT", user);
     }else if(showMenuType>0 && message == llList2String(pageBu,2)){ // 返回
         removeMenu(showMenuName); // 返回上级菜单时，移除当前菜单
-        executeMenu(showMenuParent, FALSE, user);
+        executeMenu(llList2String(showMenuData,3), FALSE, user);
         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.BACK", user);
     }else if(showMenuType>0 && message == llList2String(pageBu,3)){ // 关闭
-        showMenu("", "", [], "", TRUE, user);
+        showMenu("", "", "", "", TRUE, NULL_KEY);
         clearMenu(); // 关闭菜单时，清空菜单
         llListenRemove(menuListenHandle);
         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.CLOSE", user);
@@ -564,7 +557,7 @@ default{
     }
 
     timer(){ // 超时关闭菜单并重置
-        showMenu("", "", [], "", TRUE, NULL_KEY);
+        showMenu("", "", "", "", TRUE, NULL_KEY);
         clearMenu();
         llListenRemove(menuListenHandle);
     }
@@ -648,7 +641,7 @@ default{
                     result=(string)showMenu(menuName, menuText, menuButtons, menuParent, 2, user);
                 }
                 else if(menuCmdSub=="INPUT"){
-                    result=(string)showMenu(menuName, menuText, [], "", 0, user);
+                    result=(string)showMenu(menuName, menuText, "", "", 0, user);
                 }
                 else if(menuCmdSub=="OPEN"){
                     integer reset=FALSE;
