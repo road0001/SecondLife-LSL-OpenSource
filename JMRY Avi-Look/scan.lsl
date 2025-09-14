@@ -12,6 +12,8 @@ key     g_targetObjKey;
 integer g_listenHandle;
 integer g_menuChannel=288078820;
 integer g_outputInChat=TRUE;
+integer g_clearCount=10;
+integer g_agentAvailable=TRUE;
 
 // list g_agentList=[];
 // key createrAgent;
@@ -51,6 +53,7 @@ getObjectInfo(list msg){
     llOwnerSay("========== OBJECT_END ==========\n\n\n");
 }
 
+integer clearCount=0;
 list updateCastRay(){
     g_camPos = llGetCameraPos();
     g_camDir = llRot2Fwd(llGetCameraRot());
@@ -74,8 +77,29 @@ list updateCastRay(){
         RC_DETECT_PHANTOM, detectPhantom,
         RC_MAX_HITS, 1
     ]);
-    g_targetObjKey=llList2Key(g_castRayRs, 0);
-    g_objDetails=llGetObjectDetails(g_targetObjKey, [OBJECT_NAME, OBJECT_DESC, OBJECT_CREATOR, OBJECT_OWNER, OBJECT_LAST_OWNER_ID, OBJECT_GROUP, OBJECT_ATTACHED_POINT, OBJECT_PERMS]);
+    key targetObjKey=llList2Key(g_castRayRs, 0);
+    // targetObjKey是私有变量，每秒钟都会根据视线变化
+    // g_targetObjKey是全局变量，只有targetObjKey有效时，才会被赋值
+    // targetObjKey有效时，会更新g_targetObjKey和g_objDetails
+    // 输出模式为玩家时，才会判断targetObjKey是否有效。输出模式为物品时，走原来的逻辑。
+    if(g_outputType==SCAN_TYPE_AGENT){
+        if(targetObjKey){ // 镜头正对有角色
+            g_agentAvailable=TRUE;
+            clearCount=g_clearCount; // 刷新计数器
+            g_targetObjKey=targetObjKey;
+            g_objDetails=llGetObjectDetails(g_targetObjKey, [OBJECT_NAME, OBJECT_DESC, OBJECT_CREATOR, OBJECT_OWNER, OBJECT_LAST_OWNER_ID, OBJECT_GROUP, OBJECT_ATTACHED_POINT, OBJECT_PERMS]);
+        }else if(clearCount>0){ // 镜头正对没有角色
+            g_agentAvailable=FALSE;
+            clearCount--; // 计数器-1
+        }else{ // 计数器归零时，清空
+            g_agentAvailable=FALSE;
+            g_targetObjKey=targetObjKey;
+            g_objDetails=llGetObjectDetails(g_targetObjKey, [OBJECT_NAME, OBJECT_DESC, OBJECT_CREATOR, OBJECT_OWNER, OBJECT_LAST_OWNER_ID, OBJECT_GROUP, OBJECT_ATTACHED_POINT, OBJECT_PERMS]);
+        }
+    }else{
+        g_targetObjKey=targetObjKey;
+        g_objDetails=llGetObjectDetails(g_targetObjKey, [OBJECT_NAME, OBJECT_DESC, OBJECT_CREATOR, OBJECT_OWNER, OBJECT_LAST_OWNER_ID, OBJECT_GROUP, OBJECT_ATTACHED_POINT, OBJECT_PERMS]);
+    }
     return g_castRayRs;
 }
 
@@ -150,7 +174,11 @@ default{
             llSetText(objText, <0.0,1.0,0.0>, 0.5);
         }
         else if(g_outputType==SCAN_TYPE_AGENT || llList2String(g_objDetails, 2)==NULL_KEY){
-            llSetText(objText, <1.0,1.0,0.0>, 0.5);
+            if(g_agentAvailable==TRUE){
+                llSetText(objText, <1.0,1.0,0.0>, 0.5);
+            }else{
+                llSetText(objText, <1.0,0.5,0.0>, 0.5);
+            }
         }
         else{
             llSetText(objText, <1.0,1.0,1.0>, 0.5);
