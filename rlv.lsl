@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 1.0.14 20250926
+    - 修复编译时报错的bug。
+
 - 1.0.13 20250806
     - 优化内存占用。
 
@@ -187,7 +190,7 @@ integer setRLV(string k, string v){
         return TRUE;
     }
     rlvChannel=(integer)v;
-    integer kIndex=llListFindList(rlvListKey, [k]);
+    integer kIndex=llListFindList(rlvListKeyVal, [k]);
     if(!~kIndex && (v!="y" || v!="rem") && rlvChannel==0){ // ~var表示该变量!=-1，此处判断代表此key不存在，向后插入
         rlvListKeyVal+=[k,v];
         // rlvListKey+=k;
