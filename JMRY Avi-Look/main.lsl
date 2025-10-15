@@ -1,4 +1,5 @@
-string  version="1.0.12";
+string  version="1.0.13";
+integer g_scanUserLimit=45;
 list    g_allUserKeys=[];
 list    g_allUserNames=[];
 string  g_activeUser="";
@@ -131,6 +132,10 @@ integer g_numberOfKeys;
 scanAvatar(){
     list keys = llGetAgentList(AGENT_LIST_REGION, []);
     g_numberOfKeys = llGetListLength(keys);
+    if(g_numberOfKeys>50){
+        llOwnerSay("Too many agents ("+(string)g_numberOfKeys+")! Only display "+(string)g_scanUserLimit+" agents.");
+        g_numberOfKeys=g_scanUserLimit;
+    }
     vector currentPos = llGetPos();
     list newkeys;
     key thisAvKey;
