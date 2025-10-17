@@ -204,6 +204,15 @@ RLV.GET.LOCK
 RLV.EXEC | RLV.GET.LOCK | 1
 ```
 
+### 获取重命名器状态
+#### RLV.GET.RENAMER
+- 获取当前重命名器的状态（名字、频道、开关）。
+```lsl
+RLV.GET.RENAMER
+// 回调：
+RLV.EXEC | RLV.GET.RENAMER | 名字, 频道, 1
+```
+
 ### 重命名器
 #### RLV.RENAMER
 - 开启/关闭/设定重命名器。
@@ -216,10 +225,10 @@ RLV.RENAMER | -1
 RLV.RENAMER | 0
 RLV.RENAMER | 1
 // 回调：
-RLV.EXEC | RLV.RENAMER | 名字, 1
-RLV.EXEC | RLV.RENAMER | 名字, 0
-RLV.EXEC | RLV.RENAMER | 名字, 0
-RLV.EXEC | RLV.RENAMER | 名字, 1
+RLV.EXEC | RLV.RENAMER | 名字, 频道, 1
+RLV.EXEC | RLV.RENAMER | 名字, 频道, 0
+RLV.EXEC | RLV.RENAMER | 名字, 频道, 0
+RLV.EXEC | RLV.RENAMER | 名字, 频道, 1
 ```
 
 ### 捕获玩家

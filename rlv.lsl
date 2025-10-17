@@ -4,6 +4,10 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 1.0.15 20251018
+    - 加入Renamer表情标签。
+    - 加入Renamer返回频道状态。
+
 - 1.0.14 20250926
     - 修复编译时报错的bug。
 
@@ -617,7 +621,7 @@ integer renamerSay(string name, string msg, integer type) {
     llSetObjectName(":"); // llSetObjectName不支持中文，因此将remaer名字拼接到字符串中来显示。
     string renamerMsg;
     if(llGetSubString(msg, 0, 2) == "/me"){
-        renamerMsg=name+" "+trim(llGetSubString(msg,3,-1));
+        renamerMsg="/me "+name+" "+trim(llGetSubString(msg,3,-1));
     }else{
         renamerMsg=name+": "+msg;
     }
@@ -854,7 +858,7 @@ default{
         获取重命名器状态
         RLV.GET.RENAMER
         返回：
-        RLV.EXEC | RLV.GET.RENAMER | Name, 1
+        RLV.EXEC | RLV.GET.RENAMER | Name, channel, 1
         捕获玩家
         RLV.CAPTURE | UUID
         获取捕获状态
@@ -951,10 +955,10 @@ default{
                     if(rlvMsgName=="SET"){
                         renamerName=rlvMsgCmd;
                         renamerEnabled(TRUE,user);
-                        result=list2Data([(string)renamerName, renamerBool]);
+                        result=list2Data([(string)renamerName, renamerChannel, renamerBool]);
                     }else{
                         renamerEnabled((integer)rlvMsgName,user);
-                        result=list2Data([(string)renamerName, renamerBool]);
+                        result=list2Data([(string)renamerName, renamerChannel, renamerBool]);
                     }
                 }
                 else if(rlvMsgSub=="CAPTURE"){
@@ -979,7 +983,7 @@ default{
                         result=(string)getLock();
                     }
                     else if(rlvMsgExt=="RENAMER"){
-                        result=list2Data([(string)renamerName, renamerBool]);
+                        result=list2Data([(string)renamerName, renamerChannel, renamerBool]);
                     }
                     else if(rlvMsgExt=="CAPTURE"){
                         result=(string)isCaptureVictim((key)rlvMsgName);
