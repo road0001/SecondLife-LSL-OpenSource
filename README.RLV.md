@@ -236,6 +236,8 @@ RLV.EXEC | RLV.RENAMER | 名字, 频道, 1
 - 仅当物品放在地上时生效。
 - 捕获指定UUID的玩家。
 - 执行后，回调结果为捕获结果（0、1）。
+  - 请先行指定Sit Target，否则RLV将无法正常工作。
+  - 例如：llSitTarget(<0.0, 0.0, 0.1>, ZERO_ROTATION);
 ```lsl
 RLV.CAPTURE | UUID
 // 回调：

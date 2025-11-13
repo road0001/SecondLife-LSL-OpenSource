@@ -4,6 +4,10 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 1.0.16 20251114
+    - 修复RLV功能菜单显示错误的bug。
+    -修复REZ模式RLV失效的bug。
+
 - 1.0.15 20251018
     - 加入Renamer表情标签。
     - 加入Renamer返回频道状态。
@@ -157,15 +161,16 @@ string list2MenuData(list d){
 integer RLVRS=-1812221819; // default relay channel
 integer RLV_MODE=0; // 0： wear mode；1：rez mode say；2：rez mode whisper；3：rez mode shout；else：rez mode regionSayTo
 integer rlvWorldListenHandle;
-key RLV_VICTIM=NULL_KEY; // victim uuid in rez mode
+// key RLV_VICTIM=NULL_KEY; // victim uuid in rez mode
 integer executeRLV(string rlv){
     llListenRemove(rlvWorldListenHandle);
     if(RLV_MODE==0){
         llOwnerSay(rlv);
     }else{
         string rlvCmdName="RLV_EXECUTE_" + llGetObjectName();
-        list rlvExecList =[rlvCmdName, RLV_VICTIM, replace(rlv,",","|")];
+        list rlvExecList =[rlvCmdName, VICTIM_UUID, replace(rlv,",","|")];
         string rlvExecStr=list2Data(rlvExecList);
+        llOwnerSay(rlvExecStr);
         if(RLV_MODE==1){
             llSay(RLVRS,rlvExecStr);
         }else if(RLV_MODE==2){
@@ -439,7 +444,7 @@ integer clearRLVClass(){
 更新RLV名称与指令集，参数：RLV名称，RLV指令集（RLV命令1;RLV命令2;……）
 如果不存在此名称，则添加。
 */
-list rlvCmdNameKeyClass=[];
+list rlvCmdNameKeyClass=[]; // name, rlvs, class
 // list rlvCmdName=[];
 // list rlvCmdKey=[];
 // list rlvCmdClass=[];
@@ -466,7 +471,7 @@ integer setRLVCmd(string name, list k, string class){
 */
 string getRLVCmd(string name){
     integer rIndex=llListFindList(rlvCmdNameKeyClass, [name]);
-    if(~rIndex && rIndex%2==0){
+    if(~rIndex && rIndex%3==0){
         return llList2String(rlvCmdNameKeyClass, rIndex+1);
     }else{
         return "";
@@ -501,8 +506,8 @@ integer hasRLVCmd(string name){
 }
 integer removeRLVCmd(string name){
     integer rIndex=llListFindList(rlvCmdNameKeyClass, [name]);
-    if(~rIndex && rIndex%2==0){
-        rlvCmdNameKeyClass=llDeleteSubList(rlvCmdNameKeyClass,rIndex,rIndex+2);
+    if(~rIndex && rIndex%3==0){
+        rlvCmdNameKeyClass=llDeleteSubList(rlvCmdNameKeyClass,rIndex,rIndex+3);
         // rlvCmdName=llDeleteSubList(rlvCmdName, rIndex, rIndex);
         // rlvCmdKey=llDeleteSubList(rlvCmdKey, rIndex, rIndex);
         return TRUE;
@@ -657,16 +662,15 @@ string rlvSubMenuName="RLVSubMenu";
 string curRlvSubMenu="";
 showRLVSubMenu(string class, key user){
     curRlvSubMenu=class;
-    string rlvSubDesc="This is RLV %1% menu , something is locked.%%;"+class;
+    string rlvSubDesc="This is RLV %1% menu.%%;"+class;
     list rlvCmdList=[];
     integer rlvCmdCount=llGetListLength(rlvCmdNameKeyClass);
     integer i;
     for(i=0; i<rlvCmdCount; i+=3){
-        string curCmd=llList2String(rlvCmdNameKeyClass, i+1);
+        string cueName=llList2String(rlvCmdNameKeyClass, i);
         string curClass=llList2String(rlvCmdNameKeyClass, i+2);
-        integer curCmdBool=hasRLVCmd(curCmd);
         if(curClass==class){
-            rlvCmdList+=["["+(string)curCmdBool+"]"+curCmd];
+            rlvCmdList+=["["+(string)hasRLVCmd(cueName)+"]"+cueName];
         }
     }
     list rlvSubMenuList=[
@@ -725,6 +729,15 @@ default{
     changed(integer change){
         if(change & CHANGED_OWNER){
             llResetScript();
+        }
+        if (change & CHANGED_LINK) {
+            key avatar = llAvatarOnSitTarget();
+            if (avatar != NULL_KEY){
+                RLV_MODE=1;
+                VICTIM_UUID=avatar;
+            }else{
+                VICTIM_UUID=NULL_KEY;
+            }
         }
     }
 
@@ -1078,12 +1091,13 @@ default{
                 if(data!="" && llGetSubString(data,0,0)!="#"){
                     if(llGetSubString(data,0,0)=="[" && llGetSubString(data,-1,-1)=="]"){
                         curRLVClass=llGetSubString(data,1,-2);
-                    }
-                    list rlvStrSp=llParseStringKeepNulls(data, ["="], []);
-                    string rlvName=llList2String(rlvStrSp,0);
-                    list rlvData=data2List(llList2String(rlvStrSp,1));
+                    }else{
+                        list rlvStrSp=llParseStringKeepNulls(data, ["="], []);
+                        string rlvName=llList2String(rlvStrSp,0);
+                        list rlvData=data2List(llList2String(rlvStrSp,1));
 
-                    setRLVCmd(rlvName, rlvData, curRLVClass);
+                        setRLVCmd(rlvName, rlvData, curRLVClass);
+                    }
                 }
 
                 // increment line count

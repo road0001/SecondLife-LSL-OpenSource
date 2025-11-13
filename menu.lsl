@@ -4,6 +4,11 @@ Author: JMRY
 Description: A better menu management system, use link_message to operate menus.
 
 ***更新记录***
+- 1.1.8 20251113
+    - 修复多个菜单索引错误的bug。
+    - 修复开关按钮失效的bug。
+    - 修复反查语言Key带LAN_前缀的bug。
+
 - 1.1.7 20250826
     - 优化菜单性能和内存占用。
     - 修复菜单报错的bug。
@@ -207,14 +212,14 @@ string getLanguageKey(string v){
         string curKey=llList2String(lanKeyList, i);
         string curVal=llLinksetDataRead(curKey);
         if(curVal==v){
-            return curKey;
+            return replace(curKey, lanLinkHeader, "");;
         }
     }
     return v;
 }
 
-string getLanguageVar(string k){ // 拼接字符串方法，用于首尾拼接变量等内容。格式：Text text %1 %2.%%var1;var2
-    list ksp=llParseStringKeepNulls(k, ["%%;"], [""]); // ["Text text %1 %2.", "var1;var2"]
+string getLanguageVar(string k){ // 拼接字符串方法，用于首尾拼接变量等内容。格式：Text text %1% %2%.%%var1;var2
+    list ksp=llParseStringKeepNulls(k, ["%%;"], [""]); // ["Text text %1% %2%.", "var1;var2"]
     string text=getLanguage(trim(llList2String(ksp, 0)));
     list var=data2List(llList2String(ksp, 1)); // ["var1", "var2"]
     integer i;
@@ -232,7 +237,7 @@ list boolList;
 string getLanguageBool(string k){ // 拼接字符串方法之开关，根据传入字符串来判断开关并显示。格式：[0/1]BUTTON_NAME，返回：◇ 按钮名 / ◆ 按钮名
     //return getLanguageVar(k, LVPOS_BEFORE, llList2String(boolStrList,bool));
     // list boolList=msg2List(boolStrList);
-    list boolList=msg2List(defaultBoolStrList);
+    boolList=msg2List(defaultBoolStrList);
     integer bool=FALSE;
     if(includes(k, "[1]")){
         bool=TRUE;
@@ -271,7 +276,7 @@ list menuRegistList=[]; // mname, mtext, mlist, mparent, mpage。由于list里�
 // list menuParentList=[];
 integer findMenu(string mname){
     integer menuIndex=llListFindList(menuRegistList, [mname]);
-    if(menuIndex%4==0){
+    if(menuIndex%5==0){
         return menuIndex;
     }else{
         return -1;
@@ -576,18 +581,18 @@ default{
         MENU.REG.OPEN.1 | subMenu | Sub menu desc | Button 1; Button 2; Button 3 | mainMenu
         MENU.REG.OPEN.RESET | subMenu | Sub menu desc | Button 1; Button 2; Button 3 | mainMenu
         菜单文本拼接变量
-        MENU.REG.OPEN | subMenu | Sub menu desc %1 %2 %%;val1;val2 | Button 1; Button 2; Button 3 | mainMenu
+        MENU.REG.OPEN | subMenu | Sub menu desc %1% %2% %%;val1;val2 | Button 1; Button 2; Button 3 | mainMenu
         打开菜单，格式：标头 | 菜单名 | 重置页数（可选）
         默认不reshow菜单，在有需要reshow的场合，重新调用同名菜单即可。
         MENU.OPEN | mainMenu
         MENU.OPEN.1 | mainMenu
         MENU.OPEN.RESET | subMenu
         简易菜单（用于提示、确认事项等），格式：标头 | 菜单名 | 菜单文本 | 菜单按钮1; 菜单按钮2; ...（可选，留空为OK）
-        MENU.CONFIRM | confirmMenu | Are you confirm desc %1 %2 %%;val1;val2
-        MENU.CONFIRM | confirmMenu | Are you confirm desc %1 %2 %%;val1;val2 | OK; Wait; Cancel
-        MENU.CONFIRM | confirmMenu | Are you confirm desc %1 %2 %%;val1;val2 | OK; Wait; Cancel; BACK | mainMenu
+        MENU.CONFIRM | confirmMenu | Are you confirm desc %1% %2% %%;val1;val2
+        MENU.CONFIRM | confirmMenu | Are you confirm desc %1% %2% %%;val1;val2 | OK; Wait; Cancel
+        MENU.CONFIRM | confirmMenu | Are you confirm desc %1% %2% %%;val1;val2 | OK; Wait; Cancel; BACK | mainMenu
         文本输入，格式：标头 | 菜单名 | 菜单文本
-        MENU.INPUT | inputMenu | Please input something %1 %2 %%;val1;val2
+        MENU.INPUT | inputMenu | Please input something %1% %2% %%;val1;val2
         移除菜单，格式：标头 | 菜单名
         MENU.REM | subMenu
         MENU.REMOVE | subMenu

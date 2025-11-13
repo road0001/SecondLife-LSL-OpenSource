@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better language management system, use link_message to operate languages.
 
 ***更新记录***
+1.0.3 20251114
+    - 修复语言系统失效的bug。
+
 - 1.0.2 20250806
     - 优化内存占用。
 
@@ -91,47 +94,48 @@ string list2Data(list d){
 /*
 请将如下脚本复制到需要语言功能的场合，并在语言发生变更（LANGUAGE.ACTIVE | LAN_NAME）时调用applyLanguage
 */
-int hasLanguage=FALSE;
+integer hasLanguage=FALSE;
 initLanguage(){
     hasLanguage=FALSE;
     llMessageLinked(LINK_SET, LAN_MSG_NUM, "LANGUAGE.INIT", llGetOwner()); // 得到语言系统初始化确认时，将hasLanguage置为TRUE。
 }
 
 string lanLinkHeader="LAN_";
-integer clearLanguage(){
+list clearLanguage(){
     return llLinksetDataDeleteFound(lanLinkHeader, "");
 }
 
 integer setLanguage(string k, string v){
-	return llLinksetDataWrite(lanLinkHeader+k, v);
+    return llLinksetDataWrite(lanLinkHeader+k, v);
 }
 
 string getLanguage(string k){
     if(!hasLanguage){
         return k;
     }
-	k=replace(replace(k,"\\n","\n"),"\n","\\n"); // 替换换行符\n。将转义的\\n替换回去再替换
-	string curVal=llLinksetDataRead(lanLinkHeader+k);
-	if(curVal){
-		return replace(curVal,"\\n","\n");
-	}else{
-		return replace(k,"\\n","\n");
-	}
+    k=replace(replace(k,"\\n","\n"),"\n","\\n"); // 替换换行符\n。将转义的\\n替换回去再替换
+    string curVal=llLinksetDataRead(lanLinkHeader+k);
+    if(curVal){
+        return replace(curVal,"\\n","\n");
+    }else{
+        return replace(k,"\\n","\n");
+    }
 }
 
 string getLanguageKey(string v){
     if(!hasLanguage){
         return v;
     }
-	list lanKeyList=llLinksetDataFindKeys(lanLinkHeader, 0, 0);
-	integer i;
-	for(i=0; i<llGetListLength(lanKeyList); i++){
-		string curKey=llList2String(lanKeyList, i);
-		string curVal=llLinksetDataRead(curKey);
-		if(curVal==v){
-			return curKey;
-		}
-	}
+    list lanKeyList=llLinksetDataFindKeys(lanLinkHeader, 0, 0);
+    integer i;
+    for(i=0; i<llGetListLength(lanKeyList); i++){
+        string curKey=llList2String(lanKeyList, i);
+        string curVal=llLinksetDataRead(curKey);
+        if(curVal==v){
+            return replace(curKey, lanLinkHeader, "");
+        }
+    }
+    return v;
 }
 
 string getLanguageVar(string k){ // 拼接字符串方法，用于首尾拼接变量等内容。格式：Text text %1 %2.%%var1;var2
@@ -206,10 +210,10 @@ string readLanguageNotecards(string lname, key user){
     readLanLine=0;
     curLanName=lname;
     readLanName=lanHeader+lname;
-	curLanUser=user;
+    curLanUser=user;
     if (llGetInventoryType(readLanName) == INVENTORY_NOTECARD) {
         // llRegionSayTo(showMenuUser, 0, "Begin reading language "+lname+".");
-        llRegionSayTo(curLanUser, 0, getLanguageVar("Begin reading language %1.%%;"+lname));
+        llRegionSayTo(curLanUser, 0, getLanguageVar("Begin reading language %1%.%%;"+lname));
         clearLanguage();
         readLanQuery=llGetNotecardLine(readLanName, readLanLine); // 通过给readLanQuery赋llGetNotecardLine的key，从而触发datasever事件
         // 后续功能交给下方datasever处理
@@ -222,10 +226,10 @@ string readLanguageNotecards(string lname, key user){
 string languageMenu="languageMenu";
 showLanguageMenu(string parent, key user){
     string menuName=languageMenu;
-    string menuText="Set menu language, current: %1.%%;"+llGetSubString(readLanName, 4, -1);
+    string menuText="Set menu language, current: %1%.%%;"+llGetSubString(readLanName, 4, -1);
     list menuList=getLanguageNotecards();
     string menuParent=parent;
-	llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN.RESET|"+menuName+"|"+menuText+"|"+list2Msg(menuList)+"|"+menuParent, user);
+    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN.RESET|"+menuName+"|"+menuText+"|"+list2Data(menuList)+"|"+menuParent, user);
     // registMenu(menuName, menuText, menuList, menuParent);
     // executeMenu(menuName, TRUE, user);
 }
@@ -236,32 +240,32 @@ default{
     state_entry(){
         hasLanguage=TRUE;
     }
-	changed(integer change){
+    changed(integer change){
         if(change & CHANGED_OWNER){
             llResetScript();
         }
-		if(change & CHANGED_INVENTORY){
+        if(change & CHANGED_INVENTORY){
             hasLanguage=TRUE;
-			if(!curLanName) return;
-			key user=llGetOwner();
-			list lanChanList=[
-				"LAN.CHANGE",
-				curLanName
-			];
-			llMessageLinked(LINK_SET, LAN_MSG_NUM, list2Msg(lanChanList), user);
-		}
+            if(curLanName=="") return;
+            key user=llGetOwner();
+            list lanChanList=[
+                "LAN.CHANGE",
+                curLanName
+            ];
+            llMessageLinked(LINK_SET, LAN_MSG_NUM, list2Msg(lanChanList), user);
+        }
     }
-	link_message(integer sender_num, integer num, string msg, key user){
+    link_message(integer sender_num, integer num, string msg, key user){
         if(num!=LAN_MSG_NUM && num!=MENU_MSG_NUM){
             return;
         }
-		/*
+        /*
         初始化语言系统
         LAN.INIT
-		加载语言
-		LAN.LOAD | CN
-		LANGUAGE.LOAD | CN
-		切换语言
+        加载语言
+        LAN.LOAD | CN
+        LANGUAGE.LOAD | CN
+        切换语言
         LAN.CHANGE | CN
         LANGUAGE.CHANGE | CN
         获取语言文本
@@ -271,23 +275,23 @@ default{
         LANGUAGE.GETV | Key1; Key2; Key3
         LANGUAGE.GETKEY | Lan1; Lan2; Lan3
         LANGUAGE.GETNAME
-		语言功能回调
-		LANGUAGE.EXEC | LAN.LOAD | 0
+        语言功能回调
+        LANGUAGE.EXEC | LAN.LOAD | 0
         LANGUAGE.EXEC | LAN.LAN.GET | Lan1; Lan2; Lan3
         LANGUAGE.EXEC | LAN.LAN.GETV | Lan1; Lan2; Lan3
         LANGUAGE.EXEC | LAN.LAN.GETKEY | Key1; Key2; Key3
         LANGUAGE.EXEC | LAN.LAN.GETNAME | CN
-		语言加载完毕回调
-		LANGUAGE.ACTIVE | CN
-		*/
-		list msgList=bundle2List(msg);
+        语言加载完毕回调
+        LANGUAGE.ACTIVE | CN
+        */
+        list msgList=bundle2List(msg);
         list resultList=[];
         integer msgCount=llGetListLength(msgList);
         integer mi;
         for(mi=0; mi<msgCount; mi++){
-			string str=llList2String(msgList, mi);
-			if (llGetSubString(str, 0, 2) == "LAN" && !includes(str, "EXEC")) {
-				list lanCmdList=msg2List(str);
+            string str=llList2String(msgList, mi);
+            if (llGetSubString(str, 0, 2) == "LAN" && !includes(str, "EXEC")) {
+                list lanCmdList=msg2List(str);
                 string lanCmdStr=llList2String(lanCmdList, 0);
                 list lanCmdGroup=llParseStringKeepNulls(lanCmdStr, ["."], [""]);
     
@@ -295,12 +299,12 @@ default{
                 string lanCmdSub=llList2String(lanCmdGroup, 1);
                 string lanCmdExt=llList2String(lanCmdGroup, 2);
 
-				string lanName=llList2String(lanCmdList, 1);
+                string lanName=llList2String(lanCmdList, 1);
                 string lanText=llList2String(lanCmdList, 2);
 
-				string result="";
+                string result="";
 
-				if(lanCmd=="LAN" || lanCmd=="LANGUAGE"){
+                if(lanCmd=="LAN" || lanCmd=="LANGUAGE"){
                     if(lanCmdSub=="INIT"){
                         hasLanguage=TRUE;
                         result=(string)TRUE;
@@ -319,7 +323,7 @@ default{
                             }
                             result=list2Data(lList);
                         }else{
-                            result=list2Data(lanKeyValList); // GET参数为空时，返回所有语言key、val的list
+                            result=list2Data(kList); // GET参数为空时，返回所有语言key、val的list
                         }
                     }
                     else if(lanCmdSub=="GETV"){
@@ -347,40 +351,40 @@ default{
                     }
                 }
 
-				if(result!=""){
+                if(result!=""){
                     list lanExeResult=[
                         "LANGUAGE.EXEC", lanCmdStr, result
                     ];
                     resultList+=[list2Msg(lanExeResult)];
                     //llMessageLinked(LINK_SET, 0, list2Msg(menuExeResult), user); // 菜单处理完成后的回调
                 }
-			}
-			else if (includes(str, "MENU.ACTIVE")) {
-				list menuCmdList=msg2List(str);
-				string menuName=llList2String(menuCmdList, 1);
+            }
+            else if (includes(str, "MENU.ACTIVE")) {
+                list menuCmdList=msg2List(str);
+                string menuName=llList2String(menuCmdList, 1);
                 string menuText=llList2String(menuCmdList, 2);
 
-				if(menuText=="Language"){
-					showLanguageMenu(menuName, user);
-				}else if(menuName=="languageMenu" && menuText!=""){
-					//readLanguageNotecards(menuText); // 由于需要语言的执行回调LANGUAGE.EXEC，因此不允许直接调用
-					list lanChanList=[
-						"LAN.CHANGE",
-						menuText
-					];
-					llMessageLinked(LINK_SET, LAN_MSG_NUM, list2Msg(lanChanList), user);
-				}
-			}
-		}
+                if(menuText=="Language"){
+                    showLanguageMenu(menuName, user);
+                }else if(menuName=="languageMenu" && menuText!=""){
+                    //readLanguageNotecards(menuText); // 由于需要语言的执行回调LANGUAGE.EXEC，因此不允许直接调用
+                    list lanChanList=[
+                        "LAN.CHANGE",
+                        menuText
+                    ];
+                    llMessageLinked(LINK_SET, LAN_MSG_NUM, list2Msg(lanChanList), user);
+                }
+            }
+        }
 
-		if(llGetListLength(resultList)>0){
+        if(llGetListLength(resultList)>0){
             llMessageLinked(LINK_SET, LAN_MSG_NUM, list2Bundle(resultList), user); // 菜单处理完成后的回调
         }
-	}
-	dataserver(key query_id, string data){
+    }
+    dataserver(key query_id, string data){
         if (query_id == readLanQuery) { // 通过readLanguageNotecards触发读取记事卡事件，按行读取指定语言文本（readLanName）并设置语言。
-			if(data != EOF){
-				// data: language key=language value
+            if(data != EOF){
+                // data: language key=language value
                 list lanStrSp=llParseStringKeepNulls(data, ["="], []);
                 string lanKey=llList2String(lanStrSp,0);
                 string lanVal=llList2String(lanStrSp,1);
@@ -389,14 +393,14 @@ default{
                 ++readLanLine;
                 //request next line of notecard.
                 readLanQuery=llGetNotecardLine(readLanName, readLanLine);
-			}else{
- 				// llRegionSayTo(showMenuUser, 0, "Finished reading language "+readLanName+".");
-                llRegionSayTo(curLanUser, 0, getLanguageVar("Finished reading language %1.%%;"+curLanName));
+            }else{
+                 // llRegionSayTo(showMenuUser, 0, "Finished reading language "+readLanName+".");
+                llRegionSayTo(curLanUser, 0, getLanguageVar("Finished reading language %1%.%%;"+curLanName));
                 applyLanguage();
-				llMessageLinked(LINK_SET, LAN_MSG_NUM, "LANGUAGE.ACTIVE|"+curLanName, curLanUser);
+                llMessageLinked(LINK_SET, LAN_MSG_NUM, "LANGUAGE.ACTIVE|"+curLanName, curLanUser);
                 readLanQuery=NULL_KEY;
-				curLanUser=NULL_KEY;
-			}
+                curLanUser=NULL_KEY;
+            }
         }
     }
 }
