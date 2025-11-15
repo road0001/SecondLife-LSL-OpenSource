@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better menu management system, use link_message to operate menus.
 
 ***更新记录***
+- 1.1.9 20251115
+    - 修复当上级菜单名与新菜单名同名时，无法正常打开此菜单的bug。
+
 - 1.1.8 20251113
     - 修复多个菜单索引错误的bug。
     - 修复开关按钮失效的bug。
@@ -269,6 +272,7 @@ integer applyLanguage(){
 注册菜单通用方法。
 参数：菜单名，菜单文字，菜单按钮表，父级菜单名（顶层菜单用空字符串）
 */
+string parentHeader="P::";
 list menuRegistList=[]; // mname, mtext, mlist, mparent, mpage。由于list里不能嵌套list，因此mlist保持字符串原形
 // list menuNameList=[];
 // list menuTextList=[];
@@ -286,12 +290,12 @@ integer registMenu(string mname, string mtext, string mlist, string mparent){
     integer menuIndex=findMenu(mname);
     // string menuItem=list2Data(mlist);
     if(~menuIndex){ // 菜单名存在时，覆盖 ~menuIndex等价于menuIndex!=-1，速度更快
-        menuRegistList = llListReplaceList(menuRegistList, [mtext, mlist, mparent, 1], menuIndex+1, menuIndex+4);
+        menuRegistList = llListReplaceList(menuRegistList, [mtext, mlist, parentHeader+mparent, 1], menuIndex+1, menuIndex+4);
         // menuTextList = llListReplaceList(menuTextList, [mtext], menuIndex, menuIndex);
         // menuItemList = llListReplaceList(menuItemList, [menuItem], menuIndex, menuIndex);
         // menuParentList=llListReplaceList(menuParentList, [mparent], menuIndex, menuIndex);
     }else{ // 菜单名不存在时，插入
-        menuRegistList+=[mname, mtext, mlist, mparent, 1];
+        menuRegistList+=[mname, mtext, mlist, parentHeader+mparent, 1];
         // menuRegistList+=[mname, mtext, menuItem, mparent];
         // menuNameList+=[mname];
         // menuTextList+=[mtext];
@@ -328,6 +332,7 @@ integer executeMenu(string mname, integer reset, key user){
     if(mname==""){
         mname=llList2String(showMenuData,0);
     }
+    mname=replace(mname, parentHeader, "");
     integer menuIndex=findMenu(mname);
     if(~menuIndex){
         if(reset>0){ // reset=FALSE用于reshow菜单
@@ -443,7 +448,7 @@ integer showMenu(string mname, string mtext, string mlist, string mparent, integ
             if(showMenuPage<totalPages){
                 next=llList2String(pageBu,1);
             }
-            if(mparent!=""){
+            if(mparent!="" && mparent!=parentHeader){
                 back=llList2String(pageBu,2);
             }else{
                 back=llList2String(pageBu,3);

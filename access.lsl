@@ -926,7 +926,7 @@ default{
             llMessageLinked(LINK_SET, ACCESS_MSG_NUM, list2Bundle(resultList), user); // 处理完成后的回调
 			notifyAccess();
         }
-		llOwnerSay("Access Memory Used: "+(string)llGetUsedMemory()+" Free: "+(string)llGetFreeMemory());
+		//llOwnerSay("Access Memory Used: "+(string)llGetUsedMemory()+" Free: "+(string)llGetFreeMemory());
     }
 
     sensor(integer detected) {

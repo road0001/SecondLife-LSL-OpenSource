@@ -1071,7 +1071,7 @@ default{
         if(llGetListLength(resultList)>0){
             llMessageLinked(LINK_SET, RLV_MSG_NUM, list2Bundle(resultList), user); // RLV处理完成后的回调
         }
-        llOwnerSay("RLV Memory Used: "+(string)llGetUsedMemory()+" Free: "+(string)llGetFreeMemory());
+        //llOwnerSay("RLV Memory Used: "+(string)llGetUsedMemory()+" Free: "+(string)llGetFreeMemory());
     }
 
     dataserver(key query_id, string data){
