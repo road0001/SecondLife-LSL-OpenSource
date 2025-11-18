@@ -4,7 +4,10 @@ Author: JMRY
 Description: A better language management system, use link_message to operate languages.
 
 ***更新记录***
-1.0.3 20251114
+- 1.0.4 20251119
+    - 加入按当前语言输出指定内容功能。
+
+- 1.0.3 20251114
     - 修复语言系统失效的bug。
 
 - 1.0.2 20250806
@@ -275,6 +278,9 @@ default{
         LANGUAGE.GETV | Key1; Key2; Key3
         LANGUAGE.GETKEY | Lan1; Lan2; Lan3
         LANGUAGE.GETNAME
+        语言系统文本输出
+        LAN.OUT.<TYPE> | TEXT | CHANNEL | USER
+        LANGUAGE.OUTPUT.<TYPE> | TEXT | CHANNEL | USER
         语言功能回调
         LANGUAGE.EXEC | LAN.LOAD | 0
         LANGUAGE.EXEC | LAN.LAN.GET | Lan1; Lan2; Lan3
@@ -301,6 +307,7 @@ default{
 
                 string lanName=llList2String(lanCmdList, 1);
                 string lanText=llList2String(lanCmdList, 2);
+                string lanExt =llList2String(lanCmdList, 3);
 
                 string result="";
 
@@ -348,6 +355,24 @@ default{
                     }
                     else if(lanCmdSub=="GETNAME"){
                         result=curLanName;
+                    }
+                    else if(lanCmdSub=="OUT" || lanCmdSub=="OUTPUT"){
+                        string outputText=getLanguageVar(lanName);
+                        integer outputChannel=(integer)lanText;
+                        key outputUser=(key)lanExt;
+                        if(lanCmdExt=="" || lanCmdExt=="OWNER" || lanCmdExt=="SELF"){
+                            llOwnerSay(outputText);
+                        }else if(lanCmdExt=="SAY"){
+                            llSay(outputChannel, outputText);
+                        }else if(lanCmdExt=="WHISPER"){
+                            llWhisper(outputChannel, outputText);
+                        }else if(lanCmdExt=="SHOUT"){
+                            llShout(outputChannel, outputText);
+                        }else if(lanCmdExt=="TO"){
+                            llRegionSayTo(outputUser, outputChannel, outputText);
+                        }else if(lanCmdExt=="REGION"){
+                            llRegionSay(outputChannel, outputText);
+                        }
                     }
                 }
 

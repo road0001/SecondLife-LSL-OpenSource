@@ -100,6 +100,23 @@ LANGUAGE.EXEC | LAN.GETNAME | NAME
 LANGUAGE.EXEC | LANGUAGE.GETNAME | NAME
 ```
 
+### 输出文本内容
+#### LAN.OUT.\<TYPE\>
+#### LANGUAGE.OUTPUT.\<TYPE\>
+- 按当前语言输出指定内容，格式与其他语言文本一致。
+- 文本内容输出不执行回调。
+- LAN.OUT为LANGUAGE.OUTPUT的简写。
+```lsl
+LAN.OUT | Your text here. // 使用llOwnerSay发送
+LAN.OUT.OWNER | Your text here. // 使用llOwnerSay发送
+LAN.OUT.SELF | Your text here. // 使用llOwnerSay发送
+LAN.OUT.SAY | Your text here. | N // 使用llSay发送到频道N，频道可省略，默认为0
+LAN.OUT.WHISPER | Your text here. | N // 使用llWhisper发送到频道N，频道可省略，默认为0
+LAN.OUT.SHOUT | Your text here. | N // 使用llShout发送到频道N，频道可省略，默认为0
+LAN.OUT.TO | Your text here. | N | UUID // 使用llRegionSayTo发送到指定用户的频道N，频道和用户不可省略
+LAN.OUT.REGION | Your text here. | N // 使用llRegionSay发送到全sim用户的频道N，频道可省略，默认为0
+```
+
 ## 语言回调
 
 ### 语言记事卡读取成功回调
