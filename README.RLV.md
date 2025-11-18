@@ -1,4 +1,4 @@
-# 自动化菜单系统文档
+# 自动化RLV系统文档
 脚本通过调用llMessageLink方法将RLV指令传递到RLV脚本，即可实现相关功能。RLV的执行结果（如数据获取、RLV执行结果等）也通过触发link_message返回。
 ###### 阅读本文档前，请先阅读[菜单文档](README.Menu.md)，此RLV系统中的部分功能依赖菜单系统，并且指令格式与用法与菜单系统基本保持一致。
 
@@ -184,24 +184,24 @@ RLV.EXEC | RLV.GET.STATUS | 0, 0, 1 // 返回RLV指令的状态，多条指令�
 - 物品穿在身上时，将发送@detach=n来将物品锁在身上。
 - 物品放置在地上时，将发送@unsit=n来阻止玩家站立。
 - 锁定参数分别为-1（切换当前状态）、0（不生效）、1（生效）。
-- 执行后，回调结果为锁定执行后的状态（0、1）。
+- 执行后，回调结果为锁定执行后的状态（0、1）和操作用户。
 ```lsl
 RLV.LOCK | -1
 RLV.LOCK | 1
 RLV.LOCK | 0
 // 回调：
-RLV.EXEC | RLV.LOCK | 1
-RLV.EXEC | RLV.LOCK | 1
-RLV.EXEC | RLV.LOCK | 0
+RLV.EXEC | RLV.LOCK | 1;UUID
+RLV.EXEC | RLV.LOCK | 1;UUID
+RLV.EXEC | RLV.LOCK | 0;UUID
 ```
 
 ### 获取锁定状态
 #### RLV.GET.LOCK
-- 获取当前锁定的状态（0、1）。
+- 获取当前锁定的状态（0、1）和操作用户。
 ```lsl
 RLV.GET.LOCK
 // 回调：
-RLV.EXEC | RLV.GET.LOCK | 1
+RLV.EXEC | RLV.GET.LOCK | 1;UUID
 ```
 
 ### 获取重命名器状态
@@ -210,7 +210,7 @@ RLV.EXEC | RLV.GET.LOCK | 1
 ```lsl
 RLV.GET.RENAMER
 // 回调：
-RLV.EXEC | RLV.GET.RENAMER | 名字, 频道, 1
+RLV.EXEC | RLV.GET.RENAMER | 名字; 频道; 1
 ```
 
 ### 重命名器
@@ -225,10 +225,10 @@ RLV.RENAMER | -1
 RLV.RENAMER | 0
 RLV.RENAMER | 1
 // 回调：
-RLV.EXEC | RLV.RENAMER | 名字, 频道, 1
-RLV.EXEC | RLV.RENAMER | 名字, 频道, 0
-RLV.EXEC | RLV.RENAMER | 名字, 频道, 0
-RLV.EXEC | RLV.RENAMER | 名字, 频道, 1
+RLV.EXEC | RLV.RENAMER | 名字; 频道; 1
+RLV.EXEC | RLV.RENAMER | 名字; 频道; 0
+RLV.EXEC | RLV.RENAMER | 名字; 频道; 0
+RLV.EXEC | RLV.RENAMER | 名字; 频道; 1
 ```
 
 ### 捕获玩家
@@ -277,9 +277,10 @@ RLV.EXEC | RLV.LOAD.LIST | rlv_rlv1, rlv_rlv2, rlv_rlv3, ...
 ### 读取RLV记事卡
 #### RLV.LOAD
 - 从rlv_开头的记事卡中获取RLV限制数据。
+  - 名字中不需要带rlv_前缀，如记事卡为rlv_main，则只需传递main。
 - 执行后，将清空并覆盖现有的RLV数据。
 ```lsl
-RLV.LOAD | rlv_file1
+RLV.LOAD | file1
 // 回调：
 RLV.EXEC | RLV.LOAD | 1
 ```

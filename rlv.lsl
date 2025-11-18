@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 1.0.17 20251119
+    - RLV获取锁定状态加入返回锁定用户。
+
 - 1.0.16 20251114
     - 修复RLV功能菜单显示错误的bug。
     -修复REZ模式RLV失效的bug。
@@ -526,7 +529,8 @@ integer clearRLVCmd(){
 }
 
 integer isLocked=FALSE;
-integer setLock(integer bool){
+key lockUser=NULL_KEY;
+integer setLock(integer bool, key user){
     if(bool==-1){
         if(isLocked==FALSE){
             bool=TRUE;
@@ -540,8 +544,10 @@ integer setLock(integer bool){
     }
     if(bool==0){
         setRLV(lockStr,"y");
+        lockUser=NULL_KEY;
     }else{
         setRLV(lockStr,"n");
+        lockUser=user;
     }
     isLocked=bool;
     return bool;
@@ -554,7 +560,7 @@ integer getLock(){
     }
 }
 integer restoreLock(){
-    return setLock(isLocked);
+    return setLock(isLocked, lockUser);
 }
 
 /*
@@ -864,7 +870,7 @@ default{
         获取锁定状态
         RLV.GET.LOCK
         返回：
-        RLV.EXEC | RLV.GET.LOCK | 1
+        RLV.EXEC | RLV.GET.LOCK | 1;UUID
         重命名器
         RLV.RENAMER | Name | 1
         RLV.RENAMER | 0
@@ -962,16 +968,16 @@ default{
                     }
                 }
                 else if(rlvMsgSub=="LOCK"){
-                    result=(string)setLock((integer)rlvMsgName);
+                    result=list2MenuData([setLock((integer)rlvMsgName, user), lockUser]);
                 }
                 else if(rlvMsgSub=="RENAMER"){
                     if(rlvMsgName=="SET"){
                         renamerName=rlvMsgCmd;
                         renamerEnabled(TRUE,user);
-                        result=list2Data([(string)renamerName, renamerChannel, renamerBool]);
+                        result=list2MenuData([(string)renamerName, renamerChannel, renamerBool]);
                     }else{
                         renamerEnabled((integer)rlvMsgName,user);
-                        result=list2Data([(string)renamerName, renamerChannel, renamerBool]);
+                        result=list2MenuData([(string)renamerName, renamerChannel, renamerBool]);
                     }
                 }
                 else if(rlvMsgSub=="CAPTURE"){
@@ -993,10 +999,10 @@ default{
                         result=(string)getRLVClass(rlvMsgName);
                     }
                     else if(rlvMsgExt=="LOCK"){
-                        result=(string)getLock();
+                        result=list2MenuData([getLock(), lockUser]);
                     }
                     else if(rlvMsgExt=="RENAMER"){
-                        result=list2Data([(string)renamerName, renamerChannel, renamerBool]);
+                        result=list2MenuData([(string)renamerName, renamerChannel, renamerBool]);
                     }
                     else if(rlvMsgExt=="CAPTURE"){
                         result=(string)isCaptureVictim((key)rlvMsgName);

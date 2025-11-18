@@ -4,6 +4,14 @@ Author: JMRY
 Description: A better access permission control system, use link_message to operate permissions.
 
 ***更新记录***
+- 1.0.6 20251119
+    - 优化菜单文本中权限状态的显示效果。
+    - 修复owner菜单中有个空白按钮的bug。
+    - 修复逃跑后未推送权限变更通知的bug。
+
+- 1.0.5 20251118
+    - 加入恢复Root权限时的权限变更通知。
+
 - 1.0.4 20250806
     - 优化内存占用。
 
@@ -382,6 +390,7 @@ integer readAccessNotecards(string aname){
         // 后续功能交给下方datasever处理
         return TRUE;
     }else{
+        notifyAccess(); // 文件不存在时，直接发送权限变更通知
         return FALSE;
     }
 }
@@ -433,9 +442,7 @@ showAccessMenu(string parent, key user){
         }else{
             buttonList+=[" "];
         }
-    }else{
-		buttonList+=[" "];
-	}
+    }
     
     if(userPerm>=ACCESS_ROOT){
         string publicBu="["+(string)getPublicMode()+"]Public";
@@ -448,7 +455,7 @@ showAccessMenu(string parent, key user){
     }
 
     list menuText=[
-        "This is access menu, you can manage who can access %1%'s %2%.\nPublic mode: %3%\nGroup mode: %4%\nHardcore mode: %5%%%",
+        "This is access menu, you can manage who can access %1%'s %2%.\nPublic mode: %b3%\nGroup mode: %b4%\nHardcore mode: %b5%%%",
         userInfo(llGetOwner()),
         llGetObjectName(),
         getPublicMode(),
@@ -622,6 +629,7 @@ showAccessActiveMenu(string button, key user){
     }
     else if(button=="Restore"){
         setRootOwner(llGetOwner());
+        notifyAccess();
         showAccessMenu(accessParentMenuName, user);
         return;
     }
@@ -646,7 +654,7 @@ default{
         if(llGetListLength(ownerList)==0){
             setRootOwner(llGetOwner()); // 初始化时，设置玩家为root
         }
-        readAccessNotecards(readAccessName);
+        readAccessNotecards(readAccessName); // 读取记事卡应用权限
     }
     changed(integer change){
         if(change & CHANGED_INVENTORY){
@@ -912,10 +920,10 @@ default{
 						notifyAccess();
 					}
                 }
-                else if(menuName=="AccessEscape" && menuButton=="Yes"){
+                else if(menuName=="AccessEscape"){
                     if(menuButton=="Yes"){
-                        clearAll();
                         llOwnerSay("You have escaped successful.");
+                        clearAll();
                     }else{
                         showAccessMenu(accessParentMenuName, user);
                     }

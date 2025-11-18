@@ -4,6 +4,10 @@ Author: JMRY
 Description: A better menu management system, use link_message to operate menus.
 
 ***更新记录***
+- 1.1.10 20251119
+    - 优化菜单生成算法，修复菜单名超长报错的bug。
+    - 修复文本中包含TRUE、FALSE开关的符号时，显示错误的bug。
+
 - 1.1.9 20251115
     - 修复当上级菜单名与新菜单名同名时，无法正常打开此菜单的bug。
 
@@ -229,7 +233,7 @@ string getLanguageVar(string k){ // 拼接字符串方法，用于首尾拼接�
     for(i=0; i<llGetListLength(var); i++){
         integer vi=i+1;
         text=replace(text, "%"+(string)vi+"%", getLanguage(llList2String(var, i)));
-        text=replace(text, "%b"+(string)vi+"%", getLanguageBool(llList2String(var, i)));
+        text=replace(text, "%b"+(string)vi+"%", getLanguageBool("["+llList2String(var, i)+"]"));
     }
     return text;
 }
@@ -400,6 +404,10 @@ integer getShowMenuPageList(string mname){
     //     return -1;
     // }
 }
+
+string getMenuButtonStr(string s){
+    return llGetSubString(getLanguageBool(s), 0, 23);
+}
 /*
 显示菜单通用方法。
 参数：菜单名（用于重显示菜单），菜单文字，菜单按钮表，用户
@@ -469,14 +477,14 @@ integer showMenu(string mname, string mtext, string mlist, string mparent, integ
             }
             // 根据菜单按钮规则重新排序并添加翻页和返回按钮
             menuItems=[
-                getLanguageBool(prev), getLanguageBool(back), getLanguageBool(next), // 第四行
-                getLanguageBool(llList2String(menuItems,6)), getLanguageBool(llList2String(menuItems,7)), getLanguageBool(llList2String(menuItems,8)), // 第三行
-                getLanguageBool(llList2String(menuItems,3)), getLanguageBool(llList2String(menuItems,4)), getLanguageBool(llList2String(menuItems,5)), // 第二行
-                getLanguageBool(llList2String(menuItems,0)), getLanguageBool(llList2String(menuItems,1)), getLanguageBool(llList2String(menuItems,2))  // 第一行
+                getMenuButtonStr(prev), getMenuButtonStr(back), getMenuButtonStr(next), // 第四行
+                getMenuButtonStr(llList2String(menuItems,6)), getMenuButtonStr(llList2String(menuItems,7)), getMenuButtonStr(llList2String(menuItems,8)), // 第三行
+                getMenuButtonStr(llList2String(menuItems,3)), getMenuButtonStr(llList2String(menuItems,4)), getMenuButtonStr(llList2String(menuItems,5)), // 第二行
+                getMenuButtonStr(llList2String(menuItems,0)), getMenuButtonStr(llList2String(menuItems,1)), getMenuButtonStr(llList2String(menuItems,2))  // 第一行
             ];
-            // for(i=0; i<llGetListLength(menuItems); i++){
-            //     llListReplaceList(menuItems, [llGetSubString(llList2String(menuItems, i), 0, 23)], i, i);
-            // }
+            for(i=0; i<llGetListLength(menuItems); i++){ // 截断菜单按钮长度，防止超长
+                llListReplaceList(menuItems, [llGetSubString(llList2String(menuItems, i), 0, 23)], i, i);
+            }
         }
         // 简易菜单，只处理按钮的语言
         else if(mtype==2){
@@ -487,7 +495,7 @@ integer showMenu(string mname, string mtext, string mlist, string mparent, integ
             }
             integer i;
             for(i=0; i<menuCount; i++){
-                menuItems=llListReplaceList(menuItems,[getLanguageBool(llList2String(menuItems, i))], i, i);
+                menuItems=llListReplaceList(menuItems,[getMenuButtonStr(llList2String(menuItems, i))], i, i);
             }
         }
         llDialog(user, showMenuTextInner, menuItems, menuChannel);
