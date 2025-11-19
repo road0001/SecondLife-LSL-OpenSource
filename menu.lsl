@@ -433,7 +433,6 @@ integer showMenu(string mname, string mtext, string mlist, string mparent, integ
         menuChannel=-100000 - (integer)llFrand(900000.0);
         // menuChannel=(integer)(llFrand(-1000000000.0) - 1000000000.0);
     }
-    llOwnerSay((string)menuChannel);
     string showMenuTextInner=getLanguageVar(mtext);
     // showMenuType>0时为菜单，小于等于0时为输入框
     if(mtype>0){
