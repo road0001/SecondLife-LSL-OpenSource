@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better menu management system, use link_message to operate menus.
 
 ***更新记录***
+- 1.1.11 20251120
+    - 修复菜单监听频道随机数错误的bug。
+
 - 1.1.10 20251119
     - 优化菜单生成算法，修复菜单名超长报错的bug。
     - 修复文本中包含TRUE、FALSE开关的符号时，显示错误的bug。
@@ -414,7 +417,7 @@ string getMenuButtonStr(string s){
 自动重排：传入菜单按从上到下顺序，显示菜单按从下到上顺序，因此进行重排
 */
 integer menuListenHandle;
-integer menuChannel;
+integer menuChannel=-1;
 list pageBu=["←","→","BACK","CLOSE"]; // 上一页，下一页，返回，关闭的文本
 // string pageBuStr="←|→|BACK|CLOSE"; // 上一页，下一页，返回，关闭的文本
 list showMenuData=["", "", "", "", TRUE, NULL_KEY]; // showMenuName, showMenuText, showMenuListStr, showMenuParent, showMenuType, showMenuUser
@@ -426,10 +429,11 @@ integer showMenu(string mname, string mtext, string mlist, string mparent, integ
     if(mname==""){
         return FALSE;
     }
-    if(!menuChannel){
-        menuChannel=(integer)(llFrand(1000000000.0) - 9000000000.0);
+    if(!~menuChannel){
+        menuChannel=-100000 - (integer)llFrand(900000.0);
         // menuChannel=(integer)(llFrand(-1000000000.0) - 1000000000.0);
     }
+    llOwnerSay((string)menuChannel);
     string showMenuTextInner=getLanguageVar(mtext);
     // showMenuType>0时为菜单，小于等于0时为输入框
     if(mtype>0){
