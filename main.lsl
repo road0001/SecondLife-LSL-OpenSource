@@ -4,7 +4,10 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
-- 1.0 20241115
+- 1.0.1 20251120
+    - 加入库存变化时重新读取RLV脚本功能。
+
+- 1.0 20251115
     - 完成主要功能。
 ***更新记录***
 */
@@ -322,6 +325,7 @@ default{
         }
         if(change & CHANGED_INVENTORY){
             initLanguage();
+            llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.LOAD|main", NULL_KEY);
         }
     }
     touch_start(integer num_detected)
