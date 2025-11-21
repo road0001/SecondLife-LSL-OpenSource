@@ -4,6 +4,10 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 1.0.18 20251122
+    - 加入锁定和RLV联动。
+    - 优化RLV命令索引机制。
+
 - 1.0.17 20251119
     - RLV获取锁定状态加入返回锁定用户。
 
@@ -404,7 +408,8 @@ integer applyRLVCmd(string name, integer bool){
             setRLV(rlvSpKey(curRlv), rlvSpVal(curRlv, bool)); // shownames_sec, n/y
         }
     }
-     /*
+    setRLVCmdEnabled(name, bool); // 更新RLV启用状态
+    /*
     list rlvApplyRs=[
         name,
         rlvK,
@@ -414,6 +419,20 @@ integer applyRLVCmd(string name, integer bool){
     // lightBlind | shownames_sec?n?y,setsphere_distmax:15?force?rem,removefit?n?y | 1
     // return list2Msg(rlvApplyRs);
     return bool;
+}
+
+/*
+根据记录的RLV指令应用全部
+*/
+integer applyAllRLVCmd(){
+    integer i;
+    for(i=0; i<llGetListLength(rlvCmdNameKeyClass); i+=rlvCmdLength){
+        string curRlvCmdName=llList2String(rlvCmdNameKeyClass, i);
+        string curRlvCmd=llList2String(rlvCmdNameKeyClass, i+1);
+        integer curRlvEnabled=llList2Integer(rlvCmdNameKeyClass, i+3);
+        applyRLVCmd(curRlvCmdName, curRlvEnabled);
+    }
+    return TRUE;
 }
 
 list rlvClassName=[];
@@ -447,46 +466,115 @@ integer clearRLVClass(){
 更新RLV名称与指令集，参数：RLV名称，RLV指令集（RLV命令1;RLV命令2;……）
 如果不存在此名称，则添加。
 */
-list rlvCmdNameKeyClass=[]; // name, rlvs, class
+list rlvCmdNameKeyClass=[]; // name, rlvs, class, enabled
+integer rlvCmdLength=4;
 // list rlvCmdName=[];
 // list rlvCmdKey=[];
 // list rlvCmdClass=[];
 string rlvCmdSpStr=",";
-integer setRLVCmd(string name, list k, string class){
-    integer rIndex=llListFindList(rlvCmdNameKeyClass, [name]);
-    if(!~rIndex){ // name不存在时，添加
-        rlvCmdNameKeyClass+=[name, llDumpList2String(k,rlvCmdSpStr), class];
-        // rlvCmdName +=[name];
-        // rlvCmdKey  +=[llDumpList2String(k,rlvCmdSpStr)];
-        // rlvCmdClass+=[class];
-    }else{ // name存在时，修改
-        rlvCmdNameKeyClass=llListReplaceList(rlvCmdNameKeyClass,[llDumpList2String(k,rlvCmdSpStr), class],rIndex+1,rIndex+2);
-        // rlvCmdKey  =llListReplaceList(rlvCmdKey,[llDumpList2String(k,rlvCmdSpStr)],rIndex,rIndex);
-        // rlvCmdClass=llListReplaceList(rlvCmdClass,[class],rIndex,rIndex);
+integer setRLVCmd(string name, list k, string class, integer enabled){
+    integer rIndex;
+    integer notFound=TRUE;
+    for(rIndex=0; rIndex<llGetListLength(rlvCmdNameKeyClass); rIndex+=rlvCmdLength){
+        string curRlvCmdName=llList2String(rlvCmdNameKeyClass, rIndex);
+        if(curRlvCmdName == name){
+            rlvCmdNameKeyClass=llListReplaceList(rlvCmdNameKeyClass,[llDumpList2String(k,rlvCmdSpStr), class, enabled],rIndex+1,rIndex+rlvCmdLength-1);
+            notFound=FALSE;
+        }
+    }
+    if(notFound==TRUE){
+        rlvCmdNameKeyClass+=[name, llDumpList2String(k,rlvCmdSpStr), class, enabled];
     }
     if(class!=""){
         addRLVClass(class);
     }
     return TRUE;
+    // integer rIndex=llListFindList(rlvCmdNameKeyClass, [name]);
+    // if(!~rIndex){ // name不存在时，添加
+    //     rlvCmdNameKeyClass+=[name, llDumpList2String(k,rlvCmdSpStr), class, enabled];
+    //     // rlvCmdName +=[name];
+    //     // rlvCmdKey  +=[llDumpList2String(k,rlvCmdSpStr)];
+    //     // rlvCmdClass+=[class];
+    // }else{ // name存在时，修改
+    //     rlvCmdNameKeyClass=llListReplaceList(rlvCmdNameKeyClass,[llDumpList2String(k,rlvCmdSpStr), class, enabled],rIndex+1,rIndex+menuRegistLength-1);
+    //     // rlvCmdKey  =llListReplaceList(rlvCmdKey,[llDumpList2String(k,rlvCmdSpStr)],rIndex,rIndex);
+    //     // rlvCmdClass=llListReplaceList(rlvCmdClass,[class],rIndex,rIndex);
+    // }
+    // if(class!=""){
+    //     addRLVClass(class);
+    // }
+    // return TRUE;
+}
+/*
+设置RLV启用状态
+*/
+integer setRLVCmdEnabled(string name, integer enabled){
+    integer i;
+    for(i=0; i<llGetListLength(rlvCmdNameKeyClass); i+=rlvCmdLength){
+        string curRlvCmdName=llList2String(rlvCmdNameKeyClass, i);
+        if(curRlvCmdName == name){
+            rlvCmdNameKeyClass=llListReplaceList(rlvCmdNameKeyClass,[enabled],i+3,i+3);
+            return TRUE;
+        }
+    }
+    return FALSE;
 }
 /*
 根据RLV名称获取指令集。
 */
 string getRLVCmd(string name){
-    integer rIndex=llListFindList(rlvCmdNameKeyClass, [name]);
-    if(~rIndex && rIndex%3==0){
-        return llList2String(rlvCmdNameKeyClass, rIndex+1);
-    }else{
-        return "";
+    integer i;
+    for(i=0; i<llGetListLength(rlvCmdNameKeyClass); i+=rlvCmdLength){
+        string curRlvCmdName=llList2String(rlvCmdNameKeyClass, i);
+        if(curRlvCmdName == name){
+            return llList2String(rlvCmdNameKeyClass, i+1);
+        }
     }
+    return "";
+    // integer rIndex=llListFindList(rlvCmdNameKeyClass, [name]);
+    // if(~rIndex && rIndex%4==0){
+    //     return llList2String(rlvCmdNameKeyClass, rIndex+1);
+    // }else{
+    //     return "";
+    // }
+}
+/*
+获取RLV启用状态
+*/
+integer getRLVCmdEnabled(string name){
+    integer i;
+    for(i=0; i<llGetListLength(rlvCmdNameKeyClass); i+=rlvCmdLength){
+        string curRlvCmdName=llList2String(rlvCmdNameKeyClass, i);
+        if(curRlvCmdName == name){
+            return llList2Integer(rlvCmdNameKeyClass,i+3);
+        }
+    }
+    return FALSE;
+}
+/*
+根据RLV名称获取数据list
+*/
+list getRLVCmdData(string name){
+    integer i;
+    for(i=0; i<llGetListLength(rlvCmdNameKeyClass); i+=rlvCmdLength){
+        string curRlvCmdName=llList2String(rlvCmdNameKeyClass, i);
+        if(curRlvCmdName == name){
+            return llList2List(rlvCmdNameKeyClass, i, i+rlvCmdLength-1);
+        }
+    }
+    return [];
 }
 /*
 根据RLV名称获取此指令集是否生效
 */
 integer hasRLVCmd(string name){
-    string rlvKey=getRLVCmd(name);
+    list rlvCmdData=getRLVCmdData(name);
+    string rlvKey=llList2String(rlvCmdData,1);
+    integer rlvEnabled=llList2Integer(rlvCmdData,3);
     if(rlvKey==""){
         return FALSE;
+    }else if(rlvEnabled==TRUE){
+        return rlvEnabled;
     }else{
         list rlvKeys=llParseStringKeepNulls(rlvKey,[rlvCmdSpStr],[""]);
         integer rlvCount=llGetListLength(rlvKeys);
@@ -504,19 +592,29 @@ integer hasRLVCmd(string name){
                 return FALSE;
             }
         }
+        setRLVCmdEnabled(name, TRUE);
         return TRUE;
     }
 }
 integer removeRLVCmd(string name){
-    integer rIndex=llListFindList(rlvCmdNameKeyClass, [name]);
-    if(~rIndex && rIndex%3==0){
-        rlvCmdNameKeyClass=llDeleteSubList(rlvCmdNameKeyClass,rIndex,rIndex+3);
-        // rlvCmdName=llDeleteSubList(rlvCmdName, rIndex, rIndex);
-        // rlvCmdKey=llDeleteSubList(rlvCmdKey, rIndex, rIndex);
-        return TRUE;
-    }else{
-        return FALSE;
+    integer i;
+    for(i=0; i<llGetListLength(rlvCmdNameKeyClass); i+=rlvCmdLength){
+        string curRlvCmdName=llList2String(rlvCmdNameKeyClass, i);
+        if(curRlvCmdName == name){
+            rlvCmdNameKeyClass=llDeleteSubList(rlvCmdNameKeyClass,i,i+rlvCmdLength-1);
+            return TRUE;
+        }
     }
+    return FALSE;
+    // integer rIndex=llListFindList(rlvCmdNameKeyClass, [name]);
+    // if(~rIndex && rIndex%3==0){
+    //     rlvCmdNameKeyClass=llDeleteSubList(rlvCmdNameKeyClass,rIndex,rIndex+3);
+    //     // rlvCmdName=llDeleteSubList(rlvCmdName, rIndex, rIndex);
+    //     // rlvCmdKey=llDeleteSubList(rlvCmdKey, rIndex, rIndex);
+    //     return TRUE;
+    // }else{
+    //     return FALSE;
+    // }
 }
 /*
 清空RLV名称与指令集。
@@ -530,6 +628,7 @@ integer clearRLVCmd(){
 
 integer isLocked=FALSE;
 key lockUser=NULL_KEY;
+integer lockRLVConnect=TRUE;
 integer setLock(integer bool, key user){
     if(bool==-1){
         if(isLocked==FALSE){
@@ -545,9 +644,15 @@ integer setLock(integer bool, key user){
     if(bool==0){
         setRLV(lockStr,"y");
         lockUser=NULL_KEY;
+        if(lockRLVConnect==TRUE){ // 锁和RLV联动时，解锁清空所有限制，但保留RLV状态（hasRLV优先读取记录的状态）
+            setRLV("clear","");
+        }
     }else{
         setRLV(lockStr,"n");
         lockUser=user;
+        if(lockRLVConnect==TRUE){ // 锁和RLV联动时，锁定即应用之前的限制
+            applyAllRLVCmd();
+        }
     }
     isLocked=bool;
     return bool;
@@ -672,7 +777,7 @@ showRLVSubMenu(string class, key user){
     list rlvCmdList=[];
     integer rlvCmdCount=llGetListLength(rlvCmdNameKeyClass);
     integer i;
-    for(i=0; i<rlvCmdCount; i+=3){
+    for(i=0; i<rlvCmdCount; i+=rlvCmdLength){
         string cueName=llList2String(rlvCmdNameKeyClass, i);
         string curClass=llList2String(rlvCmdNameKeyClass, i+2);
         if(curClass==class){
@@ -929,7 +1034,7 @@ default{
                 string result="";
                 if(rlvMsgSub=="REG" || rlvMsgSub=="REGIST"){
                     if(rlvMsgExt==""){
-                        result=(string)setRLVCmd(rlvMsgName, msg2List(rlvMsgCmd), rlvMsgClass);
+                        result=(string)setRLVCmd(rlvMsgName, msg2List(rlvMsgCmd), rlvMsgClass, FALSE);
                     }
                     else if(rlvMsgExt=="CLASS"){
                         list rlvClsList=data2List(rlvMsgName);
@@ -941,7 +1046,7 @@ default{
                         result=list2Data(rstList);
                     }
                     else if(rlvMsgExt=="APPLY"){
-                        result=(string)setRLVCmd(rlvMsgName, msg2List(rlvMsgCmd), rlvMsgClass2);
+                        result=(string)setRLVCmd(rlvMsgName, msg2List(rlvMsgCmd), rlvMsgClass2, TRUE);
                         result=(string)applyRLVCmd(rlvMsgName, (integer)rlvMsgClass);
                     }
                 }
@@ -1025,8 +1130,17 @@ default{
                         }
                         result=list2Data(rlvStatusResult);
                     }
+                    else if(rlvMsgExt=="CONNECT"){
+                        result=(string)lockRLVConnect;
+                    }
                     else if(rlvMsgName!=""){
                         result=getRLVCmd(rlvMsgName);
+                    }
+                }
+                else if(rlvMsgSub=="SET"){
+                    if(rlvMsgExt=="CONNECT"){
+                        lockRLVConnect=(integer)rlvMsgName;
+                        result=(string)lockRLVConnect;
                     }
                 }
                 else if(rlvMsgSub=="RUN"){
@@ -1084,6 +1198,7 @@ default{
         if (query_id == readRLVQuery) { // 通过readRLVNotecards触发读取记事卡事件，按行读取指定RLV（readRLVQuery）并设置相关数据。
             if (data == EOF) {
                 llOwnerSay("Finished reading RLV restraints: "+curRLVName);
+                llMessageLinked(LINK_SET, RLV_MSG_NUM, list2Msg(["RLV.LOAD.NOTECARD",TRUE]), NULL_KEY); // RLV成功读取记事卡后回调
                 readRLVQuery=NULL_KEY;
             } else {
                 /*
@@ -1102,7 +1217,7 @@ default{
                         string rlvName=llList2String(rlvStrSp,0);
                         list rlvData=data2List(llList2String(rlvStrSp,1));
 
-                        setRLVCmd(rlvName, rlvData, curRLVClass);
+                        setRLVCmd(rlvName, rlvData, curRLVClass, FALSE);
                     }
                 }
 

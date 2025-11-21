@@ -4,6 +4,9 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.0.2 20251122
+    - 优化RLV记事卡的读取机制，防止重复读取。
+
 - 1.0.1 20251120
     - 加入库存变化时重新读取RLV脚本功能。
 
@@ -308,11 +311,11 @@ integer LAN_MSG_NUM=1003;
 list owner=[];
 list trust=[];
 list black=[];
-integer public=0;
+integer public=1;
 integer group=0;
 integer hardcore=0;
 
-string operator;
+integer rlvLoaded=FALSE;
 default{
     state_entry(){
         llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.LOAD|main", NULL_KEY);
@@ -320,12 +323,19 @@ default{
         llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.GET.NOTIFY", NULL_KEY);
     }
     changed(integer change){
-        if(change & CHANGED_OWNER){
+        if(change & CHANGED_OWNER){ // 物品易主时，重置脚本
             llResetScript();
         }
-        if(change & CHANGED_INVENTORY){
+        if(change & CHANGED_INVENTORY){ // 库存变更，初始化语言和RLV
             initLanguage();
             llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.LOAD|main", NULL_KEY);
+        }
+    }
+    attach(key user){
+        if(user!=NULL_KEY){
+            if(rlvLoaded==FALSE){ // 穿戴时，如果未成功读取RLV数据，则重新读取
+                llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.LOAD|main", NULL_KEY);
+            }
         }
     }
     touch_start(integer num_detected)
@@ -400,6 +410,9 @@ default{
                     isLocked=llList2Integer(rlvCmdData, 0);
                     lockUser=llList2Key(rlvCmdData, 1);
                 }
+            }
+            if(rlvCmdStr=="RLV.LOAD.NOTECARD"){
+                rlvLoaded=(integer)rlvCmdName; // 处理RLV读取记事卡的逻辑，读取完成后不再重新读取
             }
         }
         else if(num==LAN_MSG_NUM){

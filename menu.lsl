@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better menu management system, use link_message to operate menus.
 
 ***更新记录***
+- 1.1.12 20251122
+    - 优化菜单注册列表长度判断算法。
+
 - 1.1.11 20251120
     - 修复菜单监听频道随机数错误的bug。
 
@@ -281,6 +284,7 @@ integer applyLanguage(){
 */
 string parentHeader="P::";
 list menuRegistList=[]; // mname, mtext, mlist, mparent, mpage。由于list里不能嵌套list，因此mlist保持字符串原形
+integer menuRegistLength=5;
 // list menuNameList=[];
 // list menuTextList=[];
 // list menuItemList=[];
@@ -297,7 +301,7 @@ integer registMenu(string mname, string mtext, string mlist, string mparent){
     integer menuIndex=findMenu(mname);
     // string menuItem=list2Data(mlist);
     if(~menuIndex){ // 菜单名存在时，覆盖 ~menuIndex等价于menuIndex!=-1，速度更快
-        menuRegistList = llListReplaceList(menuRegistList, [mtext, mlist, parentHeader+mparent, 1], menuIndex+1, menuIndex+4);
+        menuRegistList = llListReplaceList(menuRegistList, [mtext, mlist, parentHeader+mparent, 1], menuIndex+1, menuIndex+menuRegistLength-1);
         // menuTextList = llListReplaceList(menuTextList, [mtext], menuIndex, menuIndex);
         // menuItemList = llListReplaceList(menuItemList, [menuItem], menuIndex, menuIndex);
         // menuParentList=llListReplaceList(menuParentList, [mparent], menuIndex, menuIndex);
@@ -316,7 +320,7 @@ integer removeMenu(string mname){
     // setShowMenuPageList(mname,-1);
     integer menuIndex=findMenu(mname);
     if(~menuIndex){
-        menuRegistList=llDeleteSubList(menuRegistList, menuIndex, menuIndex+4);
+        menuRegistList=llDeleteSubList(menuRegistList, menuIndex, menuIndex+menuRegistLength-1);
         // menuNameList=llDeleteSubList(menuNameList, menuIndex, menuIndex);
         // menuTextList=llDeleteSubList(menuTextList, menuIndex, menuIndex);
         // menuItemList=llDeleteSubList(menuItemList, menuIndex, menuIndex);
@@ -396,7 +400,7 @@ integer setShowMenuPageList(string mname, integer mpage){
 integer getShowMenuPageList(string mname){
     integer menuIndex=findMenu(mname);
     if(~menuIndex){
-        return llList2Integer(menuRegistList, menuIndex+4);
+        return llList2Integer(menuRegistList, menuIndex+menuRegistLength-1);
     }else{
         return -1;
     }

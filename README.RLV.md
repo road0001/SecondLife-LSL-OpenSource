@@ -265,6 +265,16 @@ RLV.EXEC | RLV.GET.CAPTUREID | UUID
 RLV.EXEC | RLV.GET.CAPTUREID | 00000000-0000-0000-0000-000000000000
 ```
 
+### 获取RLV锁定和限制联动状态
+#### RLV.GET.CONNECT
+- 获取RLV锁定和限制联动状态。
+- 执行后，回调结果为联动状态。
+```lsl
+RLV.GET.CONNECT
+// 回调：
+RLV.EXEC | RLV.GET.CONNECT | 1
+```
+
 ### 读取RLV记事卡列表
 #### RLV.LOAD.LIST
 - 读取库存中rlv_开头的记事卡列表。
@@ -283,6 +293,17 @@ RLV.EXEC | RLV.LOAD.LIST | rlv_rlv1, rlv_rlv2, rlv_rlv3, ...
 RLV.LOAD | file1
 // 回调：
 RLV.EXEC | RLV.LOAD | 1
+// 读取记事卡成功后的回调
+RLV.LOAD.NOTECARD | 1
+```
+
+### RLV锁定和限制联动
+#### RLV.SET.CONNECT
+- 启用/禁用RLV锁定和限制联动，上锁时立即应用RLV限制，解锁时清除。
+```lsl
+RLV.SET.CONNECT
+// 回调：
+RLV.EXEC | RLV.SET.CONNECT | 1
 ```
 
 ## RLV回调
