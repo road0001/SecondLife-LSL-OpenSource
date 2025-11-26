@@ -4,6 +4,11 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 1.1 20251127
+    - 加入RLV扩展指令。
+    - 加入Renamer菜单。
+    - 优化内存占用。
+
 - 1.0.18 20251122
     - 加入锁定和RLV联动。
     - 优化RLV命令索引机制。
@@ -113,16 +118,16 @@ integer includes(string src, string target){
     }
 }
 
-string trim(string k){
-    return llStringTrim(k, STRING_TRIM);
-}
+// string trim(string k){
+//     return llStringTrim(k, STRING_TRIM);
+// }
 
 list strSplit(string m, string sp){
     list pl=llParseStringKeepNulls(m,[sp],[""]);
     list temp=[];
     integer i;
     for(i=0; i<llGetListLength(pl); i++){
-        temp+=[trim(llList2String(pl, i))];
+        temp+=[llStringTrim(llList2String(pl, i), STRING_TRIM)];
     }
     return temp;
 }
@@ -169,6 +174,13 @@ integer RLVRS=-1812221819; // default relay channel
 integer RLV_MODE=0; // 0： wear mode；1：rez mode say；2：rez mode whisper；3：rez mode shout；else：rez mode regionSayTo
 integer rlvWorldListenHandle;
 // key RLV_VICTIM=NULL_KEY; // victim uuid in rez mode
+/*
+RLV扩展指令，参数：@rext_开头的RLV指令
+*/
+string RLVExtHeader="rext_";
+list RLVExtList=[
+    "move"
+];
 integer executeRLV(string rlv){
     llListenRemove(rlvWorldListenHandle);
     if(RLV_MODE==0){
@@ -189,7 +201,49 @@ integer executeRLV(string rlv){
         }
         rlvWorldListenHandle=llListen(RLVRS, "", NULL_KEY, "");
     }
+    // RLV Extend commands
+    if(rlv=="@clear"){ // clear时，遍历list清除RLV扩展限制
+        integer i;
+        for(i=0; i<llGetListLength(RLVExtList); i++){
+            executeRLVExt(llList2String(RLVExtList, i), "y");
+        }
+    }
+    if(llGetSubString(rlv, 1, llStringLength(RLVExtHeader)) == RLVExtHeader){ // @rext_move=n
+        // Execute RLV Ext
+        list rsp=llParseStringKeepNulls(rlv,["="],[""]);
+        string rkey=llList2String(rsp, 0);
+        string rval=llList2String(rsp, 1);
+        string rname=llList2String(llParseStringKeepNulls(rkey,["_"],[""]), 1);
+        integer rindex=llListFindList(RLVExtList,[rname]);
+        if(~rindex){
+            executeRLVExt(rname, rval);
+        }
+    }
     return RLV_MODE;
+}
+
+/*
+RLV扩展指令执行接口
+*/
+integer isAllowMove=TRUE;
+integer executeRLVExt(string rname, string rval){
+    integer returnVal;
+    if(rname==llList2String(RLVExtList, 0)){ // move
+        if(rval=="n"){
+            isAllowMove=FALSE;
+        }else{
+            isAllowMove=TRUE;
+        }
+        returnVal=isAllowMove;
+        llRequestPermissions(llGetOwner(), PERMISSION_TAKE_CONTROLS);
+        integer controlVal=CONTROL_FWD | CONTROL_BACK | CONTROL_LEFT | CONTROL_RIGHT | CONTROL_LBUTTON | CONTROL_ML_LBUTTON;
+        if(isAllowMove==TRUE){
+            llTakeControls(controlVal,TRUE,TRUE);
+        }else{
+            llTakeControls(controlVal,TRUE,FALSE);
+        }
+    }
+    return returnVal;
 }
 
 list rlvListKeyVal=[];
@@ -254,19 +308,19 @@ string getRLV(string k){
 /*
 执行@开头的RLV指令，可不加@，可批量，如：@detach=n,unsit=n,fly=n
 */
-integer setRLVStr(string r){
-    string rr=replace(r,"@","");
-    list rsp=data2List(rr);
-    integer i;
-    for(i=0; i<llGetListLength(rsp); i++){
-        string cur=llList2String(rsp, i);
-        list csp=llParseStringKeepNulls(cur,["="],[""]);
-        string k=llList2String(csp, 0);
-        string v=llList2String(csp, 1);
-        setRLV(k, v);
-    }
-    return TRUE;
-}
+// integer setRLVStr(string r){
+//     string rr=replace(r,"@","");
+//     list rsp=data2List(rr);
+//     integer i;
+//     for(i=0; i<llGetListLength(rsp); i++){
+//         string cur=llList2String(rsp, i);
+//         list csp=llParseStringKeepNulls(cur,["="],[""]);
+//         string k=llList2String(csp, 0);
+//         string v=llList2String(csp, 1);
+//         setRLV(k, v);
+//     }
+//     return TRUE;
+// }
 /*
 是否受到RLV限制，参数：RLV指令
 获取到的RLV值为n、add、force时，受到限制，返回TRUE。
@@ -303,7 +357,7 @@ integer runRLV(){
         string rkey=llList2String(rlvListKeyVal,i);
         string rval=llList2String(rlvListKeyVal,i+1);
         string rlv=rkey+"="+rval;
-        if(llStringLength(rlv)>36){ // rlv指令超过36个字母时，防止超长，直接输出，跳过队列
+        if(llStringLength(rlv)>36 || llGetSubString(rlv, 0, llStringLength(RLVExtHeader)-1) == RLVExtHeader){ // rlv指令超过36个字母时，防止超长，直接输出，跳过队列；RLV扩展指令跳过队列直接执行
             executeRLV("@"+rlv);
         }else{
             rlvList+=[rlv];
@@ -323,10 +377,10 @@ integer runRLV(){
 返回：RLV指令
 */
 string rlvSpStr="?";
-string rlvSpKey(string k){
-    //shownames_sec?n?y => ["shownames_sec", "n", "y"]
-    return llList2String(llParseStringKeepNulls(k, [rlvSpStr], [""]), 0);
-}
+// string rlvSpKey(string k){
+//     //shownames_sec?n?y => ["shownames_sec", "n", "y"]
+//     return llList2String(llParseStringKeepNulls(k, [rlvSpStr], [""]), 0);
+// }
 /*
 获取RLV自定格式指令对应值。
 自定格式不全时，自动补全。
@@ -334,42 +388,47 @@ string rlvSpKey(string k){
 格式：RLV指令?受限值?解除值?扩展值
 返回：bool对应位字符串
 */
-list rlvDefaultValList=[ // 自动应用RLV指令的值的指令名单（add/rem、force）
-    // TODO
-];
-string rlvSpVal(string k, integer bool){
-    // shownames_sec?n?y => ["shownames_sec", "n", "y"]
-    // shownames_sec?add?rem => ["shownames_sec", "add", "rem"]
-    // shownames_sec => ["shownames_sec", "n", "y"]
-    list rlvSpList=llParseStringKeepNulls(k, [rlvSpStr], [""]);
-    // 如果没有传开关值，则写入默认值
-    if(llGetListLength(rlvSpList)<2){
-        rlvSpList+=["n","y"]; // shownames_sec => ["shownames_sec", "n", "y"]
-    }else if(llGetListLength(rlvSpList)<3){
-        if(llList2String(rlvSpList,1)=="n"){
-            rlvSpList+=["y"]; // shownames_sec?n => ["shownames_sec", "n", "y"]
-        }else if(llList2String(rlvSpList,1)=="y"){
-            rlvSpList+=["n"]; // shownames_sec?y => ["shownames_sec", "y", "n"]
-        }else if(llList2String(rlvSpList,1)=="add" || llList2String(rlvSpList,1)=="force"){
-            rlvSpList+=["rem"]; // shownames_sec?add => ["shownames_sec", "add", "rem"]; shownames_sec?force => ["shownames_sec", "force", "rem"]
-        }else if(llList2String(rlvSpList,1)=="rem"){
-            rlvSpList+=["add"]; // shownames_sec?rem => ["shownames_sec", "rem", "add"]
-        }
-    }
-    integer i;
-    if(bool==TRUE){
-        i=1;
-    }else if(bool==FALSE){
-        i=2;
+// list rlvDefaultValList=[ // 自动应用RLV指令的值的指令名单（add/rem、force）
+//     // TODO
+// ];
+integer RLVSP_TYPE_KEY=-10;
+string rlvSpVal(string k, integer bool){ // bool为RLVSP_TYPE_KEY时，视为获取key，此为优化内存的无奈之举。
+    if(bool==RLVSP_TYPE_KEY){
+        return llList2String(llParseStringKeepNulls(k, [rlvSpStr], [""]), 0);
     }else{
-        i=bool;
+        // shownames_sec?n?y => ["shownames_sec", "n", "y"]
+        // shownames_sec?add?rem => ["shownames_sec", "add", "rem"]
+        // shownames_sec => ["shownames_sec", "n", "y"]
+        list rlvSpList=llParseStringKeepNulls(k, [rlvSpStr], [""]);
+        // 如果没有传开关值，则写入默认值
+        if(llGetListLength(rlvSpList)<2){
+            rlvSpList+=["n","y"]; // shownames_sec => ["shownames_sec", "n", "y"]
+        }else if(llGetListLength(rlvSpList)<3){
+            if(llList2String(rlvSpList,1)=="n"){
+                rlvSpList+=["y"]; // shownames_sec?n => ["shownames_sec", "n", "y"]
+            }else if(llList2String(rlvSpList,1)=="y"){
+                rlvSpList+=["n"]; // shownames_sec?y => ["shownames_sec", "y", "n"]
+            }else if(llList2String(rlvSpList,1)=="add" || llList2String(rlvSpList,1)=="force"){
+                rlvSpList+=["rem"]; // shownames_sec?add => ["shownames_sec", "add", "rem"]; shownames_sec?force => ["shownames_sec", "force", "rem"]
+            }else if(llList2String(rlvSpList,1)=="rem"){
+                rlvSpList+=["add"]; // shownames_sec?rem => ["shownames_sec", "rem", "add"]
+            }
+        }
+        integer i;
+        if(bool==TRUE){
+            i=1;
+        }else if(bool==FALSE){
+            i=2;
+        }else{
+            i=bool;
+        }
+        // llOwnerSay("RLV SP VAL K: "+k+" BOOL: "+(string)bool+" I: "+(string)i+" VAL: "+llList2String(rlvSpList, i));
+        return llList2String(rlvSpList, i);
     }
-    // llOwnerSay("RLV SP VAL K: "+k+" BOOL: "+(string)bool+" I: "+(string)i+" VAL: "+llList2String(rlvSpList, i));
-    return llList2String(rlvSpList, i);
 }
 
 integer rlSpExist(string k){
-    string rlvKey=rlvSpKey(k);
+    string rlvKey=rlvSpVal(k, RLVSP_TYPE_KEY);
     string rlvValTrue=rlvSpVal(k,TRUE);
     string rlvValFalse=rlvSpVal(k,FALSE);
     string rlvStatus=getRLV(rlvKey);
@@ -405,7 +464,7 @@ integer applyRLVCmd(string name, integer bool){
     for(i=0;i<rlvCount;i++){
         string curRlv=llList2String(rlvKeysWithVal, i); // shownames_sec?n?y
         if(curRlv!=""){
-            setRLV(rlvSpKey(curRlv), rlvSpVal(curRlv, bool)); // shownames_sec, n/y
+            setRLV(rlvSpVal(curRlv, RLVSP_TYPE_KEY), rlvSpVal(curRlv, bool)); // shownames_sec, n/y
         }
     }
     setRLVCmdEnabled(name, bool); // 更新RLV启用状态
@@ -541,34 +600,33 @@ string getRLVCmd(string name){
 /*
 获取RLV启用状态
 */
-integer getRLVCmdEnabled(string name){
-    integer i;
-    for(i=0; i<llGetListLength(rlvCmdNameKeyClass); i+=rlvCmdLength){
-        string curRlvCmdName=llList2String(rlvCmdNameKeyClass, i);
-        if(curRlvCmdName == name){
-            return llList2Integer(rlvCmdNameKeyClass,i+3);
-        }
-    }
-    return FALSE;
-}
-/*
-根据RLV名称获取数据list
-*/
-list getRLVCmdData(string name){
-    integer i;
-    for(i=0; i<llGetListLength(rlvCmdNameKeyClass); i+=rlvCmdLength){
-        string curRlvCmdName=llList2String(rlvCmdNameKeyClass, i);
-        if(curRlvCmdName == name){
-            return llList2List(rlvCmdNameKeyClass, i, i+rlvCmdLength-1);
-        }
-    }
-    return [];
-}
+// integer getRLVCmdEnabled(string name){
+//     integer i;
+//     for(i=0; i<llGetListLength(rlvCmdNameKeyClass); i+=rlvCmdLength){
+//         string curRlvCmdName=llList2String(rlvCmdNameKeyClass, i);
+//         if(curRlvCmdName == name){
+//             return llList2Integer(rlvCmdNameKeyClass,i+3);
+//         }
+//     }
+//     return FALSE;
+// }
+
 /*
 根据RLV名称获取此指令集是否生效
 */
 integer hasRLVCmd(string name){
-    list rlvCmdData=getRLVCmdData(name);
+    list rlvCmdData;
+    /*
+    根据RLV名称获取数据list
+    */
+    integer i;
+    for(i=0; i<llGetListLength(rlvCmdNameKeyClass); i+=rlvCmdLength){
+        string curRlvCmdName=llList2String(rlvCmdNameKeyClass, i);
+        if(curRlvCmdName == name){
+            rlvCmdData=llList2List(rlvCmdNameKeyClass, i, i+rlvCmdLength-1);
+        }
+    }
+
     string rlvKey=llList2String(rlvCmdData,1);
     integer rlvEnabled=llList2Integer(rlvCmdData,3);
     if(rlvKey==""){
@@ -664,9 +722,9 @@ integer getLock(){
         return FALSE;
     }
 }
-integer restoreLock(){
-    return setLock(isLocked, lockUser);
-}
+// integer restoreLock(){
+//     return setLock(isLocked, lockUser);
+// }
 
 /*
 捕获用户（rez功能）
@@ -709,6 +767,7 @@ Renamer功能
 integer renamerChannel;
 integer renamerListenHandle;
 string renamerName="";
+string renamerConfusion=""; // TODO: 重命名器混淆功能，待开发
 integer renamerBool;
 integer renamerEnabled(integer bool, key user){
     if(bool==-1){
@@ -737,7 +796,7 @@ integer renamerSay(string name, string msg, integer type) {
     llSetObjectName(":"); // llSetObjectName不支持中文，因此将remaer名字拼接到字符串中来显示。
     string renamerMsg;
     if(llGetSubString(msg, 0, 2) == "/me"){
-        renamerMsg="/me "+name+" "+trim(llGetSubString(msg,3,-1));
+        renamerMsg="/me "+name+" "+llStringTrim(llGetSubString(msg,3,-1), STRING_TRIM);
     }else{
         renamerMsg=name+": "+msg;
     }
@@ -770,65 +829,67 @@ showRLVMenu(string parent, key user){
 }
 
 string rlvSubMenuName="RLVSubMenu";
+string rlvRenamerMenuName="RLVRenamerMenu";
 string curRlvSubMenu="";
 showRLVSubMenu(string class, key user){
     curRlvSubMenu=class;
     string rlvSubDesc="This is RLV %1% menu.%%;"+class;
     list rlvCmdList=[];
-    integer rlvCmdCount=llGetListLength(rlvCmdNameKeyClass);
-    integer i;
-    for(i=0; i<rlvCmdCount; i+=rlvCmdLength){
-        string cueName=llList2String(rlvCmdNameKeyClass, i);
-        string curClass=llList2String(rlvCmdNameKeyClass, i+2);
-        if(curClass==class){
-            rlvCmdList+=["["+(string)hasRLVCmd(cueName)+"]"+cueName];
+    string rlvSubMenuList;
+    if(class=="Renamer"){
+        rlvSubDesc="This is RLV %1% menu.\nCurrent name: %2%%%;"+class+";"+renamerName;
+        rlvSubMenuList="MENU.REG.OPEN|"+rlvRenamerMenuName+"|"+rlvSubDesc+"|"+"["+(string)renamerBool+"]Enabled;SetName"+"|"+rlvMenuName;
+    }else{
+        integer rlvCmdCount=llGetListLength(rlvCmdNameKeyClass);
+        integer i;
+        for(i=0; i<rlvCmdCount; i+=rlvCmdLength){
+            string cueName=llList2String(rlvCmdNameKeyClass, i);
+            string curClass=llList2String(rlvCmdNameKeyClass, i+2);
+            if(curClass==class){
+                rlvCmdList+=["["+(string)hasRLVCmd(cueName)+"]"+cueName];
+            }
         }
+        rlvSubMenuList="MENU.REG.OPEN|"+rlvSubMenuName+"|"+rlvSubDesc+"|"+list2MenuData(rlvCmdList)+"|"+rlvMenuName;
     }
-    list rlvSubMenuList=[
-        "MENU.REG.OPEN",
-        rlvSubMenuName,
-        rlvSubDesc,
-        list2MenuData(rlvCmdList),
-        rlvMenuName
-    ];
-    llMessageLinked(LINK_SET, MENU_MSG_NUM, list2Msg(rlvSubMenuList), user);
+    
+    llMessageLinked(LINK_SET, MENU_MSG_NUM, rlvSubMenuList, user);
 }
 
 string rlvHeader="rlv_"; // 语言文件名记事卡前缀rlv_语言名（英文），如：rlv_1, rlv_2等
-list getRLVNotecards(){
-    list rlvList=[];
-    integer count = llGetInventoryNumber(INVENTORY_NOTECARD);
-    integer i;
-    for (i=0; i<count; i++){
-        string notecardName = llGetInventoryName(INVENTORY_NOTECARD, i);
-        if(llGetSubString(notecardName, 0, 3)==rlvHeader){
-            rlvList+=[llGetSubString(notecardName, 4, -1)];
-        }
-    }
-    return rlvList;
-}
+// list getRLVNotecards(){
+//     list rlvList=[];
+//     integer count = llGetInventoryNumber(INVENTORY_NOTECARD);
+//     integer i;
+//     for (i=0; i<count; i++){
+//         string notecardName = llGetInventoryName(INVENTORY_NOTECARD, i);
+//         if(llGetSubString(notecardName, 0, 3)==rlvHeader){
+//             rlvList+=[llGetSubString(notecardName, 4, -1)];
+//         }
+//     }
+//     return rlvList;
+// }
 
 key readRLVQuery=NULL_KEY;
 integer readRLVLine=0;
 string readRLVName="";
 string curRLVName="";
 string curRLVClass="";
-integer readRLVNotecards(string rname){
-    readRLVLine=0;
-    curRLVName=rname;
-    readRLVName=rlvHeader+rname;
-    curRLVClass="";
-    if (llGetInventoryType(readRLVName) == INVENTORY_NOTECARD) {
-        llOwnerSay("Begin reading RLV restraints: "+rname);
-        clearRLVClass();
-        clearRLVCmd();
-        readRLVQuery=llGetNotecardLine(readRLVName, readRLVLine); // 通过给readRLVQuery赋llGetNotecardLine的key，从而触发datasever事件
-        // 后续功能交给下方datasever处理
-        return TRUE;
-    }else{
-        return FALSE;
-    }
-}
+// integer readRLVNotecards(string rname){
+//     readRLVLine=0;
+//     curRLVName=rname;
+//     readRLVName=rlvHeader+rname;
+//     curRLVClass="";
+//     if (llGetInventoryType(readRLVName) == INVENTORY_NOTECARD) {
+//         llOwnerSay("Begin reading RLV restraints: "+rname);
+//         clearRLVClass();
+//         clearRLVCmd();
+//         readRLVQuery=llGetNotecardLine(readRLVName, readRLVLine); // 通过给readRLVQuery赋llGetNotecardLine的key，从而触发datasever事件
+//         // 后续功能交给下方datasever处理
+//         return TRUE;
+//     }else{
+//         return FALSE;
+//     }
+// }
 
 integer MENU_MSG_NUM=1000;
 integer RLV_MSG_NUM=1001;
@@ -836,6 +897,7 @@ key currentUser=NULL_KEY;
 default{
     state_entry(){
         renamerChannel=(integer)(99999999 - llFrand(10000000));
+        llRequestPermissions(llGetOwner(), PERMISSION_TAKE_CONTROLS);
     }
     changed(integer change){
         if(change & CHANGED_OWNER){
@@ -850,6 +912,10 @@ default{
                 VICTIM_UUID=NULL_KEY;
             }
         }
+    }
+
+    control(key id, integer level, integer edge){
+
     }
 
     listen(integer channel, string name, key user, string message){
@@ -1090,10 +1156,34 @@ default{
                 }
                 else if(rlvMsgSub=="LOAD"){
                     if(rlvMsgExt==""){
-                        result=(string)readRLVNotecards(rlvMsgName);
+                        // result=(string)readRLVNotecards(rlvMsgName);
+                        readRLVLine=0;
+                        curRLVName=rlvMsgName;
+                        readRLVName=rlvHeader+rlvMsgName;
+                        curRLVClass="";
+                        if (llGetInventoryType(readRLVName) == INVENTORY_NOTECARD) {
+                            llOwnerSay("Begin reading RLV restraints: "+rlvMsgName);
+                            clearRLVClass();
+                            clearRLVCmd();
+                            readRLVQuery=llGetNotecardLine(readRLVName, readRLVLine); // 通过给readRLVQuery赋llGetNotecardLine的key，从而触发datasever事件
+                            // 后续功能交给下方datasever处理
+                            result=(string)TRUE;
+                        }else{
+                            result=(string)FALSE;
+                        }
                     }
                     if(rlvMsgExt=="LIST"){
-                        result=(string)list2Data(getRLVNotecards());
+                        // result=(string)list2Data(getRLVNotecards());
+                        list rlvList=[];
+                        integer count = llGetInventoryNumber(INVENTORY_NOTECARD);
+                        integer i;
+                        for (i=0; i<count; i++){
+                            string notecardName = llGetInventoryName(INVENTORY_NOTECARD, i);
+                            if(llGetSubString(notecardName, 0, 3)==rlvHeader){
+                                rlvList+=[llGetSubString(notecardName, 4, -1)];
+                            }
+                        }
+                        result=(string)list2Data(rlvList);
                     }
                 }
                 else if(rlvMsgSub=="GET"){
@@ -1145,7 +1235,18 @@ default{
                 }
                 else if(rlvMsgSub=="RUN"){
                     if(rlvMsgName!=""){
-                        result=(string)setRLVStr(rlvMsgName);
+                        // result=(string)setRLVStr(rlvMsgName);
+                        string rr=replace(rlvMsgName,"@","");
+                        list rsp=data2List(rr);
+                        integer i;
+                        for(i=0; i<llGetListLength(rsp); i++){
+                            string cur=llList2String(rsp, i);
+                            list csp=llParseStringKeepNulls(cur,["="],[""]);
+                            string k=llList2String(csp, 0);
+                            string v=llList2String(csp, 1);
+                            setRLV(k, v);
+                        }
+                        result=(string)TRUE;
                         // list rList=data2List(rlvMsgName);
                         // string val=rlvMsgCmd;
                         // integer rCount=llGetListLength(rList);
@@ -1179,11 +1280,25 @@ default{
                 if(menuButton==rlvMenuText){
                     showRLVMenu(menuName, user);
                 }
-                else if(menuName==rlvMenuName && menuButton!=""){
+                else if(menuName==rlvMenuName && menuButton!=""){ // MENU.ACTIVE | Class | Class1
                     showRLVSubMenu(menuButton, user);
                 }
-                else if(menuName==rlvSubMenuName && menuButton!=""){
+                else if(menuName==rlvSubMenuName && menuButton!=""){ // MENU.ACTIVE | Class1 | [1]RLV1
                     resultList+=[applyRLVCmd(menuButton, -1)];
+                    showRLVSubMenu(curRlvSubMenu, user);
+                }
+                else if(menuName==rlvRenamerMenuName && menuButton!=""){ // MENU.ACTIVE | RLVRenamerMenu | Button1
+                    llOwnerSay(str);
+                    if(menuButton=="Enabled"){
+                        renamerEnabled(-1,user);
+                        showRLVSubMenu(curRlvSubMenu, user);
+                    }
+                    else if(menuButton=="SetName"){
+                        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.INPUT|RenamerInput|Input renamer name:", user);
+                    }
+                }
+                else if(menuName=="RenamerInput" && menuButton!=""){ // MENU.ACTIVE | RenamerInput | Renamer
+                    renamerName=menuButton;
                     showRLVSubMenu(curRlvSubMenu, user);
                 }
             }
@@ -1191,7 +1306,7 @@ default{
         if(llGetListLength(resultList)>0){
             llMessageLinked(LINK_SET, RLV_MSG_NUM, list2Bundle(resultList), user); // RLV处理完成后的回调
         }
-        //llOwnerSay("RLV Memory Used: "+(string)llGetUsedMemory()+" Free: "+(string)llGetFreeMemory());
+        // llOwnerSay("RLV Memory Used: "+(string)llGetUsedMemory()+" Free: "+(string)llGetFreeMemory());
     }
 
     dataserver(key query_id, string data){
@@ -1212,6 +1327,7 @@ default{
                 if(data!="" && llGetSubString(data,0,0)!="#"){
                     if(llGetSubString(data,0,0)=="[" && llGetSubString(data,-1,-1)=="]"){
                         curRLVClass=llGetSubString(data,1,-2);
+                        addRLVClass(curRLVClass);
                     }else{
                         list rlvStrSp=llParseStringKeepNulls(data, ["="], []);
                         string rlvName=llList2String(rlvStrSp,0);
