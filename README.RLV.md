@@ -339,6 +339,7 @@ RLV.EXEC | RLV.REG.CLASS | 1 && RLV.EXEC | RLV.REG | 1 && RLV.EXEC | RLV.APPLY |
 - RLV配置文件名为rlv_开头的记事卡。
 - RLV配置文件格式为【RLV组=RLV1,RLV2,RLV3】这种形式，每行一条。
 - 可用\[RLV类别\]来设定RLV类别。
+- RLV组前加*号可使RLV在初始化后自动执行该组内所有RLV限制。
 - RLV指令集可自定义生效/不生效/扩展值，格式：【RLV指令?生效值?不生效值?扩展值1?扩展值2...】。
 - 未注册的RLV类别将自动注册。同名的RLV类别中的RLV限制组将被归类到同一菜单中。同名RLV组将会被后面的RLV限制覆盖。
 ### 示例
@@ -348,8 +349,8 @@ rlv_normal
 Run=alwaysrun?n?y,temprun
 Fly=fly
 [Touch]
-Far=fartouch?n?y
-World=touchworld
+*Far=fartouch?n?y
+*World=touchworld
 Me=touchme?add?rem
 [Stand]
 Unsit=unsit?force

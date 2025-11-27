@@ -6,7 +6,9 @@ Description: A better RLV management system, use link_message to operate RLV res
 ***更新记录***
 - 1.1.1 20251128
     - 加入指令显示菜单功能。
-    - 优化禁止移动扩展指令，禁止转向。
+    - 加入禁止转向的扩展指令。
+    - 加入配置指定RLV默认开启功能。
+    - 优化扩展指令的算法，使其支持更灵活的配置。
     - 分离Renamer到单独的脚本。
 
 - 1.1 20251127
@@ -183,7 +185,8 @@ RLV扩展指令，参数：@rext_开头的RLV指令
 */
 string RLVExtHeader="rext_";
 list RLVExtList=[
-    "move"
+    "move",
+    "turn"
 ];
 integer executeRLV(string rlv){
     llListenRemove(rlvWorldListenHandle);
@@ -229,25 +232,50 @@ integer executeRLV(string rlv){
 /*
 RLV扩展指令执行接口
 */
-integer isAllowMove=TRUE;
+list takeControlList=[];
 integer executeRLVExt(string rname, string rval){
-    integer returnVal;
-    if(rname==llList2String(RLVExtList, 0)){ // move
-        if(rval=="n"){
-            isAllowMove=FALSE;
-        }else{
-            isAllowMove=TRUE;
-        }
-        returnVal=isAllowMove;
+    integer isAllow;
+    if(rval=="n"){
+        isAllow=FALSE;
+    }else{
+        isAllow=TRUE;
+    }
+    if(rname==llList2String(RLVExtList, 0) || rname==llList2String(RLVExtList, 1)){ // move or turn
         llRequestPermissions(llGetOwner(), PERMISSION_TAKE_CONTROLS);
-        integer controlVal=CONTROL_FWD | CONTROL_BACK | CONTROL_LEFT | CONTROL_RIGHT | CONTROL_ROT_LEFT | CONTROL_ROT_RIGHT | CONTROL_UP | CONTROL_DOWN | CONTROL_LBUTTON | CONTROL_ML_LBUTTON;
-        if(isAllowMove==TRUE){
-            llTakeControls(controlVal,TRUE,TRUE);
+        // 将传入的指令写入takeControlList
+        integer tindex=llListFindList(takeControlList, [rname]);
+        if(isAllow==FALSE){
+            if(!~tindex){
+                takeControlList+=[rname];
+            }
+        }else{
+            if(~tindex){
+                takeControlList=llDeleteSubList(takeControlList,tindex,tindex);
+            }
+        }
+        // 遍历takeControlList获取开关状态并按位OR
+        integer controlVal=0;
+        integer i;
+        for(i=0; i<llGetListLength(takeControlList); i++){
+            if(llList2String(takeControlList, i) == llList2String(RLVExtList, 0)){ // move
+                controlVal=controlVal | CONTROL_FWD | CONTROL_BACK | CONTROL_LEFT | CONTROL_RIGHT | CONTROL_UP | CONTROL_DOWN | CONTROL_LBUTTON | CONTROL_ML_LBUTTON;
+            }
+            if(llList2String(takeControlList, i) == llList2String(RLVExtList, 1)){ // turn
+                controlVal=controlVal | CONTROL_ROT_LEFT | CONTROL_ROT_RIGHT;
+            }
+        }
+        if(controlVal==0){
+            // controlVal==0说明没有任何控制，释放之
+            // 使用llReleaseControls()会撤销PERMISSION_TAKE_CONTROLS，因此在撤销后要重新申请一次。
+            // controlVal=CONTROL_FWD | CONTROL_BACK | CONTROL_LEFT | CONTROL_RIGHT | CONTROL_UP | CONTROL_DOWN | CONTROL_ROT_LEFT | CONTROL_ROT_RIGHT | CONTROL_LBUTTON | CONTROL_ML_LBUTTON;
+            // llTakeControls(controlVal,TRUE,TRUE);
+            llReleaseControls();
+            llRequestPermissions(llGetOwner(), PERMISSION_TAKE_CONTROLS);
         }else{
             llTakeControls(controlVal,TRUE,FALSE);
         }
     }
-    return returnVal;
+    return isAllow;
 }
 
 list rlvListKeyVal=[];
@@ -1236,8 +1264,9 @@ default{
         if (query_id == readRLVQuery) { // 通过readRLVNotecards触发读取记事卡事件，按行读取指定RLV（readRLVQuery）并设置相关数据。
             if (data == EOF) {
                 llOwnerSay("Finished reading RLV restraints: "+curRLVName);
-                llMessageLinked(LINK_SET, RLV_MSG_NUM, list2Msg(["RLV.LOAD.NOTECARD",TRUE]), NULL_KEY); // RLV成功读取记事卡后回调
+                llMessageLinked(LINK_SET, RLV_MSG_NUM, list2Msg(["RLV.LOAD.NOTECARD",curRLVName,TRUE]), NULL_KEY); // RLV成功读取记事卡后回调
                 readRLVQuery=NULL_KEY;
+                applyAllRLVCmd();
             } else {
                 /*
                 [RLVClass1]
@@ -1254,9 +1283,14 @@ default{
                     }else{
                         list rlvStrSp=llParseStringKeepNulls(data, ["="], []);
                         string rlvName=llList2String(rlvStrSp,0);
+                        integer rlvDefaultEnabled=FALSE;
+                        if(llGetSubString(rlvName, 0, 0)=="*"){
+                            rlvDefaultEnabled=TRUE;
+                            rlvName=llGetSubString(rlvName, 1, -1);
+                        }
                         list rlvData=data2List(llList2String(rlvStrSp,1));
 
-                        setRLVCmd(rlvName, rlvData, curRLVClass, FALSE);
+                        setRLVCmd(rlvName, rlvData, curRLVClass, rlvDefaultEnabled);
                     }
                 }
 
