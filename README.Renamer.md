@@ -16,6 +16,8 @@
 - 如果不需要改变其中某一项，请将其留空。
 - 如果希望Renamer为玩家显示名，请使用“RENAMER_DISPLAY_NAME”。
 - 如果希望Renamer为玩家账号名，请使用“RENAMER_USER_NAME”。
+- 如果希望Renamer为玩家全名，请使用“RENAMER_FULL_NAME”。
+- 如果希望Renamer为物品名，请使用“RENAMER_OBJECT_NAME”。
 - 执行后，回调结果为Renamer启用状态、名字、混淆、声音等。
 ```lsl
 RENAMER.SET | 开关; 名字; 混淆; 声音; ...
