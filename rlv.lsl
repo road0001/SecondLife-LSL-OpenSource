@@ -4,6 +4,11 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 1.1.1 20251128
+    - 加入指令显示菜单功能。
+    - 优化禁止移动扩展指令，禁止转向。
+    - 分离Renamer到单独的脚本。
+
 - 1.1 20251127
     - 加入RLV扩展指令。
     - 加入Renamer菜单。
@@ -90,7 +95,6 @@ TODO:
     - ~~可自定义的RLV主分类下的子菜单~~
     - ~~根据子菜单注册的指令集一键应用RLV限制，并更新状态~~
 - ~~锁定和解锁功能~~
-- ~~renamer功能~~
 - ~~穿戴时重新应用RLV功能~~
 - ~~Rez时，RLV捕获和限制功能~~
 - ~~RLV指定频道回复监听功能~~
@@ -236,7 +240,7 @@ integer executeRLVExt(string rname, string rval){
         }
         returnVal=isAllowMove;
         llRequestPermissions(llGetOwner(), PERMISSION_TAKE_CONTROLS);
-        integer controlVal=CONTROL_FWD | CONTROL_BACK | CONTROL_LEFT | CONTROL_RIGHT | CONTROL_LBUTTON | CONTROL_ML_LBUTTON;
+        integer controlVal=CONTROL_FWD | CONTROL_BACK | CONTROL_LEFT | CONTROL_RIGHT | CONTROL_ROT_LEFT | CONTROL_ROT_RIGHT | CONTROL_UP | CONTROL_DOWN | CONTROL_LBUTTON | CONTROL_ML_LBUTTON;
         if(isAllowMove==TRUE){
             llTakeControls(controlVal,TRUE,TRUE);
         }else{
@@ -762,57 +766,6 @@ key getCaptureVictim(){
 }
 
 /*
-Renamer功能
-*/
-integer renamerChannel;
-integer renamerListenHandle;
-string renamerName="";
-string renamerConfusion=""; // TODO: 重命名器混淆功能，待开发
-integer renamerBool;
-integer renamerEnabled(integer bool, key user){
-    if(bool==-1){
-        if(renamerBool==FALSE){
-            bool=TRUE;
-        }else{
-            bool=FALSE;
-        }
-    }
-    if(bool==TRUE){
-        renamerListenHandle=llListen(renamerChannel, "", NULL_KEY, "");
-        setRLV("redirchat:"+(string)renamerChannel,"add");
-        setRLV("rediremote:"+(string)renamerChannel,"add");
-        setRLV("emote","add");
-    }else{
-        setRLV("redirchat:"+(string)renamerChannel,"rem");
-        setRLV("rediremote:"+(string)renamerChannel,"rem");
-        setRLV("emote","rem");
-        llListenRemove(renamerListenHandle);
-    }
-    renamerBool=bool;
-    return bool;
-}
-integer renamerSay(string name, string msg, integer type) {
-    string oname = llGetObjectName();
-    llSetObjectName(":"); // llSetObjectName不支持中文，因此将remaer名字拼接到字符串中来显示。
-    string renamerMsg;
-    if(llGetSubString(msg, 0, 2) == "/me"){
-        renamerMsg="/me "+name+" "+llStringTrim(llGetSubString(msg,3,-1), STRING_TRIM);
-    }else{
-        renamerMsg=name+": "+msg;
-    }
-    
-    if(type==0){
-        llSay(0,renamerMsg);
-    }else if(type==1){
-        llWhisper(0,renamerMsg);
-    }else{
-        llShout(0,renamerMsg);
-    }
-    llSetObjectName(oname);
-    return TRUE;
-}
-
-/*
 RLV菜单控制
 */
 string rlvMenuText="RLV";
@@ -836,22 +789,16 @@ showRLVSubMenu(string class, key user){
     string rlvSubDesc="This is RLV %1% menu.%%;"+class;
     list rlvCmdList=[];
     string rlvSubMenuList;
-    if(class=="Renamer"){
-        rlvSubDesc="This is RLV %1% menu.\nCurrent name: %2%%%;"+class+";"+renamerName;
-        rlvSubMenuList="MENU.REG.OPEN|"+rlvRenamerMenuName+"|"+rlvSubDesc+"|"+"["+(string)renamerBool+"]Enabled;SetName"+"|"+rlvMenuName;
-    }else{
-        integer rlvCmdCount=llGetListLength(rlvCmdNameKeyClass);
-        integer i;
-        for(i=0; i<rlvCmdCount; i+=rlvCmdLength){
-            string cueName=llList2String(rlvCmdNameKeyClass, i);
-            string curClass=llList2String(rlvCmdNameKeyClass, i+2);
-            if(curClass==class){
-                rlvCmdList+=["["+(string)hasRLVCmd(cueName)+"]"+cueName];
-            }
+    integer rlvCmdCount=llGetListLength(rlvCmdNameKeyClass);
+    integer i;
+    for(i=0; i<rlvCmdCount; i+=rlvCmdLength){
+        string cueName=llList2String(rlvCmdNameKeyClass, i);
+        string curClass=llList2String(rlvCmdNameKeyClass, i+2);
+        if(curClass==class){
+            rlvCmdList+=["["+(string)hasRLVCmd(cueName)+"]"+cueName];
         }
-        rlvSubMenuList="MENU.REG.OPEN|"+rlvSubMenuName+"|"+rlvSubDesc+"|"+list2MenuData(rlvCmdList)+"|"+rlvMenuName;
     }
-    
+    rlvSubMenuList="MENU.REG.OPEN|"+rlvSubMenuName+"|"+rlvSubDesc+"|"+list2MenuData(rlvCmdList)+"|"+rlvMenuName;
     llMessageLinked(LINK_SET, MENU_MSG_NUM, rlvSubMenuList, user);
 }
 
@@ -896,7 +843,6 @@ integer RLV_MSG_NUM=1001;
 key currentUser=NULL_KEY;
 default{
     state_entry(){
-        renamerChannel=(integer)(99999999 - llFrand(10000000));
         llRequestPermissions(llGetOwner(), PERMISSION_TAKE_CONTROLS);
     }
     changed(integer change){
@@ -924,9 +870,6 @@ default{
             llMessageLinked(LINK_SET, RLV_MSG_NUM, list2Msg(msgList), user);
             llListenRemove(rlvListenHandle);
             llSetTimerEvent(0);
-        }
-        if(channel==renamerChannel){
-            renamerSay(renamerName, message, FALSE);
         }
         // Rez模式与Relay的交互
         if(RLV_MODE>0 && channel==RLVRS){
@@ -1071,6 +1014,10 @@ default{
         RLV.LOAD.LIST
         返回：
         RLV.EXEC | RLV.LOAD.LIST | rlv1,rlv2,rlv3,...
+
+        显示RLV菜单
+        RLV.MENU | 上级菜单名
+        无返回
         
         RLV执行后，会发送执行结果回调，格式：
         RLV.EXEC | RLV.REG.APPLY | 1 // 1=成功，0=失败，或其他结果字符串
@@ -1141,16 +1088,6 @@ default{
                 else if(rlvMsgSub=="LOCK"){
                     result=list2MenuData([setLock((integer)rlvMsgName, user), lockUser]);
                 }
-                else if(rlvMsgSub=="RENAMER"){
-                    if(rlvMsgName=="SET"){
-                        renamerName=rlvMsgCmd;
-                        renamerEnabled(TRUE,user);
-                        result=list2MenuData([(string)renamerName, renamerChannel, renamerBool]);
-                    }else{
-                        renamerEnabled((integer)rlvMsgName,user);
-                        result=list2MenuData([(string)renamerName, renamerChannel, renamerBool]);
-                    }
-                }
                 else if(rlvMsgSub=="CAPTURE"){
                     result=(string)captureVictim((key)rlvMsgName);
                 }
@@ -1195,9 +1132,6 @@ default{
                     }
                     else if(rlvMsgExt=="LOCK"){
                         result=list2MenuData([getLock(), lockUser]);
-                    }
-                    else if(rlvMsgExt=="RENAMER"){
-                        result=list2MenuData([(string)renamerName, renamerChannel, renamerBool]);
                     }
                     else if(rlvMsgExt=="CAPTURE"){
                         result=(string)isCaptureVictim((key)rlvMsgName);
@@ -1259,6 +1193,9 @@ default{
                         result=(string)runRLV();
                     }
                 }
+                else if(rlvMsgSub=="MENU"){
+                    showRLVMenu(rlvMsgName, user);
+                }
                 if(result!=""){
                     list rlvExeResult=[
                         "RLV.EXEC", rlvMsgStr, result
@@ -1285,20 +1222,6 @@ default{
                 }
                 else if(menuName==rlvSubMenuName && menuButton!=""){ // MENU.ACTIVE | Class1 | [1]RLV1
                     resultList+=[applyRLVCmd(menuButton, -1)];
-                    showRLVSubMenu(curRlvSubMenu, user);
-                }
-                else if(menuName==rlvRenamerMenuName && menuButton!=""){ // MENU.ACTIVE | RLVRenamerMenu | Button1
-                    llOwnerSay(str);
-                    if(menuButton=="Enabled"){
-                        renamerEnabled(-1,user);
-                        showRLVSubMenu(curRlvSubMenu, user);
-                    }
-                    else if(menuButton=="SetName"){
-                        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.INPUT|RenamerInput|Input renamer name:", user);
-                    }
-                }
-                else if(menuName=="RenamerInput" && menuButton!=""){ // MENU.ACTIVE | RenamerInput | Renamer
-                    renamerName=menuButton;
                     showRLVSubMenu(curRlvSubMenu, user);
                 }
             }

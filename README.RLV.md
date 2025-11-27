@@ -11,7 +11,6 @@
 - 为了方便阅读，下面的RLV指令和回调中的分隔符【|】、【,】、【&&】两边都添加了空格，实际执行时并不会添加此空格。
 	- 在菜单系统、权限系统等功能中，分隔数据使用分号【;】，但RLV指令中存在使用分号的情况，因此将分号改为逗号【,】，与RLV批量执行的分隔符保持一致。
 	- 虽然RLV系统能自动处理分割符两边的空格，但仍然不建议在拼接时加空格。
-	- 建议使用拼接list的形式调用（llDumpList2String），而不是字符串拼接的方式，这样有助于代码的简洁和更好的性能。
 
 ### 注册RLV类别
 #### RLV.REG.CLASS
@@ -306,6 +305,13 @@ RLV.SET.CONNECT
 RLV.EXEC | RLV.SET.CONNECT | 1
 ```
 
+### 显示RLV菜单
+#### RLV.MENU
+- 立即显示RLV菜单。
+```lsl
+RLV.MENU | 上级菜单名
+```
+
 ## RLV回调
 - 当执行RLV指令时，将回调执行结果。根据不同情况，结果的格式也有所不同。
 ```lsl
@@ -326,7 +332,7 @@ RLV.EXEC | RLV.LOAD | 0
 ```lsl
 RLV.REG.CLASS | RLVClass1, RLVClass2, RLVClass3 && RLV.REG | RLVName | RLV1, RLV2, RLV3 &&  RLV.APPLY | RLVName | 1
 // 回调：
-MENU.EXEC | RLV.REG.CLASS | 1 && MENU.EXEC | RLV.REG | 1 && MENU.EXEC | RLV.APPLY | 1
+RLV.EXEC | RLV.REG.CLASS | 1 && RLV.EXEC | RLV.REG | 1 && RLV.EXEC | RLV.APPLY | 1
 ```
 
 ## RLV配置文件格式和RLV组指令格式

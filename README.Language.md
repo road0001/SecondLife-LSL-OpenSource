@@ -15,7 +15,6 @@
 - 为了方便调用，部分指令有多种别名，请在使用时保持指令一致性。如统一使用LAN或LANGUAGE。不同别名请勿混用。
 - 为了方便阅读，下面的语言指令和回调中的分隔符【|】、【;】、【&&】两边都添加了空格，实际执行时并不会添加此空格。
 	- 虽然语言系统能自动处理分割符两边的空格，但仍然不建议在拼接时加空格。
-	- 建议使用拼接list的形式调用（llDumpList2String），而不是字符串拼接的方式，这样有助于代码的简洁和更好的性能。
 
 ### 读取（更改）语言
 #### LANGUAGE.CHANGE
@@ -115,6 +114,15 @@ LAN.OUT.WHISPER | Your text here. | N // 使用llWhisper发送到频道N，频�
 LAN.OUT.SHOUT | Your text here. | N // 使用llShout发送到频道N，频道可省略，默认为0
 LAN.OUT.TO | Your text here. | N | UUID // 使用llRegionSayTo发送到指定用户的频道N，频道和用户不可省略
 LAN.OUT.REGION | Your text here. | N // 使用llRegionSay发送到全sim用户的频道N，频道可省略，默认为0
+```
+
+### 显示语言菜单
+#### LANGUAGE.MENU
+#### LAN.MENU
+- 立即显示语言菜单。
+```lsl
+LANGUAGE.MENU | 上级菜单名
+LAN.MENU | 上级菜单名
 ```
 
 ## 语言回调

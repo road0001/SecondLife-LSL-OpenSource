@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better access permission control system, use link_message to operate permissions.
 
 ***更新记录***
+- 1.0.7 20251128
+    - 加入指令显示菜单功能。
+
 - 1.0.6 20251119
     - 优化菜单文本中权限状态的显示效果。
     - 修复owner菜单中有个空白按钮的bug。
@@ -842,6 +845,13 @@ default{
                     ACCESS.RESET
                     */
                     result=(string)clearAll();
+                }
+                else if(accessMsgSub=="MENU"){
+                    /*
+                    显示菜单
+                    ACCESS.MENU | 上级菜单名
+                    */
+                    showAccessMenu(accessMsgName, user);
                 }
 				if(result!=""){
                     list accessExeResult=[

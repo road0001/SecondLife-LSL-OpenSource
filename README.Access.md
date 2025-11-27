@@ -10,7 +10,6 @@
 - 为了方便调用，部分指令有多种别名，请在使用时保持指令一致性。如统一使用REM或REMOVE。不同别名请勿混用。
 - 为了方便阅读，下面的权限指令和回调中的分隔符【|】、【;】、【&&】两边都添加了空格，实际执行时并不会添加此空格。
 	- 虽然权限系统能自动处理分割符两边的空格，但仍然不建议在拼接时加空格。
-	- 建议使用拼接list的形式调用（llDumpList2String），而不是字符串拼接的方式，这样有助于代码的简洁和更好的性能。
 
 ### 设置根权限用户
 #### ACCESS.SET.ROOT
@@ -215,6 +214,13 @@ ACCESS.EXEC | ACCESS.SET.HARDCORE | 1/0
 ACCESS.RESET
 // 回调：
 ACCESS.EXEC | ACCESS.RESET | 0
+```
+
+### 显示Access菜单
+#### ACCESS.MENU
+- 立即显示Access菜单。
+```lsl
+ACCESS.MENU | 上级菜单名
 ```
 
 ### 请求推送权限状态通知

@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better language management system, use link_message to operate languages.
 
 ***更新记录***
+- 1.0.5 20251128
+    - 加入指令显示菜单功能。
+
 - 1.0.4 20251119
     - 加入按当前语言输出指定内容功能。
 
@@ -373,6 +376,9 @@ default{
                         }else if(lanCmdExt=="REGION"){
                             llRegionSay(outputChannel, outputText);
                         }
+                    }
+                    else if(lanCmdSub=="MENU"){
+                        showLanguageMenu(lanName, user);
                     }
                 }
 

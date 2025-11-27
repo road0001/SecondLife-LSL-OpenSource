@@ -4,6 +4,9 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.0.4 20251128
+    - 加入Renamer菜单。
+
 - 1.0.3 20251127
     - 开放语言菜单。
 
@@ -276,7 +279,7 @@ showMenu(key user){
         return;
     }
     string menuText="Locked: %1%\nOwner: %2%\nPublic: %b3%\nGroup: %b4%\nHardcore: %b5%%%;"+userInfo(lockUser)+";"+strJoin(getOwnerNameList(), ", ")+";"+(string)public+";"+(string)group+";"+(string)hardcore;
-    list mainMenu=["["+(string)isLocked+"]Lock","RLV","Access","Language"];
+    list mainMenu=["["+(string)isLocked+"]Lock","RLV","Renamer","Access","Language"];
     list menuLink=[
         "MENU.REG.OPEN.RESET",
         "mainMenu",

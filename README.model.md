@@ -27,6 +27,12 @@
 
 ******rlv.lsl******
 
+## 自动化Renamer系统
+自动化Renamer系统支持改名、混淆、触发各种效果等，自带Renamer管理菜单，通过简单的指令即可完成Renamer控制。
+[RLV文档](README.Renamer.md)
+
+******renamer.lsl******
+
 ## 自动化权限管理系统
 自动化权限管理系统支持更改Root、添加删除Owner、信任名单和黑名单功能。
 [权限管理文档](README.Access.md)
