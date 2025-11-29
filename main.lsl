@@ -4,6 +4,9 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.0.5 20251129
+    - 加入菜单项注册功能。
+
 - 1.0.4 20251128
     - 加入Renamer菜单。
 
@@ -274,12 +277,46 @@ list getOwnerNameList(){
     return ownerNameList;
 }
 
+list featureList=[];
+integer featureLen=2;
+list registFeature(string name, string parent){
+    integer i;
+    for(i=0; i<llGetListLength(featureList); i+=featureLen){
+        if(llList2String(featureList, i) == name){
+            return featureList; // 已存在时，直接返回list
+        }
+    }
+    featureList+=[name, parent];
+    return featureList;
+}
+
+list applyFeatureList(list origin, list feature){
+    integer i;
+    for(i=0; i<llGetListLength(feature); i+=featureLen){
+        string featureName=llList2String(feature, i);
+        string featureParent=llList2String(feature, i+1);
+        integer parentIndex=llListFindList(origin, [featureParent]);
+        if(~parentIndex){
+            origin=llListInsertList(origin, [featureName], parentIndex+1);
+        }else{
+            origin+=[featureName];
+        }
+    }
+    return origin;
+}
+
 showMenu(key user){
     if(!allowOperate(user)){
         return;
     }
     string menuText="Locked: %1%\nOwner: %2%\nPublic: %b3%\nGroup: %b4%\nHardcore: %b5%%%;"+userInfo(lockUser)+";"+strJoin(getOwnerNameList(), ", ")+";"+(string)public+";"+(string)group+";"+(string)hardcore;
-    list mainMenu=["["+(string)isLocked+"]Lock","RLV","Renamer","Access","Language"];
+    list mainMenu=applyFeatureList([
+        "["+(string)isLocked+"]Lock",
+        "RLV",
+        "Renamer",
+        "Access",
+        "Language"
+    ], featureList);
     list menuLink=[
         "MENU.REG.OPEN.RESET",
         "mainMenu",
@@ -309,6 +346,7 @@ showMenu(key user){
     // }
 }
 
+integer MAIN_MSG_NUM=9000;
 integer MENU_MSG_NUM=1000;
 integer RLV_MSG_NUM=1001;
 integer ACCESS_MSG_NUM=1002;
@@ -324,6 +362,7 @@ integer hardcore=0;
 integer rlvLoaded=FALSE;
 default{
     state_entry(){
+        llMessageLinked(LINK_SET, MAIN_MSG_NUM, "MAIN.INIT", NULL_KEY);
         llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.LOAD|main", NULL_KEY);
         llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.GET.LOCK", NULL_KEY);
         llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.GET.NOTIFY", NULL_KEY);
@@ -338,6 +377,7 @@ default{
         }
     }
     attach(key user){
+        llMessageLinked(LINK_SET, MAIN_MSG_NUM, "MAIN.ATTACH|"+(string)user, NULL_KEY);
         if(user!=NULL_KEY){
             if(rlvLoaded==FALSE){ // 穿戴时，如果未成功读取RLV数据，则重新读取
                 llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.LOAD|main", NULL_KEY);
@@ -357,6 +397,16 @@ default{
         //llOwnerSay(llJsonGetValue(json,["test1"]));
     }
     link_message(integer sender_num, integer num, string str, key user){
+        if(num==MAIN_MSG_NUM){
+            // 主系统功能监听
+            list mainCmdList=msg2List(str);
+            string mainCmdStr=llList2String(mainCmdList, 0);
+            string mainName=llList2String(mainCmdList, 1);
+            string mainText=llList2String(mainCmdList, 2);
+            if(mainCmdStr=="FEATURE.REG"){ // FEATURE.REG | featureName | featureParent
+                registFeature(mainName, mainText);
+            }
+        }
         if(num==MENU_MSG_NUM){
             // 主菜单功能监听
             list menuCmdList=msg2List(str);
