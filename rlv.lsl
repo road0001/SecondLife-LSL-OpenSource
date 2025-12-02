@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 1.1.2 20251202
+    - 修复RLV.LOAD.LIST返回格式错误的bug。
+
 - 1.1.1 20251128
     - 加入指令显示菜单功能。
     - 加入禁止转向的扩展指令。
@@ -1148,7 +1151,7 @@ default{
                                 rlvList+=[llGetSubString(notecardName, 4, -1)];
                             }
                         }
-                        result=(string)list2Data(rlvList);
+                        result=(string)list2MenuData(rlvList);
                     }
                 }
                 else if(rlvMsgSub=="GET"){

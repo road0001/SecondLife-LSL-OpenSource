@@ -216,6 +216,28 @@ ACCESS.RESET
 ACCESS.EXEC | ACCESS.RESET | 0
 ```
 
+### 读取Access记事卡列表
+#### ACCESS.LOAD.LIST
+- 读取库存中access_开头的记事卡列表。
+```lsl
+ACCESS.LOAD.LIST
+// 回调：
+ACCESS.EXEC | ACCESS.LOAD.LIST | access_a1; access_a2; access_a3; ...
+```
+
+### 读取Access记事卡
+#### ACCESS.LOAD
+- 从access_开头的记事卡中获取访问数据数据。
+  - 名字中不需要带access_前缀，如记事卡为access_main，则只需传递main。
+- 执行后，将合并现有主人、信任和黑名单数据，并覆盖其余权限。
+```lsl
+ACCESS.LOAD | file1
+// 回调：
+ACCESS.EXEC | ACCESS.LOAD | 1
+// 读取记事卡成功后的回调
+ACCESS.LOAD.NOTECARD | file1 | 1
+```
+
 ### 显示Access菜单
 #### ACCESS.MENU
 - 立即显示Access菜单。
@@ -256,8 +278,7 @@ ACCESS.EXEC | ACCESS.GET.OWNER | UUID1; UUID2; UUID3; ... && ACCESS.EXEC | ACCES
 ```
 
 ## 权限配置文件格式
-- 权限配置文件名为access的记事卡。
-- 在初始化或变更物品库存时，都会触发读取此记事卡来更新权限。
+- 权限配置文件名为前缀为access_的记事卡。
 - 主人列表、信任列表和黑名单会和现有的内容合并。
 - 公开、群组、硬核模式将会被记事卡中的内容覆盖。
 - 只有当根权限用户为穿戴者自己时，才会根据access中的root字段更新根权限用户。

@@ -280,7 +280,7 @@ RLV.EXEC | RLV.GET.CONNECT | 1
 ```lsl
 RLV.LOAD.LIST
 // 回调：
-RLV.EXEC | RLV.LOAD.LIST | rlv_rlv1, rlv_rlv2, rlv_rlv3, ...
+RLV.EXEC | RLV.LOAD.LIST | rlv_rlv1; rlv_rlv2; rlv_rlv3; ...
 ```
 
 ### 读取RLV记事卡
@@ -293,7 +293,7 @@ RLV.LOAD | file1
 // 回调：
 RLV.EXEC | RLV.LOAD | 1
 // 读取记事卡成功后的回调
-RLV.LOAD.NOTECARD | 1
+RLV.LOAD.NOTECARD | file1 | 1
 ```
 
 ### RLV锁定和限制联动

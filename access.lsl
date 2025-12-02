@@ -4,6 +4,10 @@ Author: JMRY
 Description: A better access permission control system, use link_message to operate permissions.
 
 ***更新记录***
+- 1.0.8 20251202
+    - 加入主动读取记事卡的接口。
+    - 修复读取记事卡错误的bug。
+
 - 1.0.7 20251128
     - 加入指令显示菜单功能。
 
@@ -380,15 +384,14 @@ integer notifyAccess(){
 
 key readAccessQuery=NULL_KEY;
 integer readAccessLine=0;
-string readAccessName="access";
+string accessHeader="access_";
+string readAccessName="";
 string curAccessName="";
 integer readAccessNotecards(string aname){
     readAccessLine=0;
     curAccessName=aname;
-    readAccessName=aname;
+    readAccessName=accessHeader+aname;
     if (llGetInventoryType(readAccessName) == INVENTORY_NOTECARD) {
-        // llRegionSayTo(showMenuUser, 0, "Begin reading language "+aname+".");
-        //llRegionSayTo(showMenuUser, 0, glv("Begin reading language %1.%%"+aname));
         readAccessQuery=llGetNotecardLine(readAccessName, readAccessLine); // 通过给readAccessQuery赋llGetNotecardLine的key，从而触发datasever事件
         // 后续功能交给下方datasever处理
         return TRUE;
@@ -396,6 +399,19 @@ integer readAccessNotecards(string aname){
         notifyAccess(); // 文件不存在时，直接发送权限变更通知
         return FALSE;
     }
+}
+
+list getAccessNotecards(){
+    list accessList=[];
+    integer count = llGetInventoryNumber(INVENTORY_NOTECARD);
+    integer i;
+    for (i=0; i<count; i++){
+        string notecardName = llGetInventoryName(INVENTORY_NOTECARD, i);
+        if(llGetSubString(notecardName, 0, llStringLength(accessHeader)-1)==accessHeader){
+            accessList+=[llGetSubString(notecardName, llStringLength(accessHeader), -1)];
+        }
+    }
+    result=(string)list2Data(accessList);
 }
 
 /*
@@ -657,12 +673,16 @@ default{
         if(llGetListLength(ownerList)==0){
             setRootOwner(llGetOwner()); // 初始化时，设置玩家为root
         }
-        readAccessNotecards(readAccessName); // 读取记事卡应用权限
+        // if(curAccessName && readAccessName){
+        //     readAccessNotecards(readAccessName); // 读取记事卡应用权限
+        // }
     }
     changed(integer change){
-        if(change & CHANGED_INVENTORY){
-            readAccessNotecards(readAccessName);
-        }
+        // if(change & CHANGED_INVENTORY){
+        //     if(curAccessName && readAccessName){
+        //         readAccessNotecards(readAccessName);
+        //     }
+        // }
         else if(change & CHANGED_OWNER){
             llResetScript();
         }
@@ -846,6 +866,28 @@ default{
                     */
                     result=(string)clearAll();
                 }
+                else if(accessMsgSub=="LOAD"){
+                    /*
+                    读取Access记事卡
+                    ACCESS.LOAD | file1
+                    回调：
+                    ACCESS.EXEC | ACCESS.LOAD | 1
+                    读取记事卡成功后的回调
+                    ACCESS.LOAD.NOTECARD | file1 | 1
+                    */
+                    if(accessMsgExt==""){
+                        result=(string)readAccessNotecards(accessMsgName);
+                    }
+                    /*
+                    读取Access记事卡列表
+                    ACCESS.LOAD.LIST
+                    回调：
+                    ACCESS.EXEC | ACCESS.LOAD.LIST | access_a1, access_a2, access_a3, ...
+                    */
+                    if(accessMsgExt=="LIST"){
+                        result=(string)list2Data(getAccessNotecards());
+                    }
+                }
                 else if(accessMsgSub=="MENU"){
                     /*
                     显示菜单
@@ -963,6 +1005,7 @@ default{
         if (query_id == readAccessQuery) { // 通过readAccessNotecards触发读取记事卡事件，按行读取配置并应用。
             if (data == EOF) {
                 llOwnerSay("Finished reading access config: "+curAccessName);
+                lMessageLinked(LINK_SET, ACCESS_MSG_NUM, list2Msg(["ACCESS.LOAD.NOTECARD",curAccessName,TRUE]), NULL_KEY); // 成功读取记事卡后回调
                 notifyAccess();
                 readAccessQuery=NULL_KEY;
             } else {
