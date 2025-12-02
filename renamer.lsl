@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better RLV Renamer management system, use link_message to operate Renamer restraints.
 
 ***更新记录***
+-1.0.1 20251203
+    - 加入说话时触发音效功能和菜单。
+
 - 1.0 20241226
     - 从RLV迁移Renamer功能。
 ***更新记录***
@@ -71,6 +74,9 @@ string list2Msg(list m){
 // string mdataSplit=";";
 list data2List(string d){
     return strSplit(d, ";");
+}
+list rlvData2List(string d){
+    return strSplit(d, ",");
 }
 string list2Data(list d){
     return strJoin(d, ";");
@@ -238,9 +244,15 @@ string objectName=":";
 string renamerName="";
 string renamerConfusion=""; // TODO: 重命名器混淆功能，待开发
 string renamerVoice=""; // TODO: 重命名器声音功能，待开发
+float renamerVolume=1.0;
 integer renamerSay(string name, string msg, integer type) {
-    string oname = llGetObjectName();
+    if(renamerVoice!=""){
+        list voiceList=rlvData2List(renamerVoice);
+        integer rand = (integer)llFrand(llGetListLength(voiceList));
+        llTriggerSound(llList2String(voiceList, rand), renamerVolume); // 使用TriggerSound兼容hud时的音效可在世界播放。缺点：无法跟踪人物实时定位
+    }
 
+    string oname = llGetObjectName();
     if(name==RENAMER_DISPLAY_NAME){
         if(VICTIM_UUID!=NULL_KEY){
             name=llGetDisplayName(VICTIM_UUID);
@@ -299,11 +311,57 @@ showRenamerMenu(string parent, key user){
         "This is Renamer menu.\nCurrent name: %1%%%;"+renamerName,
         list2Data([
             "["+(string)renamerBool+"]Enabled",
-            "SetName"
+            "SetName",
+            renamerVoiceMenuText
         ]),
         parent
     ];
     llMessageLinked(LINK_SET, MENU_MSG_NUM, list2Msg(renamerMenuList), user);
+}
+
+string renamerVoiceMenuText="Voice";
+string renamerVoiceMenuName="RLVRenamerVoiceMenu";
+showRenamerVoiceMenu(string parent, key user){
+    curRenamerSubMenu=parent;
+
+    list invVoiceList=[];
+    integer count = llGetInventoryNumber(INVENTORY_SOUND);
+    integer i;
+    for (i=0; i<count; i++){
+        invVoiceList+=[llGetInventoryName(INVENTORY_SOUND, i)];
+    }
+
+    string mText="This is Renamer voice menu.\nCurrent voice: %1%, volume: %2%.%%;";
+    if(renamerVoice==""){ // None
+        mText+="None"+";"+(string)renamerVolume;
+    }else if(includes(renamerVoice, ",")){ // multiple voices using , separate
+        mText+="Multiple random"+";"+(string)renamerVolume;
+    }else if(llStringLength((key)renamerVoice)>=36){ // uuid and too long voice
+        mText+="Too long"+";"+(string)renamerVolume;
+    }else{
+        mText+=renamerVoice+";"+(string)renamerVolume;
+    }
+
+    list renamerVoiceMenuList=[
+        "MENU.REG.OPEN",
+        renamerVoiceMenuName,
+        mText,
+        list2Data([
+            "None",
+            "Volume",
+            "Input"
+        ]+invVoiceList),
+        parent
+    ];
+    llMessageLinked(LINK_SET, MENU_MSG_NUM, list2Msg(renamerVoiceMenuList), user);
+}
+
+float switchRenamerVolume(){
+    renamerVolume+=0.1;
+    if(renamerVolume>=1.1){
+        renamerVolume=0;
+    }
+    return renamerVolume;
 }
 
 integer MENU_MSG_NUM=1000;
@@ -528,13 +586,30 @@ default{
                     }
                     else if(menuButton=="SetName"){
                         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.INPUT|RenamerInput|Input Renamer name:", user);
+                        // 后续交由RenamerInput处理
                     }
                     else if(menuButton=="Confusion"){
                         // TODO: Confusion Menu
                     }
-                    else if(menuButton=="Voice"){
-                        // TODO: Voice Menu
+                    else if(menuButton==renamerVoiceMenuText){
+                        showRenamerVoiceMenu(renamerMenuName, user);
                     }
+                }
+                else if(menuName==renamerVoiceMenuName && menuButton!=""){
+                    if(menuButton=="None"){ // 无声
+                        renamerVoice="";
+                    }
+                    else if(menuButton=="Volume"){ // 音量（切换）
+                        switchRenamerVolume();
+                    }
+                    else if(menuButton=="Input"){ // 输入文件名或uuid
+                        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.INPUT|RenamerVoiceInput|Input voice name or uuid, multiple voices using [,] to separate:", user);
+                        // 后续交由RenamerVoiceInput处理
+                        return;
+                    }else{ // 选择检测到的声音文件（不能超过20个字符）
+                        renamerVoice=menuButton;
+                    }
+                    showRenamerVoiceMenu(curRenamerSubMenu, user);
                 }
                 else if(menuName=="RenamerInput"){ // MENU.ACTIVE | RenamerInput | Renamer
                     if(menuButton!=""){
@@ -544,6 +619,14 @@ default{
                         // renamerName=RENAMER_DISPLAY_NAME; // 设置空名字时，默认为玩家的显示名
                     }
                     showRenamerMenu(curRenamerSubMenu, user);
+                }
+                else if(menuName=="RenamerVoiceInput"){ // MENU.ACTIVE | RenamerVoiceInput | Name
+                    if(menuButton!=""){
+                        renamerVoice=menuButton;
+                    }else{
+                        // 留空时不改名
+                    }
+                    showRenamerVoiceMenu(curRenamerSubMenu, user);
                 }
             }
         }

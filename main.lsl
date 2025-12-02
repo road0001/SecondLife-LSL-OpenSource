@@ -436,15 +436,6 @@ default{
                 if(menuText == "Lock"){
                     setLock(-1, user);
                 }
-
-                if(menuText=="Input"){
-                    list menuLink=[
-                        "MENU.INPUT",
-                        "testInput",
-                        "Input something you want..."
-                    ];
-                    llMessageLinked(LINK_SET, MENU_MSG_NUM, llDumpList2String(menuLink,"|"), user);
-                }
             }
         }
         else if(num==ACCESS_MSG_NUM){
