@@ -4,6 +4,9 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.0.6 20251202
+    - 优化主脚本初始化和RLV数据读取机制，提升重置后读取成功率。
+
 - 1.0.5 20251129
     - 加入菜单项注册功能。
 
@@ -173,7 +176,7 @@ integer allowOperate(key user){
     if(isLocked==TRUE /*锁定状态*/ && lockUser!=llGetOwner() /*非自锁*/ && user==llGetOwner() /*自己触摸*/){
         llRegionSayTo(user, 0, getLanguageVar("You're locked by %1% and not allow to operate it!%%;"+userInfo(lockUser)));
         return FALSE;
-    }else if(user!=llGetOwner() && !checkOwner(user) && !checkTrust(user) && !checkPublic(user) && !checkGroup(user) || checkBlack(user)){
+    }else if(user!=llGetOwner() /*非自己触摸*/ && !checkOwner(user) /*非主人*/ && !checkTrust(user) /*非信任*/ && !checkPublic(user) /*非公开*/ && !checkGroup(user) /*非同群组*/ || checkBlack(user) /*在黑名单中，优先级高*/){
         if(isLocked){
             llRegionSayTo(user, 0, getLanguageVar("This %1% is locked by %2%, you don't have permission to operate it!%%;"+llGetObjectName()+";"+userInfo(lockUser)));
         }
@@ -359,29 +362,43 @@ integer public=1;
 integer group=0;
 integer hardcore=0;
 
-integer rlvLoaded=FALSE;
+integer mainInited=FALSE;
+initMain(){
+    llMessageLinked(LINK_SET, MAIN_MSG_NUM, "MAIN.INIT", NULL_KEY);
+    llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.LOAD|main", NULL_KEY);
+    llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.GET.LOCK", NULL_KEY);
+    llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.GET.NOTIFY", NULL_KEY);
+    initLanguage();
+}
+
+integer initRetryTimer=5;
 default{
     state_entry(){
-        llMessageLinked(LINK_SET, MAIN_MSG_NUM, "MAIN.INIT", NULL_KEY);
-        llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.LOAD|main", NULL_KEY);
-        llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.GET.LOCK", NULL_KEY);
-        llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.GET.NOTIFY", NULL_KEY);
+        initMain();
+        llSetTimerEvent(initRetryTimer); // 重置时，设置计时器，5秒后重新初始化，防止初始化失败
     }
     changed(integer change){
         if(change & CHANGED_OWNER){ // 物品易主时，重置脚本
             llResetScript();
         }
         if(change & CHANGED_INVENTORY){ // 库存变更，初始化语言和RLV
-            initLanguage();
-            llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.LOAD|main", NULL_KEY);
+            initMain();
         }
     }
     attach(key user){
         llMessageLinked(LINK_SET, MAIN_MSG_NUM, "MAIN.ATTACH|"+(string)user, NULL_KEY);
         if(user!=NULL_KEY){
-            if(rlvLoaded==FALSE){ // 穿戴时，如果未成功读取RLV数据，则重新读取
-                llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.LOAD|main", NULL_KEY);
+            if(mainInited==FALSE){ // 穿戴时，如果未成功初始化数据，则重新读取
+                initMain();
+                llSetTimerEvent(initRetryTimer);
             }
+        }
+    }
+    timer(){
+        if(mainInited==FALSE){ // 如果未成功初始化数据，则每5秒重新读取一次，直到读取成功
+            initMain();
+        }else{
+            llSetTimerEvent(0);
         }
     }
     touch_start(integer num_detected)
@@ -407,7 +424,7 @@ default{
                 registFeature(mainName, mainText);
             }
         }
-        if(num==MENU_MSG_NUM){
+        else if(num==MENU_MSG_NUM){
             // 主菜单功能监听
             list menuCmdList=msg2List(str);
             string menuCmdStr=llList2String(menuCmdList, 0);
@@ -430,7 +447,7 @@ default{
                 }
             }
         }
-        if(num==ACCESS_MSG_NUM){
+        else if(num==ACCESS_MSG_NUM){
             // 权限功能监听
             list accessCmdList=msg2List(str);
             string accessCmdStr=llList2String(accessCmdList, 0);
@@ -459,6 +476,7 @@ default{
             list rlvCmdList=msg2List(str);
             string rlvCmdStr=llList2String(rlvCmdList, 0);
             string rlvCmdName=llList2String(rlvCmdList, 1);
+            string rlvCmdText=llList2String(rlvCmdList, 2);
             list rlvCmdData=data2List(llList2String(rlvCmdList, 2));
 
             if(rlvCmdStr=="RLV.EXEC"){
@@ -468,7 +486,7 @@ default{
                 }
             }
             if(rlvCmdStr=="RLV.LOAD.NOTECARD"){
-                rlvLoaded=(integer)rlvCmdName; // 处理RLV读取记事卡的逻辑，读取完成后不再重新读取
+                mainInited=(integer)rlvCmdText; // 处理RLV读取记事卡的逻辑，读取完成后不再重新读取
             }
         }
         else if(num==LAN_MSG_NUM){
