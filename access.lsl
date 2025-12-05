@@ -4,6 +4,10 @@ Author: JMRY
 Description: A better access permission control system, use link_message to operate permissions.
 
 ***更新记录***
+- 1.0.9 20251204
+    - 加入重置（逃跑）的通知。
+    - 修复脚本重置后未发送权限变更通知的bug。
+
 - 1.0.8 20251202
     - 加入主动读取记事卡的接口。
     - 修复读取记事卡错误的bug。
@@ -311,6 +315,7 @@ integer clearAll(){
     if(getHardcoreMode()){
         return FALSE;
     }else{
+        llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.EXEC|ACCESS.RESET|1", NULL_KEY);
         llResetScript();
         return TRUE;
     }
@@ -388,6 +393,7 @@ string accessHeader="access_";
 string readAccessName="";
 string curAccessName="";
 integer readAccessNotecards(string aname){
+    llOwnerSay("Begin reading access settings: "+aname);
     readAccessLine=0;
     curAccessName=aname;
     readAccessName=accessHeader+aname;
@@ -411,7 +417,7 @@ list getAccessNotecards(){
             accessList+=[llGetSubString(notecardName, llStringLength(accessHeader), -1)];
         }
     }
-    result=(string)list2Data(accessList);
+    return accessList;
 }
 
 /*
@@ -673,17 +679,18 @@ default{
         if(llGetListLength(ownerList)==0){
             setRootOwner(llGetOwner()); // 初始化时，设置玩家为root
         }
-        // if(curAccessName && readAccessName){
+        notifyAccess();
+        // if(curAccessName!="" && readAccessName!=""){
         //     readAccessNotecards(readAccessName); // 读取记事卡应用权限
         // }
     }
     changed(integer change){
         // if(change & CHANGED_INVENTORY){
-        //     if(curAccessName && readAccessName){
+        //     if(curAccessName!="" && readAccessName!=""){
         //         readAccessNotecards(readAccessName);
         //     }
         // }
-        else if(change & CHANGED_OWNER){
+        if(change & CHANGED_OWNER){
             llResetScript();
         }
     }
@@ -1005,7 +1012,7 @@ default{
         if (query_id == readAccessQuery) { // 通过readAccessNotecards触发读取记事卡事件，按行读取配置并应用。
             if (data == EOF) {
                 llOwnerSay("Finished reading access config: "+curAccessName);
-                lMessageLinked(LINK_SET, ACCESS_MSG_NUM, list2Msg(["ACCESS.LOAD.NOTECARD",curAccessName,TRUE]), NULL_KEY); // 成功读取记事卡后回调
+                llMessageLinked(LINK_SET, ACCESS_MSG_NUM, list2Msg(["ACCESS.LOAD.NOTECARD",curAccessName,TRUE]), NULL_KEY); // 成功读取记事卡后回调
                 notifyAccess();
                 readAccessQuery=NULL_KEY;
             } else {
@@ -1062,7 +1069,7 @@ default{
 							"RLV.LOCK",
 							llList2Integer(accData, 0)
 						];
-						llMessageLinked(LINK_SET, RLV_MSG_NUM, list2Msg(lockMsg), llGetOwner());
+						llMessageLinked(LINK_SET, RLV_MSG_NUM, list2Msg(lockMsg), llList2Key(ownerList, 0)); // 发送RLV锁定指令，其锁定者为root
 					}
 				}
 

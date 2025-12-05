@@ -4,6 +4,14 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.0.8 20251206
+    - 加入锁定时间的展示。
+    - 修复在Access逃跑后，可能打开双重菜单的bug。
+
+- 1.0.7 20251204
+    - 加入逃跑后，自动解锁功能。
+    - 修复上锁后，无法逃跑的bug。
+
 - 1.0.6 20251202
     - 优化主脚本初始化和RLV数据读取机制，提升重置后读取成功率。
 
@@ -175,7 +183,7 @@ integer applyLanguage(){
 integer allowOperate(key user){
     if(isLocked==TRUE /*锁定状态*/ && lockUser!=llGetOwner() /*非自锁*/ && user==llGetOwner() /*自己触摸*/){
         llRegionSayTo(user, 0, getLanguageVar("You're locked by %1% and not allow to operate it!%%;"+userInfo(lockUser)));
-        return FALSE;
+        return -1; // 为了让Escape功能有效，因此返回-1而不是FALSE
     }else if(user!=llGetOwner() /*非自己触摸*/ && !checkOwner(user) /*非主人*/ && !checkTrust(user) /*非信任*/ && !checkPublic(user) /*非公开*/ && !checkGroup(user) /*非同群组*/ || checkBlack(user) /*在黑名单中，优先级高*/){
         if(isLocked){
             llRegionSayTo(user, 0, getLanguageVar("This %1% is locked by %2%, you don't have permission to operate it!%%;"+llGetObjectName()+";"+userInfo(lockUser)));
@@ -188,18 +196,17 @@ integer allowOperate(key user){
 
 integer isLocked=FALSE;
 key lockUser=NULL_KEY;
-integer setLock(integer lock, key user){
+integer lockTime=0;
+integer setLock(integer lock, key user, integer isShowMenu){
     if(!allowOperate(user)){
         return isLocked;
     }
-    string lockedStatus;
+    
     if(lock<0){
         if(!isLocked){
             isLocked=TRUE;
-            lockedStatus="locked";
         }else{
             isLocked=FALSE;
-            lockedStatus="unlocked";
         }
     }else{
         isLocked=lock;
@@ -209,16 +216,30 @@ integer setLock(integer lock, key user){
         (string)isLocked
     ];
     llMessageLinked(LINK_SET, RLV_MSG_NUM, llDumpList2String(lockLink,"|"), user);
+
+    integer tempLockTime=lockTime;
+
+    string lockedStatus;
     if(isLocked==TRUE){
         lockUser=user;
+        lockTime=llGetUnixTime();
+        lockedStatus="locked";
     }else{
         lockUser=NULL_KEY;
+        lockTime=0;
+        lockedStatus="unlocked";
     }
-    if(user != llGetOwner()){
-        llRegionSayTo(llGetOwner(), 0, getLanguageVar("You're %1% by %2%.%%;"+lockedStatus+";"+userInfo(user)));
-        llRegionSayTo(user, 0, getLanguageVar("You %1% %2%'s %3%.%%;"+lockedStatus+";"+userInfo(llGetOwner())+";"+llGetObjectName()));
+    if(user!=NULL_KEY && user != llGetOwner()){
+        string usedTime="";
+        if(tempLockTime>0){
+            usedTime=getLanguageVar("Total locked time: %1%%%;"+getTimeDistStr(tempLockTime, llGetUnixTime()));
+        }
+        llRegionSayTo(llGetOwner(), 0, getLanguageVar("You're %1% by %2%. %3%%%;"+lockedStatus+";"+userInfo(user)+";"+usedTime));
+        llRegionSayTo(user, 0, getLanguageVar("You %1% %2%'s %3%. %4%%%;"+lockedStatus+";"+userInfo(llGetOwner())+";"+llGetObjectName()+";"+usedTime));
     }
-    showMenu(user);
+    if(isShowMenu){
+        showMenu(user); // 防止出现打开双重菜单的bug，无必要不showMenu，尤其在Access逃跑或RLV锁定变更时。
+    }
     return isLocked;
 }
 
@@ -308,11 +329,50 @@ list applyFeatureList(list origin, list feature){
     return origin;
 }
 
+string getTimeDistStr(integer baseTime, integer curTime){
+    integer total=curTime - baseTime;
+    string totalStr="";
+    if(total!=curTime){
+        string timeStr="";
+        integer days = total / 86400;
+        total = total % 86400;
+
+        integer hours = total / 3600;
+        total = total % 3600;
+
+        integer minutes = total / 60;
+        integer seconds = total % 60;
+
+        timeStr=llGetSubString("00" + (string)hours, -2, -1) + ":" +llGetSubString("00" + (string)minutes, -2, -1) + ":" +llGetSubString("00" + (string)seconds, -2, -1);
+
+        string daysStr="";
+        if(days>0){
+            daysStr=getLanguageVar("%1% days%%;"+(string)days);
+        }
+
+        totalStr=daysStr+timeStr;
+    }
+    return totalStr;
+}
+
 showMenu(key user){
-    if(!allowOperate(user)){
+    integer isAllow=allowOperate(user);
+    if(!isAllow){
         return;
     }
-    string menuText="Locked: %1%\nOwner: %2%\nPublic: %b3%\nGroup: %b4%\nHardcore: %b5%%%;"+userInfo(lockUser)+";"+strJoin(getOwnerNameList(), ", ")+";"+(string)public+";"+(string)group+";"+(string)hardcore;
+    integer curTime=llGetUnixTime();
+    string lockTimeDist=getTimeDistStr(lockTime, curTime);
+    if(lockTimeDist!=""){
+        lockTimeDist="\n"+getLanguageVar("Time: %1%%%;"+lockTimeDist);
+    }
+    string menuName="mainMenu";
+    string menuText="Locked: %1% %2%\nOwner: %3%\nPublic: %b4%\nGroup: %b5%\nHardcore: %b6%%%;"+
+        userInfo(lockUser)+";"+
+        lockTimeDist+";"+
+        strJoin(getOwnerNameList(), ", ")+";"+
+        (string)public+";"+
+        (string)group+";"+
+        (string)hardcore;
     list mainMenu=applyFeatureList([
         "["+(string)isLocked+"]Lock",
         "RLV",
@@ -320,9 +380,16 @@ showMenu(key user){
         "Access",
         "Language"
     ], featureList);
+    if(isAllow==-1){ // 对于被锁住的情况，允许访问Escape逃跑功能
+        if(!hardcore){ // 硬核模式未开启时，仅显示Escape按钮，菜单名使用AccessMenu以确保功能生效
+            mainMenu=["Access"];
+        }else{ // 硬核模式开启时，不显示菜单。
+            return;
+        }
+    }
     list menuLink=[
         "MENU.REG.OPEN.RESET",
-        "mainMenu",
+        menuName,
         menuText,
         llDumpList2String(mainMenu,";")
     ];
@@ -367,6 +434,7 @@ initMain(){
     llMessageLinked(LINK_SET, MAIN_MSG_NUM, "MAIN.INIT", NULL_KEY);
     llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.LOAD|main", NULL_KEY);
     llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.GET.LOCK", NULL_KEY);
+    llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.LOAD|main", NULL_KEY);
     llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.GET.NOTIFY", NULL_KEY);
     initLanguage();
 }
@@ -434,7 +502,7 @@ default{
                 // llOwnerSay(menuName+" -> "+menuText);
 
                 if(menuText == "Lock"){
-                    setLock(-1, user);
+                    setLock(-1, user, TRUE);
                 }
             }
         }
@@ -461,6 +529,10 @@ default{
                     hardcore=llList2Integer(accessData, 2);
                 }
                 // llOwnerSay("Access updated. Owner: "+list2Data(owner)+" Trust: "+list2Data(trust)+" Black: "+list2Data(black)+" Public: "+(string)public+" Group: "+(string)group+" Hardcore: "+(string)hardcore);
+            }else if(accessCmdStr=="ACCESS.EXEC"){
+                if(accessName=="ACCESS.RESET" && llList2Integer(accessData, 0)==TRUE){ // Access重置（逃跑）时，解锁
+                    setLock(FALSE, NULL_KEY, FALSE);
+                }
             }
         }
         else if(num==RLV_MSG_NUM){
@@ -474,6 +546,11 @@ default{
                 if(rlvCmdName=="RLV.GET.LOCK" || rlvCmdName=="RLV.LOCK"){
                     isLocked=llList2Integer(rlvCmdData, 0);
                     lockUser=llList2Key(rlvCmdData, 1);
+                    if(isLocked){
+                        lockTime=llGetUnixTime();
+                    }else{
+                        lockTime=0;
+                    }
                 }
             }
             if(rlvCmdStr=="RLV.LOAD.NOTECARD"){
@@ -489,7 +566,7 @@ default{
                 applyLanguage();
             }
         }
-        //llOwnerSay("LINK_MESSAGE: "+str);
+        // llOwnerSay("LINK_MESSAGE: "+str);
         //llOwnerSay("OPERATER: "+(string)user);
     }
 }

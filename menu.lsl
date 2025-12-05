@@ -144,8 +144,7 @@ integer includes(string src, string target){
     }
 }
 
-string trim(string k){
-    string t=k;
+string trim(string t){
     integer i;
     // list boolList=llParseStringKeepNulls(boolStrList,["|"],[""]);
     for(i=0; i<llGetListLength(boolList); i++){
