@@ -4,6 +4,9 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.0.9 20260106
+    - 加入计时器和自动解锁功能。
+
 - 1.0.8 20251206
     - 加入锁定时间的展示。
     - 修复在Access逃跑后，可能打开双重菜单的bug。
@@ -376,6 +379,7 @@ showMenu(key user){
     list mainMenu=applyFeatureList([
         "["+(string)isLocked+"]Lock",
         "RLV",
+        "Timer",
         "Renamer",
         "Access",
         "Language"
@@ -421,6 +425,7 @@ integer MENU_MSG_NUM=1000;
 integer RLV_MSG_NUM=1001;
 integer ACCESS_MSG_NUM=1002;
 integer LAN_MSG_NUM=1003;
+integer TIMER_MSG_NUM=1004;
 
 list owner=[];
 list trust=[];
@@ -564,6 +569,14 @@ default{
             }
             else if (llGetSubString(str, 0, 2) == "LAN" && includes(str, "ACTIVE")) { // 接收语言系统ACTIVE回调，并应用语言数据
                 applyLanguage();
+            }
+        }
+        else if(num==TIMER_MSG_NUM){
+            // 语言功能监听
+            if (includes(str, "TIMER.TIMEOUT")) { // 接收计时器系统回调
+                if(isLocked){
+                    setLock(FALSE, NULL_KEY, FALSE); // 计时结束时，解锁
+                }
             }
         }
         // llOwnerSay("LINK_MESSAGE: "+str);
