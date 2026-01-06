@@ -4,7 +4,7 @@ Author: JMRY
 Description: A better RLV Renamer management system, use link_message to operate Renamer restraints.
 
 ***更新记录***
--1.0.1 20251203
+- 1.0.1 20251203
     - 加入说话时触发音效功能和菜单。
 
 - 1.0 20241226

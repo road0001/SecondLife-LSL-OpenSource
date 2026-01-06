@@ -4,8 +4,11 @@ Author: JMRY
 Description: A better timer control system, use link_message to operate timers.
 
 ***更新记录***
-- 1.0 20241231
-    - 初步完成权限控制管理功能。
+- 1.0.1 20260106
+	- 优化性能和修复bugs。
+
+- 1.0 20260106
+    - 初步完成计时器功能。
 ***更新记录***
 */
 
@@ -184,15 +187,15 @@ vector timerTextColor=<1.0, 0.0, 0.0>;
 float timerTextAlpha=1.0;
 timerRunningEvent(){
 	if(timerRunning>=TRUE){
-		if(timerTextBool==TRUE){
-			llSetText(formatTime(timerLength - timerCurrent), timerTextColor, timerTextAlpha);
-		}else{
-			llSetText("",ZERO_VECTOR,0);
-		}
 		if(timerType==TIMER_TYPE_REAL){ // 现实时间
 			timerCurrent=llGetUnixTime() - timerStamp; // 当前时间-记录时间=计时
 		}else if(timerType==TIMER_TYPE_ONLINE){ // 在线时间
 			timerCurrent++;
+		}
+		if(timerTextBool==TRUE){
+			llSetText(formatTime(timerLength - timerCurrent), timerTextColor, timerTextAlpha);
+		}else{
+			llSetText("",ZERO_VECTOR,0);
 		}
 		if(timerCurrent>=timerLength){
 			llMessageLinked(LINK_SET, TIMER_MSG_NUM, "TIMER.TIMEOUT|"+(string)timerType+"|"+(string)timerLength, NULL_KEY); // 发送计时结束消息
