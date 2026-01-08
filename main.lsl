@@ -4,6 +4,9 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.0.10 20260109
+    - 加入牵绳功能入口。
+
 - 1.0.9 20260106
     - 加入计时器和自动解锁功能。
 
@@ -378,6 +381,7 @@ showMenu(key user){
         (string)hardcore;
     list mainMenu=applyFeatureList([
         "["+(string)isLocked+"]Lock",
+        "Leash",
         "RLV",
         "Timer",
         "Renamer",
@@ -426,6 +430,7 @@ integer RLV_MSG_NUM=1001;
 integer ACCESS_MSG_NUM=1002;
 integer LAN_MSG_NUM=1003;
 integer TIMER_MSG_NUM=1004;
+integer LEASH_MSG_NUM=1005;
 
 list owner=[];
 list trust=[];
@@ -441,6 +446,7 @@ initMain(){
     llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.GET.LOCK", NULL_KEY);
     llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.LOAD|main", NULL_KEY);
     llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.GET.NOTIFY", NULL_KEY);
+    llMessageLinked(LINK_SET, LEASH_MSG_NUM, "LEASH.LOAD|main", NULL_KEY);
     initLanguage();
 }
 

@@ -98,13 +98,15 @@ TIMER.GET.TYPE
 TIMER.EXEC | TIMER.GET.TYPE | 1
 ```
 
-### 获取计时器时长
+### 获取计时器状态
 #### TIMER.GET
-- 获取计时器的时长。
+- 获取计时器的状态。
+- 获得的数据分别为：当前计时器状态；计时器类型；当前秒数；总体秒数。
+	- 当前计时器状态：STOP=停止；RUNNING=正在计时；TIMEOUT=已超时
 ```lsl
 TIMER.GET
 // 回调：
-TIMER.EXEC | TIMER.GET | 120
+TIMER.EXEC | TIMER.GET | STOPPED; 0; 60; 120
 ```
 
 ### 获取计时器文字显示状态

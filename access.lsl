@@ -4,6 +4,10 @@ Author: JMRY
 Description: A better access permission control system, use link_message to operate permissions.
 
 ***更新记录***
+- 1.0.10 20260108
+    - 加入权限变更时的文本通知。
+    - 加入权限文本匹配语言功能。
+
 - 1.0.9 20251204
     - 加入重置（逃跑）的通知。
     - 修复脚本重置后未发送权限变更通知的bug。
@@ -542,21 +546,24 @@ showAccessSubMenu(string button, key user){
     else if(button=="Public"){
         setPublicMode(-1);
 		notifyAccess();
-        llOwnerSay("Your public mode is set to "+(string)getPublicMode());
+        // llOwnerSay("Your public mode is set to "+(string)getPublicMode());
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your public mode is set to %1%;%%"+(string)getPublicMode(), user);
         showAccessMenu(accessParentMenuName, user);
         return;
     }
     else if(button=="Group"){
         setGroupMode(-1);
 		notifyAccess();
-        llOwnerSay("Your group mode is set to "+(string)getGroupMode());
+        // llOwnerSay("Your group mode is set to "+(string)getGroupMode());
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your group mode is set to %1%;%%"+(string)getGroupMode(), user);
         showAccessMenu(accessParentMenuName, user);
         return;
     }
     else if(button=="Hardcore"){
         setHardcoreMode(-1);
 		notifyAccess();
-        llOwnerSay("Your hardcore mode is set to "+(string)getHardcoreMode());
+        // llOwnerSay("Your hardcore mode is set to "+(string)getHardcoreMode());
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your hardcore mode is set to %1%;%%"+(string)getHardcoreMode(), user);
         showAccessMenu(accessParentMenuName, user);
         return;
     }
@@ -572,24 +579,34 @@ showAccessSubMenu(string button, key user){
     }
     else if(button=="AccessList"){
         integer i;
-        llRegionSayTo(user, 0, "Root:");
+        // llRegionSayTo(user, 0, "Root:");
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Root:|0|"+(string)user, user);
         for(i=0; i<llGetListLength(ownerList); i++){
-            llRegionSayTo(user, 0, userInfo(llList2Key(ownerList, i)));
+            // llRegionSayTo(user, 0, userInfo(llList2Key(ownerList, i)));
+            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|"+userInfo(llList2Key(ownerList, i))+"|0|"+(string)user, user);
             if(i==0){
-                llRegionSayTo(user, 0, "Owners:");
+                // llRegionSayTo(user, 0, "Owners:");
+                llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Owners:|0|"+(string)user, user);
             }
         }
-        llRegionSayTo(user, 0, "Trust:");
+        // llRegionSayTo(user, 0, "Trust:");
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Trust:|0|"+(string)user, user);
         for(i=0; i<llGetListLength(trustList); i++){
-            llRegionSayTo(user, 0, userInfo(llList2Key(trustList, i)));
+            // llRegionSayTo(user, 0, userInfo(llList2Key(trustList, i)));
+            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|"+userInfo(llList2Key(trustList, i))+"|0|"+(string)user, user);
         }
-        llRegionSayTo(user, 0, "Black:");
+        // llRegionSayTo(user, 0, "Black:");
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Black:|0|"+(string)user, user);
         for(i=0; i<llGetListLength(blackList); i++){
-            llRegionSayTo(user, 0, userInfo(llList2Key(blackList, i)));
+            // llRegionSayTo(user, 0, userInfo(llList2Key(blackList, i)));
+            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|"+userInfo(llList2Key(blackList, i))+"|0|"+(string)user, user);
         }
-        llRegionSayTo(user, 0, "Public mode: "+(string)getPublicMode());
-        llRegionSayTo(user, 0, "Group mode: "+(string)getGroupMode());
-        llRegionSayTo(user, 0, "Hardcore mode: "+(string)getHardcoreMode());
+        // llRegionSayTo(user, 0, "Public mode: "+(string)getPublicMode());
+        // llRegionSayTo(user, 0, "Group mode: "+(string)getGroupMode());
+        // llRegionSayTo(user, 0, "Hardcore mode: "+(string)getHardcoreMode());
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Public mode: %1%%%;"+(string)getPublicMode()+"|0|"+(string)user, user);
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Group mode: %1%%%;"+(string)getGroupMode()+"|0|"+(string)user, user);
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Hardcore mode: %1%%%;"+(string)getHardcoreMode()+"|0|"+(string)user, user);
         showAccessMenu(accessParentMenuName, user);
         return;
     }
@@ -937,21 +954,22 @@ default{
                     list buList=llParseStringKeepNulls(menuButton,[". "],[""]);
                     integer buIndex=llList2Integer(buList,0);
                     string buName=llList2String(buList,1);
+                    key buUser=NULL_KEY;
                     if(accessActiveFlag=="SetRoot"){
-                        key u=llList2Key(sensorUserList, ((integer)buIndex));
-                        menuActiveFlag=setRootOwner(u);
+                        buUser=llList2Key(sensorUserList, ((integer)buIndex));
+                        menuActiveFlag=setRootOwner(buUser);
                     }
                     else if(accessActiveFlag=="AddOwner"){
-                        key u=llList2Key(sensorUserList, ((integer)buIndex));
-                        menuActiveFlag=addOwner(u);
+                        buUser=llList2Key(sensorUserList, ((integer)buIndex));
+                        menuActiveFlag=addOwner(buUser);
                     }
                     else if(accessActiveFlag=="AddTrust"){
-                        key u=llList2Key(sensorUserList, ((integer)buIndex));
-                        menuActiveFlag=addTrust(u);
+                        buUser=llList2Key(sensorUserList, ((integer)buIndex));
+                        menuActiveFlag=addTrust(buUser);
                     }
                     else if(accessActiveFlag=="AddBlack"){
-                        key u=llList2Key(sensorUserList, ((integer)buIndex));
-                        menuActiveFlag=addBlack(u);
+                        buUser=llList2Key(sensorUserList, ((integer)buIndex));
+                        menuActiveFlag=addBlack(buUser);
                     }
                     else if(accessActiveFlag=="RemoveOwner"){
                         //key u=llList2Key(ownerList, (integer)buIndex); // Owner从1开始，第0个是root，因此不减1
@@ -959,29 +977,35 @@ default{
                         // owner只能删除自己，因此从ownerList中找到用户名并删除
                         integer u;
                         for(u=1; u<llGetListLength(ownerList); u++){
-                            key cu=llList2Key(ownerList, u);
-                            string name=userName(cu,1);
+                            buUser=llList2Key(ownerList, u);
+                            string name=userName(buUser,1);
                             if(name==buName){
-                                menuActiveFlag=removeOwner(cu);
+                                menuActiveFlag=removeOwner(buUser);
                             }
                         }
                     }
                     else if(accessActiveFlag=="RemoveTrust"){
-                        key u=llList2Key(trustList, ((integer)buIndex)-1);
-                        menuActiveFlag=removeTrust(u);
+                        buUser=llList2Key(trustList, ((integer)buIndex)-1);
+                        menuActiveFlag=removeTrust(buUser);
                     }
                     else if(accessActiveFlag=="RemoveBlack"){
-                        key u=llList2Key(blackList, ((integer)buIndex)-1);
-                        menuActiveFlag=removeBlack(u);
+                        buUser=llList2Key(blackList, ((integer)buIndex)-1);
+                        menuActiveFlag=removeBlack(buUser);
                     }
                     showAccessMenu(accessParentMenuName, user);
 					if(menuActiveFlag!=-999){
+                        string buUserName="";
+                        if(buUser!=NULL_KEY){
+                            buUserName=" "+userInfo(buUser);
+                        }
+                        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|%1%%2% success!%%;"+accessActiveFlag+";"+buUserName, user);
 						notifyAccess();
 					}
                 }
                 else if(menuName=="AccessEscape"){
                     if(menuButton=="Yes"){
-                        llOwnerSay("You have escaped successful.");
+                        // llOwnerSay("You have escaped successful.");
+                        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|You have escaped successful.", user);
                         clearAll();
                     }else{
                         showAccessMenu(accessParentMenuName, user);

@@ -119,6 +119,17 @@ RLV.EXEC | RLV.APPLY | 1
 RLV.EXEC | RLV.APPLY | 0
 ```
 
+### 应用所有的的RLV组
+#### RLV.APPLYALL
+- 立即应用已注册的所有RLV组。
+- RLV限制开关为当前组内的设置。
+- 执行后，毁掉结果恒为1。
+```lsl
+RLV.APPLYALL
+// 回调：
+RLV.EXEC | RLV.APPLYALL | 1
+```
+
 ### 移除已注册的RLV组
 #### RLV.REM
 #### RLV.REMOVE
@@ -164,6 +175,17 @@ RLV.RUN
 RLV.RUN | RLV1, RLV2, RLV3, ...
 // 回调：
 RLV.EXEC | RLV.RUN | 1
+```
+
+### 直接执行RLV指令（临时执行）
+#### RLV.RUN.TEMP
+- 直接执行@开头的RLV指令，可以不加@，用逗号分隔多条指令，如@detach=n,fly=n,unsit=n。
+- 临时RLV限制仅当前会话有效，重新登录后即失效。
+```lsl
+RLV.RUN.TEMP
+RLV.RUN.TEMP | RLV1, RLV2, RLV3, ...
+// 回调：
+RLV.EXEC | RLV.RUN.TEMP | 1
 ```
 
 ### 获取RLV状态

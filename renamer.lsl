@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better RLV Renamer management system, use link_message to operate Renamer restraints.
 
 ***更新记录***
+- 1.0.2 20260108
+    - 加入改名后的文本通知。
+
 - 1.0.1 20251203
     - 加入说话时触发音效功能和菜单。
 
@@ -614,6 +617,7 @@ default{
                 else if(menuName=="RenamerInput"){ // MENU.ACTIVE | RenamerInput | Renamer
                     if(menuButton!=""){
                         renamerName=menuButton;
+                        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.SAY|%1%'s name is changed to %2%.%%;"+userInfo(llGetOwner())+";"+renamerName+"|0", user);
                     }else{
                         // 留空时不改名
                         // renamerName=RENAMER_DISPLAY_NAME; // 设置空名字时，默认为玩家的显示名

@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 1.1.3 20260108
+    - 加入RLV状态变更的文本通知。
+
 - 1.1.2 20251202
     - 修复RLV.LOAD.LIST返回格式错误的bug。
 
@@ -1097,6 +1100,9 @@ default{
                 else if(rlvMsgSub=="APPLY"){
                     result=(string)applyRLVCmd(rlvMsgName, (integer)rlvMsgCmd);
                 }
+                else if(rlvMsgSub=="APPLYALL"){
+                    result=(string)applyAllRLVCmd();
+                }
                 else if(rlvMsgSub=="REM" || rlvMsgSub=="REMOVE"){
                     if(rlvMsgExt==""){
                         result=(string)removeRLVCmd(rlvMsgName);
@@ -1199,29 +1205,43 @@ default{
                     }
                 }
                 else if(rlvMsgSub=="RUN"){
-                    if(rlvMsgName!=""){
-                        // result=(string)setRLVStr(rlvMsgName);
-                        string rr=replace(rlvMsgName,"@","");
-                        list rsp=data2List(rr);
-                        integer i;
-                        for(i=0; i<llGetListLength(rsp); i++){
-                            string cur=llList2String(rsp, i);
-                            list csp=llParseStringKeepNulls(cur,["="],[""]);
-                            string k=llList2String(csp, 0);
-                            string v=llList2String(csp, 1);
-                            setRLV(k, v);
+                    if(rlvMsgExt==""){
+                        if(rlvMsgName!=""){
+                            // result=(string)setRLVStr(rlvMsgName);
+                            string rr=replace(rlvMsgName,"@","");
+                            list rsp=data2List(rr);
+                            integer i;
+                            for(i=0; i<llGetListLength(rsp); i++){
+                                string cur=llList2String(rsp, i);
+                                list csp=llParseStringKeepNulls(cur,["="],[""]);
+                                string k=llList2String(csp, 0);
+                                string v=llList2String(csp, 1);
+                                setRLV(k, v);
+                            }
+                            result=(string)TRUE;
+                            // list rList=data2List(rlvMsgName);
+                            // string val=rlvMsgCmd;
+                            // integer rCount=llGetListLength(rList);
+                            // integer ri;
+                            // for(ri=0; ri<rCount; ri++){
+                            //     string cur=llList2String(rList, ri);
+                            //     result=(string)setRLV(cur, val);
+                            // }
+                        }else{
+                            result=(string)runRLV();
                         }
-                        result=(string)TRUE;
-                        // list rList=data2List(rlvMsgName);
-                        // string val=rlvMsgCmd;
-                        // integer rCount=llGetListLength(rList);
-                        // integer ri;
-                        // for(ri=0; ri<rCount; ri++){
-                        //     string cur=llList2String(rList, ri);
-                        //     result=(string)setRLV(cur, val);
-                        // }
-                    }else{
-                        result=(string)runRLV();
+                    }
+                    else if(rlvMsgExt=="TEMP"){
+                        if(rlvMsgName!=""){
+                            string rr=replace(rlvMsgName,"@","");
+                            list rsp=data2List(rr);
+                            integer i;
+                            for(i=0; i<llGetListLength(rsp); i++){
+                                string cur=llList2String(rsp, i);
+                                executeRLV("@"+cur);
+                            }
+                            result=(string)TRUE;
+                        }
                     }
                 }
                 else if(rlvMsgSub=="MENU"){
@@ -1252,7 +1272,13 @@ default{
                     showRLVSubMenu(menuButton, user);
                 }
                 else if(menuName==rlvSubMenuName && menuButton!=""){ // MENU.ACTIVE | Class1 | [1]RLV1
-                    resultList+=[applyRLVCmd(menuButton, -1)];
+                    integer applyResult=applyRLVCmd(menuButton, -1);
+                    string onOff="OFF";
+                    if(applyResult>=1){
+                        onOff="ON";
+                    }
+                    resultList+=[applyResult];
+                    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your %1% is set to %2%.%%;"+menuButton+";"+onOff, user);
                     showRLVSubMenu(curRlvSubMenu, user);
                 }
             }

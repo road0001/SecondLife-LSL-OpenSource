@@ -5,6 +5,7 @@ Description: A better timer control system, use link_message to operate timers.
 
 ***更新记录***
 - 1.0.1 20260106
+	- 优化TIMER.GET返回的内容。
 	- 优化性能和修复bugs。
 
 - 1.0 20260106
@@ -157,6 +158,7 @@ integer addTimer(integer second){
 }
 
 integer timerRunning=TRUE;
+string timerStatus="";
 integer timerStamp=0;
 integer setTimerRunning(integer bool){ // 0=Pause, 1=Running, 2=Reset and Running
 	if(bool==-1){
@@ -174,6 +176,11 @@ integer setTimerRunning(integer bool){ // 0=Pause, 1=Running, 2=Reset and Runnin
 		timerStamp=llGetUnixTime();
 		timerCurrent=0;
 		timerRunning=TRUE;
+	}
+	if(timerRunning==TRUE){
+		timerStatus="RUNNING";
+	}else{
+		timerStatus="STOP";
 	}
 	llMessageLinked(LINK_SET, TIMER_MSG_NUM, "TIMER.SET|"+(string)timerRunning+"|"+(string)timerLength, NULL_KEY); // 发送状态变化消息
 	return timerRunning;
@@ -200,10 +207,12 @@ timerRunningEvent(){
 		if(timerCurrent>=timerLength){
 			llMessageLinked(LINK_SET, TIMER_MSG_NUM, "TIMER.TIMEOUT|"+(string)timerType+"|"+(string)timerLength, NULL_KEY); // 发送计时结束消息
 			setTimerRunning(FALSE);
+			timerStatus="TIMEOUT";
 			timerCurrent=0;
 			timerStamp=0;
 		}else{
-			llMessageLinked(LINK_SET, TIMER_MSG_NUM, "TIMER.RUNNING|"+(string)timerCurrent+"|"+(string)timerLength, NULL_KEY); // 发送计时消息
+			llMessageLinked(LINK_SET, TIMER_MSG_NUM, "TIMER.RUNNING|"+(string)timerType+"|"+ (string)timerCurrent+"|"+(string)timerLength, NULL_KEY); // 发送计时消息
+			timerStatus="RUNNING";
 		}
 	}else{
 		llSetText("",ZERO_VECTOR,0);
@@ -267,6 +276,12 @@ default{
         if(change & CHANGED_OWNER){
             llResetScript();
         }
+    }
+	attach(key user){
+		llSetTimerEvent(1);
+	}
+	object_rez(key user){
+        llSetTimerEvent(1);
     }
 	timer(){
 		timerRunningEvent();
@@ -360,9 +375,9 @@ default{
 					else{
 						/*
 						获取计时器时长：TIMER.GET
-						返回：TIMER.EXEC | TIMER.GET | SECONDS
+						返回：TIMER.EXEC | TIMER.GET | STATUS; TYPE; CURRENT; TOTAL
 						*/
-						result=(string)timerLength;
+						result=list2Data(timerStatus, timerType, timerCurrent ,timerLength);
 					}
 				}
 				else if(timerMsgSub=="PAUSE"){
@@ -464,16 +479,17 @@ default{
 					showTimerMenu(timerParentMenuName, user);
                 }
 			}
+			else if(num==LAN_MSG_NUM){
+				// 语言功能监听
+				if (llGetSubString(msg, 0, 2) == "LAN" && includes(msg, "INIT")) { // 接收语言系统INIT回调，并启用语言功能
+					hasLanguage=TRUE;
+				}
+			}
 		}
 		if(llGetListLength(resultList)>0){
             llMessageLinked(LINK_SET, TIMER_MSG_NUM, list2Bundle(resultList), user); // 处理完成后的回调
         }
 
-		if(num==LAN_MSG_NUM){
-            // 语言功能监听
-            if (llGetSubString(msg, 0, 2) == "LAN" && includes(msg, "INIT")) { // 接收语言系统INIT回调，并启用语言功能
-                hasLanguage=TRUE;
-            }
-        }
+		
 	}
 }

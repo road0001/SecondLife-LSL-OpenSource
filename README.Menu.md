@@ -198,6 +198,24 @@ MENU.CLEAR
 MENU.EXEC | MENU.CLEAR | 1
 ```
 
+### 输出文本内容
+#### MENU.OUT.\<TYPE\>
+#### MENU.OUTPUT.\<TYPE\>
+- 按当前语言输出指定内容，格式与其他语言文本一致。
+- 文本内容输出不执行回调。
+- MENU.OUT为MENU.OUTPUT的简写。
+- 此指令用法与LAN.OUT完全一致，旨在为不使用语言系统的场景提供替代指令。
+```lsl
+MENU.OUT | Your text here. // 使用llOwnerSay发送
+MENU.OUT.OWNER | Your text here. // 使用llOwnerSay发送
+MENU.OUT.SELF | Your text here. // 使用llOwnerSay发送
+MENU.OUT.SAY | Your text here. | N // 使用llSay发送到频道N，频道可省略，默认为0
+MENU.OUT.WHISPER | Your text here. | N // 使用llWhisper发送到频道N，频道可省略，默认为0
+MENU.OUT.SHOUT | Your text here. | N // 使用llShout发送到频道N，频道可省略，默认为0
+MENU.OUT.TO | Your text here. | N | UUID // 使用llRegionSayTo发送到指定用户的频道N，频道和用户不可省略
+MENU.OUT.REGION | Your text here. | N // 使用llRegionSay发送到全sim用户的频道N，频道可省略，默认为0
+```
+
 ## 菜单回调
 
 ### 菜单激活回调

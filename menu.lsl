@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better menu management system, use link_message to operate menus.
 
 ***更新记录***
+- 1.1.13 20260108
+    - 加入按当前语言输出指定内容功能。
+
 - 1.1.12 20251122
     - 优化菜单注册列表长度判断算法。
 
@@ -683,6 +686,25 @@ default{
                 }
                 else if(menuCmdSub=="CLEAR"){
                     result=(string)clearMenu();
+                }
+                else if(menuCmdSub=="OUT" || menuCmdSub=="OUTPUT"){
+                    string outputText=getLanguageVar(menuName);
+                    integer outputChannel=(integer)menuText;
+                    key outputUser=(key)menuButtons;
+                    if(menuCmdExt=="" || menuCmdExt=="OWNER" || menuCmdExt=="SELF"){
+                        llOwnerSay(outputText);
+                    }else if(menuCmdExt=="SAY"){
+                        llSay(outputChannel, outputText);
+                    }else if(menuCmdExt=="WHISPER"){
+                        llWhisper(outputChannel, outputText);
+                    }else if(menuCmdExt=="SHOUT"){
+                        llShout(outputChannel, outputText);
+                    }else if(menuCmdExt=="TO"){
+                        llRegionSayTo(outputUser, outputChannel, outputText);
+                    }else if(menuCmdExt=="REGION"){
+                        llRegionSay(outputChannel, outputText);
+                    }
+                    // outputMessage(menuCmdExt, menuName, menuText, menuButtons);
                 }
                 
                 if(result!=""){
