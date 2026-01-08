@@ -174,10 +174,11 @@ default{
             llSetText(objText, <0.0,1.0,0.0>, 0.5);
         }
         else if(g_outputType==SCAN_TYPE_AGENT || llList2String(g_objDetails, 2)==NULL_KEY){
+            string objTextUser=llGetDisplayName(llList2Key(g_objDetails, 3))+"\n"+llGetUsername(llList2Key(g_objDetails, 3));
             if(g_agentAvailable==TRUE){
-                llSetText(objText, <1.0,1.0,0.0>, 0.5);
+                llSetText(objTextUser, <1.0,1.0,0.0>, 0.5);
             }else{
-                llSetText(objText, <1.0,0.5,0.0>, 0.5);
+                llSetText(objTextUser, <1.0,0.5,0.0>, 0.5);
             }
         }
         else{
