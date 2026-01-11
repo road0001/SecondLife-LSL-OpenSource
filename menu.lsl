@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better menu management system, use link_message to operate menus.
 
 ***更新记录***
+- 1.1.14 20260111
+    - 修复重新注册菜单时，页面数据被覆盖的bug。
+
 - 1.1.13 20260108
     - 加入按当前语言输出指定内容功能。
 
@@ -303,7 +306,8 @@ integer registMenu(string mname, string mtext, string mlist, string mparent){
     integer menuIndex=findMenu(mname);
     // string menuItem=list2Data(mlist);
     if(~menuIndex){ // 菜单名存在时，覆盖 ~menuIndex等价于menuIndex!=-1，速度更快
-        menuRegistList = llListReplaceList(menuRegistList, [mtext, mlist, parentHeader+mparent, 1], menuIndex+1, menuIndex+menuRegistLength-1);
+        menuRegistList = llListReplaceList(menuRegistList, [mtext, mlist, parentHeader+mparent], menuIndex+1, menuIndex+menuRegistLength-2);
+        // menuRegistList = llListReplaceList(menuRegistList, [mtext, mlist, parentHeader+mparent, 1], menuIndex+1, menuIndex+menuRegistLength-1);
         // menuTextList = llListReplaceList(menuTextList, [mtext], menuIndex, menuIndex);
         // menuItemList = llListReplaceList(menuItemList, [menuItem], menuIndex, menuIndex);
         // menuParentList=llListReplaceList(menuParentList, [mparent], menuIndex, menuIndex);

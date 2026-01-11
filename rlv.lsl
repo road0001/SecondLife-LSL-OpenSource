@@ -4,6 +4,10 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 1.1.4 20260111
+    - 加入清空RLV限制（@clear）时的消息通知。
+    - 优化内存占用。
+
 - 1.1.3 20260108
     - 加入RLV状态变更的文本通知。
 
@@ -220,6 +224,7 @@ integer executeRLV(string rlv){
         for(i=0; i<llGetListLength(RLVExtList); i++){
             executeRLVExt(llList2String(RLVExtList, i), "y");
         }
+        llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.EXEC|RLV.CLEAR|1", NULL_KEY);
     }
     if(llGetSubString(rlv, 1, llStringLength(RLVExtHeader)) == RLVExtHeader){ // @rext_move=n
         // Execute RLV Ext
@@ -554,10 +559,10 @@ integer removeRLVClass(string name){
         return FALSE;
     }
 }
-integer clearRLVClass(){
-    rlvClassName=[];
-    return TRUE;
-}
+// integer clearRLVClass(){
+//     rlvClassName=[];
+//     return TRUE;
+// }
 
 /*
 更新RLV名称与指令集，参数：RLV名称，RLV指令集（RLV命令1;RLV命令2;……）
@@ -715,12 +720,12 @@ integer removeRLVCmd(string name){
 /*
 清空RLV名称与指令集。
 */
-integer clearRLVCmd(){
-    rlvCmdNameKeyClass=[];
-    // rlvCmdName=[];
-    // rlvCmdKey=[];
-    return TRUE;
-}
+// integer clearRLVCmd(){
+//     rlvCmdNameKeyClass=[];
+//     // rlvCmdName=[];
+//     // rlvCmdKey=[];
+//     return TRUE;
+// }
 
 integer isLocked=FALSE;
 key lockUser=NULL_KEY;
@@ -1116,10 +1121,14 @@ default{
                         result=(string)setRLV("clear","");
                     }
                     else if(rlvMsgExt=="CLASS"){
-                        result=(string)clearRLVClass();
+                        // result=(string)clearRLVClass();
+                        rlvClassName=[];
+                        result="1";
                     }
                     else if(rlvMsgExt=="CMD"){
-                        result=(string)clearRLVCmd();
+                        // result=(string)clearRLVCmd();
+                        rlvCmdNameKeyClass=[];
+                        result="1";
                     }
                 }
                 else if(rlvMsgSub=="LOCK"){
@@ -1137,8 +1146,10 @@ default{
                         curRLVClass="";
                         if (llGetInventoryType(readRLVName) == INVENTORY_NOTECARD) {
                             llOwnerSay("Begin reading RLV restraints: "+rlvMsgName);
-                            clearRLVClass();
-                            clearRLVCmd();
+                            // clearRLVClass();
+                            // clearRLVCmd();
+                            rlvClassName=[];
+                            rlvCmdNameKeyClass=[];
                             readRLVQuery=llGetNotecardLine(readRLVName, readRLVLine); // 通过给readRLVQuery赋llGetNotecardLine的key，从而触发datasever事件
                             // 后续功能交给下方datasever处理
                             result=(string)TRUE;

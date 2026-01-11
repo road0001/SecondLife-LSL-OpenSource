@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better access permission control system, use link_message to operate permissions.
 
 ***更新记录***
+- 1.0.11 20260111
+    - 加入root和owner的RLV例外。
+
 - 1.0.10 20260108
     - 加入权限变更时的文本通知。
     - 加入权限文本匹配语言功能。
@@ -162,6 +165,7 @@ integer setRootOwner(key user){
     if(llGetListLength(ownerList)==0){
         ownerList+=[user];
     }else{
+        removeRLVExcepts(llList2Key(ownerList, 0)); // 移除当前Root的RLV例外
         integer oIndex=findOwner(user);
         if(oIndex>0){ // 大于0表示该用户存在于owner列表，因此要先删掉，再加root，防止重复
             removeOwner(user);
@@ -195,6 +199,7 @@ integer removeOwner(key user){
     if(oIndex<=0){ // 0不可以移除，-1未找到，都返回FALSE
         return FALSE;
     }else{
+        removeRLVExcepts(llList2Key(ownerList, oIndex));
         ownerList=llDeleteSubList(ownerList, oIndex, oIndex);
         return TRUE;
     }
@@ -326,6 +331,26 @@ integer clearAll(){
 }
 
 /*
+RLV例外
+*/
+list rlvExcepts=["startim","sendim","recvim","recvchat","recvemote","tplure","accepttp"];
+applyRLVExcepts(){
+    integer i;
+    integer r;
+    for(i=0; i<llGetListLength(ownerList); i++){
+        for(r=0; r<llGetListLength(rlvExcepts); r++){
+            string llOwnerSay("@"+llList2String(rlvExcepts, r)+":"+llList2String(ownerList, i)+"=add");
+        }
+    }
+}
+removeRLVExcepts(key user){
+    integer r;
+    for(r=0; r<llGetListLength(rlvExcepts); r++){
+            string llOwnerSay("@"+llList2String(rlvExcepts, r)+":"+(string)user+"=rem");
+        }
+}
+
+/*
 获取授权状态
 传入：用户uuid
 返回：对应权限
@@ -387,6 +412,7 @@ integer notifyAccess(){
     llMessageLinked(LINK_SET, ACCESS_MSG_NUM, list2Msg(trustNotify), "");
     llMessageLinked(LINK_SET, ACCESS_MSG_NUM, list2Msg(blackNotify), "");
     llMessageLinked(LINK_SET, ACCESS_MSG_NUM, list2Msg(modeNotify),  "");
+    applyRLVExcepts();
     return TRUE;
 }
 
@@ -397,11 +423,11 @@ string accessHeader="access_";
 string readAccessName="";
 string curAccessName="";
 integer readAccessNotecards(string aname){
-    llOwnerSay("Begin reading access settings: "+aname);
     readAccessLine=0;
     curAccessName=aname;
     readAccessName=accessHeader+aname;
     if (llGetInventoryType(readAccessName) == INVENTORY_NOTECARD) {
+        llOwnerSay("Begin reading access settings: "+aname);
         readAccessQuery=llGetNotecardLine(readAccessName, readAccessLine); // 通过给readAccessQuery赋llGetNotecardLine的key，从而触发datasever事件
         // 后续功能交给下方datasever处理
         return TRUE;
@@ -547,7 +573,7 @@ showAccessSubMenu(string button, key user){
         setPublicMode(-1);
 		notifyAccess();
         // llOwnerSay("Your public mode is set to "+(string)getPublicMode());
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your public mode is set to %1%;%%"+(string)getPublicMode(), user);
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your public mode is set to %1%.%%;"+(string)getPublicMode(), user);
         showAccessMenu(accessParentMenuName, user);
         return;
     }
@@ -555,7 +581,7 @@ showAccessSubMenu(string button, key user){
         setGroupMode(-1);
 		notifyAccess();
         // llOwnerSay("Your group mode is set to "+(string)getGroupMode());
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your group mode is set to %1%;%%"+(string)getGroupMode(), user);
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your group mode is set to %1%.%%;"+(string)getGroupMode(), user);
         showAccessMenu(accessParentMenuName, user);
         return;
     }
@@ -563,7 +589,7 @@ showAccessSubMenu(string button, key user){
         setHardcoreMode(-1);
 		notifyAccess();
         // llOwnerSay("Your hardcore mode is set to "+(string)getHardcoreMode());
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your hardcore mode is set to %1%;%%"+(string)getHardcoreMode(), user);
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your hardcore mode is set to %1%.%%;"+(string)getHardcoreMode(), user);
         showAccessMenu(accessParentMenuName, user);
         return;
     }
@@ -1011,6 +1037,12 @@ default{
                         showAccessMenu(accessParentMenuName, user);
                     }
                 }
+            }
+            /*
+            接收到RLV清空的通知时，重写RLV例外，防止例外失效
+            */
+            else if (llGetSubString(str, 0, 3) == "RLV." && includes(str, "EXEC") && includes(str, "CLEAR")) {
+                applyRLVExcepts();
             }
         }
         if(llGetListLength(resultList)>0){

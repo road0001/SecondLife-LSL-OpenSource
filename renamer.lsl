@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better RLV Renamer management system, use link_message to operate Renamer restraints.
 
 ***更新记录***
+- 1.0.3 20260111
+    - 加入接收到RLV清空通知（@clear）时，恢复Renamer的RLV状态功能。
+
 - 1.0.2 20260108
     - 加入改名后的文本通知。
 
@@ -555,6 +558,13 @@ default{
                 string rlvMsgClass=llList2String(rlvMsgList, 3);
                 string rlvMsgClass2=llList2String(rlvMsgList, 4);
 
+                if(rlvMsgName=="RLV.CLEAR"){
+                    /*
+                    从RLV回调接受清空RLV的状态，并适时恢复RLV限制
+                    */
+                    runRLV();
+                }
+
                 if(rlvMsgName=="RLV.LOCK"){
                     /*
                     从RLV回调接收RLV锁状态
@@ -562,6 +572,7 @@ default{
                     */
                     setLock((integer)rlvMsgCmd, user);
                 }
+                
             }
             else if(llGetSubString(str, 0, 4) == "MENU." && includes(str, "ACTIVE")) {
                 list menuCmdList=msg2List(str);

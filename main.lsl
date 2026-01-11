@@ -6,6 +6,7 @@ Description: A main controller for restraint items.
 ***更新记录***
 - 1.0.10 20260109
     - 加入牵绳功能入口。
+    - 加入本地聊天命令功能。
 
 - 1.0.9 20260106
     - 加入计时器和自动解锁功能。
@@ -187,10 +188,21 @@ integer applyLanguage(){
 }
 
 integer allowOperate(key user){
-    if(isLocked==TRUE /*锁定状态*/ && lockUser!=llGetOwner() /*非自锁*/ && user==llGetOwner() /*自己触摸*/){
+    if(
+        isLocked==TRUE /*锁定状态*/ && 
+        lockUser!=llGetOwner() /*非自锁*/ && 
+        user==llGetOwner() /*自己触摸*/
+    ){
         llRegionSayTo(user, 0, getLanguageVar("You're locked by %1% and not allow to operate it!%%;"+userInfo(lockUser)));
         return -1; // 为了让Escape功能有效，因此返回-1而不是FALSE
-    }else if(user!=llGetOwner() /*非自己触摸*/ && !checkOwner(user) /*非主人*/ && !checkTrust(user) /*非信任*/ && !checkPublic(user) /*非公开*/ && !checkGroup(user) /*非同群组*/ || checkBlack(user) /*在黑名单中，优先级高*/){
+    }else if(
+        user!=llGetOwner() /*非自己触摸*/ && 
+        !checkOwner(user) /*非主人*/ && 
+        !checkTrust(user) /*非信任*/ && 
+        !checkPublic(user) /*非公开*/ && 
+        !checkGroup(user) /*群组模式下，非同群组*/ || 
+        checkBlack(user) /*在黑名单中，优先级高*/
+    ){
         if(isLocked){
             llRegionSayTo(user, 0, getLanguageVar("This %1% is locked by %2%, you don't have permission to operate it!%%;"+llGetObjectName()+";"+userInfo(lockUser)));
         }
@@ -451,6 +463,8 @@ initMain(){
 }
 
 integer initRetryTimer=5;
+integer cmdChannel=1;
+integer listenHandle;
 default{
     state_entry(){
         initMain();
@@ -471,6 +485,9 @@ default{
                 initMain();
                 llSetTimerEvent(initRetryTimer);
             }
+            listenHandle=llListen(cmdChannel, "", NULL_KEY, "");
+        }else{
+            llListenRemove(listenHandle);
         }
     }
     timer(){
@@ -491,6 +508,39 @@ default{
         //llJsonSetValue(json, ["test2"], "testv2");
         //llOwnerSay("JSON: "+json);
         //llOwnerSay(llJsonGetValue(json,["test1"]));
+    }
+    listen(integer channel, string name, key user, string message){
+        if(channel==cmdChannel){
+            if(!allowOperate(user)){
+                return;
+            }
+            string ownerName=llGetUsername(llGetOwner());
+            string prefix=llGetSubString(ownerName, 0, 1);
+            if(llGetSubString(message, 0, 1) == prefix){
+                string msgBody=llToLower(llGetSubString(message, 2, -1));
+                list msgList=llParseStringKeepNulls(msgBody,[" "],[""]);
+                string msgCmd1=llList2String(msgList, 0);
+                string msgCmd2=llList2String(msgList, 1);
+                string msgCmd3=llList2String(msgList, 2);
+
+                if(msgCmd1=="menu"){
+                    showMenu(user);
+                }
+                else if(msgCmd1=="leash"){
+                    llMessageLinked(LINK_SET, LEASH_MSG_NUM, "LEASH.TO|"+(string)user, user);
+                }
+                else if(msgCmd1=="follow"){
+                    llMessageLinked(LINK_SET, LEASH_MSG_NUM, "LEASH.TO|"+(string)user+"|0", user);
+                }
+                else if(msgCmd1=="yank"){
+                    llMessageLinked(LINK_SET, LEASH_MSG_NUM, "LEASH.YANK|"+(string)user, user);
+                }
+                else if(msgCmd1=="unleash" || msgCmd1=="unfollow"){
+                    llMessageLinked(LINK_SET, LEASH_MSG_NUM, "LEASH.TO|", user);
+                }
+            }
+            // llOwnerSay("NAME: "+name+" MSG: "+message);
+        }
     }
     link_message(integer sender_num, integer num, string str, key user){
         if(num==MAIN_MSG_NUM){
