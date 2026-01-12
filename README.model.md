@@ -28,6 +28,12 @@
 
 ******rlv.lsl******
 
+## 自动化RLV扩展系统
+自动化RLV系统扩展系统，添加一些的类似RLV的功能，以便方便进行调用。
+[RLV扩展文档](README.RLV.md)
+
+******rlv_ext.lsl******
+
 ## 自动化Renamer系统
 自动化Renamer系统支持改名、混淆、触发各种效果等，自带Renamer管理菜单，通过简单的指令即可完成Renamer控制。
 [RLV文档](README.Renamer.md)
