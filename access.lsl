@@ -339,14 +339,14 @@ applyRLVExcepts(){
     integer r;
     for(i=0; i<llGetListLength(ownerList); i++){
         for(r=0; r<llGetListLength(rlvExcepts); r++){
-            string llOwnerSay("@"+llList2String(rlvExcepts, r)+":"+llList2String(ownerList, i)+"=add");
+            llOwnerSay("@"+llList2String(rlvExcepts, r)+":"+llList2String(ownerList, i)+"=add");
         }
     }
 }
 removeRLVExcepts(key user){
     integer r;
     for(r=0; r<llGetListLength(rlvExcepts); r++){
-            string llOwnerSay("@"+llList2String(rlvExcepts, r)+":"+(string)user+"=rem");
+            llOwnerSay("@"+llList2String(rlvExcepts, r)+":"+(string)user+"=rem");
         }
 }
 

@@ -162,6 +162,15 @@ TIMER.EXEC | TIMER.CLEAR | 1
 TIMER.MENU | 上级菜单名
 ```
 
+## 计时器状态通知
+- 当计时器正在运行、计时结束、状态变更时，会发送状态通知。
+- 当计时器正在计时时，每秒钟都会发送一次当前状态，用于其他脚本监测计时器运行状态。
+	- TIMER.RUNNING | timerType | timerCurrent | timerLength
+- 当计时器计时结束时，会发送一次计时结束的通知。
+	- TIMER.TIMEOUT | timerType | timerCurrent | timerLength
+- 当启动、暂停、重启计时器时，会发送一次状态变更通知。
+	- TIMER.SETRUNNING | timerType | timerRunning | timerLength
+
 ## 扩展用法
 ### 批量执行计时器指令
 - 可通过【&&】拼接多条计时器指令，一次性执行完毕。执行完毕后，回调也是以同样的格式合并发送。

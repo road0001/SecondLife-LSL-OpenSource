@@ -4,6 +4,10 @@ Author: JMRY
 Description: A better RLV Extension management system, use link_message to operate RLV Extension restraints.
 
 ***更新记录***
+- 1.0.1 20260114
+    - 调整echo视觉指令名为echoview。
+    - 优化RLV扩展执行算法，提升性能。
+
 - 1.0 20260113
     - 拆分RLV扩展指令。
     - 加入echo视觉功能（ping一次，限时观察一定范围）。
@@ -89,18 +93,10 @@ string list2MenuData(list d){
 }
 
 integer RLVRS=-1812221819; // default relay channel
-
-executeRLVTemp(list rlv, integer bool){
-    integer i;
-    list rlvList=[];
-    for(i=0; i<llGetListLength(rlv); i++){
-        string curRlv=llList2String(rlv, i);
-        if(bool==FALSE){
-            curRlv=replace(replace(replace(curRlv,"=n","=y"),"=add","=rem"),"=force","=rem");
-        }
-        rlvList+=[curRlv];
-    }
-    llOwnerSay("@"+list2Data(rlvList));
+executeRLVTemp(list rlvList, integer bool){
+    string rlvStr=list2Data(rlvList);
+    rlvStr=replace(replace(replace(rlvStr,"=n","=y"),"=add","=rem"),"=force","=rem");
+    llOwnerSay("@"+rlvStr);
     // llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.RUN.TEMP|"+list2Data(rlvList), NULL_KEY);
 }
 
@@ -111,7 +107,7 @@ string RLVExtHeader="rext_";
 list RLVExtList=[
     "move",
     "turn",
-    "echo"
+    "echoview"
 ];
 /*
 RLV扩展指令执行接口
@@ -346,6 +342,6 @@ default{
         if(llGetListLength(resultList)>0){
             llMessageLinked(LINK_SET, RLV_MSG_NUM, list2Bundle(resultList), user); // RLV处理完成后的回调
         }
-        // llOwnerSay("RLV Memory Used: "+(string)llGetUsedMemory()+" Free: "+(string)llGetFreeMemory());
+        // llOwnerSay("RLV Ext Memory Used: "+(string)llGetUsedMemory()+" Free: "+(string)llGetFreeMemory());
     }
 }

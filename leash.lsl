@@ -4,6 +4,14 @@ Author: JMRY
 Description: A better leash control system, use link_message to operate leashes.
 
 ***更新记录***
+- 1.0.4 20260114
+	- 优化牵引算法，修复内存溢出的bug。
+
+- 1.0.3 20260113
+	- 调整牵引带（Leash holder）消息内容，提升兼容性。
+	- 优化牵引启动算法，提升速度。
+	- 修复rez物品的牵引会反复要求授权的bug。
+
 - 1.0.2 20260111
     - 加入接收到RLV清空（@clear）通知时，重新应用严格模式限制。
     - 加入牵引带（Leash holder）支持。
@@ -21,6 +29,7 @@ Description: A better leash control system, use link_message to operate leashes.
 
 /*
 TODO:
+- 兼容LockGuard和LockMeisger。
 */
 
 /*
@@ -61,16 +70,16 @@ integer includes(string src, string target){
     }
 }
 
-string trim(string k){
-    return llStringTrim(k, STRING_TRIM);
-}
+// string trim(string k){
+//     return llStringTrim(k, STRING_TRIM);
+// }
 
 list strSplit(string m, string sp){
     list pl=llParseStringKeepNulls(m,[sp],[""]);
     list temp=[];
     integer i;
     for(i=0; i<llGetListLength(pl); i++){
-        temp+=[trim(llList2String(pl, i))];
+        temp+=[llStringTrim(llList2String(pl, i), STRING_TRIM)];
     }
     return temp;
 }
@@ -105,10 +114,6 @@ string list2RlvData(list d){
     return strJoin(d, ",");
 }
 
-integer str2Num(string d){
-    return (integer)replace(d,"+","");
-}
-
 /*
 连接点查找
 */
@@ -134,8 +139,8 @@ list leashConfig=[
     "particleEnabled",         "1",
     "particleMode",         "Ribbon", // Ribbon, Chain, Leather, Rope, None
     "particleMaxAge",         "3.5",
-    "particleColor",         "<1.0, 1.0, 1.0>",
-    "particleScale",         "<0.04, 0.04, 1.0>",
+    "particleColor",         "<1.0,1.0,1.0>",
+    "particleScale",         "<0.04,0.04,1.0>",
     "particleBurstRate",    "0.0",
     "particleGravity",         "<0.0,0.0,-1.0>",
     "particleCount",         "1",
@@ -146,7 +151,7 @@ list leashConfig=[
     "particleTextureLeather","8f4c3616-46a4-1ed6-37dc-9705b754b7f1",
     "particleTextureRope",     "9a342cda-d62a-ae1f-fc32-a77a24a85d73",
     "particleTextureNone",     "8dcd4a48-2d37-4909-9f78-f7a9eb4ef903", // TEXTURE_TRANSPARENT
-    "particleColorList",    "White;<1.0, 1.0, 1.0>;Black;<0.0, 0.0, 0.0>;Gray;<0.5, 0.5, 0.5>;Red;<1.0, 0.0, 0.0>;Green;<0.0, 1.0, 0.0>;Blue;<0.0, 0.0, 1.0>;Yellow;<1.0, 1.0, 0.0>;Pink;<1.0, 0.5, 0.6>;Brown;<0.2, 0.1, 0.0>;Purple;<0.6, 0.2, 0.7>;Barbie;<0.9, 0.0, 0.3>;Orange;<0.9, 0.6, 0.0>;Toad;<0.2, 0.2, 0.0>;Khaki;<0.6, 0.5, 0.3>;Pool;<0.1, 0.8, 0.9>;Blood;<0.5, 0.0, 0.0>;Anthracite;<0.1, 0.1, 0.1>;Midnight;<0.0, 0.1, 0.2>",
+    "particleColorList",    "White;<1.0,1.0,1.0>;Black;<0.0,0.0,0.0>;Gray;<0.5,0.5,0.5>;Red;<1.0,0.0,0.0>;Green;<0.0,1.0,0.0>;Blue;<0.0,0.0,1.0>;Yellow;<1.0,1.0,0.0>;Pink;<1.0,0.5,0.6>;Brown;<0.2,0.1,0.0>;Purple;<0.6,0.2,0.7>;Barbie;<0.9,0.0,0.3>;Orange;<0.9,0.6,0.0>;Toad;<0.2,0.2,0.0>;Khaki;<0.6,0.5,0.3>;Pool;<0.1,0.8,0.9>;Blood;<0.5,0.0,0.0>;Anthracite;<0.1,0.1,0.1>;Midnight;<0.0,0.1,0.2>",
 
     "leashPointName",         "leashpoint",
     "leashLength",             "3",
@@ -154,7 +159,7 @@ list leashConfig=[
     "leashStrictMode",         "0",
     "leashAwait",             "0.2",
     "leashMaxRange",        "60",
-    "leashPosOffset",        "<0.0, 0.0, 0.0>"
+    "leashPosOffset",        "<0.0,0.0,0.0>"
 ];
 string setConfig(string k, string v){
     integer index=llListFindList(leashConfig, [k]);
@@ -206,44 +211,44 @@ string getParticleColor(string colorName, string colorVector){
 /*
 链条粒子系统
 */
-activeParticles(integer link, key target, string particleMode, key particleTexture, vector particleScale, vector particleColor, vector particleGravity, integer particleCount, integer particleFullBright, float particleGlow, float particleMaxAge, float particleBurstRate){
-    if(particleMode=="None"){
-        stopParticles();
-        return;
-    }
-    if(target==NULL_KEY){
-        return;
-    }
-    integer particleFlags = PSYS_PART_FOLLOW_VELOCITY_MASK | PSYS_PART_TARGET_POS_MASK | PSYS_PART_FOLLOW_SRC_MASK;
-    if(particleMode == "Ribbon"){
-        particleFlags = particleFlags | PSYS_PART_RIBBON_MASK;
-    }
-    if(particleFullBright){
-        particleFlags = particleFlags | PSYS_PART_EMISSIVE_MASK;
-    }
-    list particleParams = [
-        PSYS_PART_MAX_AGE,particleMaxAge,
-        PSYS_PART_FLAGS,particleFlags,
-        PSYS_PART_START_COLOR, particleColor,
-        //PSYS_PART_END_COLOR, g_vLeashColor,
-        PSYS_PART_START_SCALE,particleScale,
-        //PSYS_PART_END_SCALE,g_vLeashSize,
-        PSYS_SRC_PATTERN, PSYS_SRC_PATTERN_DROP,
-        PSYS_SRC_BURST_RATE,particleBurstRate,
-        PSYS_SRC_ACCEL, particleGravity,
-        PSYS_SRC_BURST_PART_COUNT,particleCount,
-        //PSYS_SRC_BURST_SPEED_MIN,fMinSpeed,
-        //PSYS_SRC_BURST_SPEED_MAX,fMaxSpeed,
-		PSYS_PART_START_GLOW,particleGlow,
-        PSYS_SRC_TARGET_KEY,target,
-        PSYS_SRC_MAX_AGE, 0,
-        PSYS_SRC_TEXTURE, particleTexture
-    ];
-    llLinkParticleSystem(link, particleParams);
-}
+// activeParticles(integer link, key target, string particleMode, key particleTexture, vector particleScale, vector particleColor, vector particleGravity, integer particleCount, integer particleFullBright, float particleGlow, float particleMaxAge, float particleBurstRate){
+//     if(particleMode=="None"){
+//         stopParticles();
+//         return;
+//     }
+//     if(target==NULL_KEY){
+//         return;
+//     }
+//     integer particleFlags = PSYS_PART_FOLLOW_VELOCITY_MASK | PSYS_PART_TARGET_POS_MASK | PSYS_PART_FOLLOW_SRC_MASK;
+//     if(particleMode == "Ribbon"){
+//         particleFlags = particleFlags | PSYS_PART_RIBBON_MASK;
+//     }
+//     if(particleFullBright){
+//         particleFlags = particleFlags | PSYS_PART_EMISSIVE_MASK;
+//     }
+//     list particleParams = [
+//         PSYS_PART_MAX_AGE,particleMaxAge,
+//         PSYS_PART_FLAGS,particleFlags,
+//         PSYS_PART_START_COLOR, particleColor,
+//         //PSYS_PART_END_COLOR, g_vLeashColor,
+//         PSYS_PART_START_SCALE,particleScale,
+//         //PSYS_PART_END_SCALE,g_vLeashSize,
+//         PSYS_SRC_PATTERN, PSYS_SRC_PATTERN_DROP,
+//         PSYS_SRC_BURST_RATE,particleBurstRate,
+//         PSYS_SRC_ACCEL, particleGravity,
+//         PSYS_SRC_BURST_PART_COUNT,particleCount,
+//         //PSYS_SRC_BURST_SPEED_MIN,fMinSpeed,
+//         //PSYS_SRC_BURST_SPEED_MAX,fMaxSpeed,
+// 		PSYS_PART_START_GLOW,particleGlow,
+//         PSYS_SRC_TARGET_KEY,target,
+//         PSYS_SRC_MAX_AGE, 0,
+//         PSYS_SRC_TEXTURE, particleTexture
+//     ];
+//     llLinkParticleSystem(link, particleParams);
+// }
 
 key startParticles(key target){
-    stopParticles();
+	stopParticles();
     if(target==NULL_KEY){
         return target;
     }
@@ -251,25 +256,47 @@ key startParticles(key target){
     if(particleMode=="None"){
         return NULL_KEY;
     }
-    
-    vector  particleScale        =(vector)    getConfig("particleScale");
-    vector  particleColor        =(vector)    getConfig("particleColor");
-    vector  particleGravity        =(vector)    getConfig("particleGravity");
-    integer particleCount        =(integer)    getConfig("particleCount");
-    integer particleFullBright    =(integer)    getConfig("particleFullBright");
-    float   particleGlow        =(float)    getConfig("particleGlow");
-    float   particleMaxAge        =(float)    getConfig("particleMaxAge");
-    float   particleBurstRate    =(float)    getConfig("particleBurstRate");
 
     key particleTexture=(key)getConfig("particleTexture"+particleMode);
     if(particleTexture==""){
         particleTexture=TEXTURE_TRANSPARENT;
     }
 
-    list leashPoints=getLinksByName(getConfig("leashPointName"));
-    integer i;
+	// activeParticles
+	integer particleFlags = PSYS_PART_FOLLOW_VELOCITY_MASK | PSYS_PART_TARGET_POS_MASK | PSYS_PART_FOLLOW_SRC_MASK;
+	if(particleMode == "Ribbon"){
+		particleFlags = particleFlags | PSYS_PART_RIBBON_MASK;
+	}
+	if((integer)getConfig("particleFullBright")){
+		particleFlags = particleFlags | PSYS_PART_EMISSIVE_MASK;
+	}
+	list particleParams = [
+		PSYS_PART_MAX_AGE,(float)getConfig("particleMaxAge"),
+		PSYS_PART_FLAGS,particleFlags,
+		PSYS_PART_START_COLOR, (vector)getConfig("particleColor"),
+		//PSYS_PART_END_COLOR, g_vLeashColor,
+		PSYS_PART_START_SCALE,(vector)getConfig("particleScale"),
+		//PSYS_PART_END_SCALE,g_vLeashSize,
+		PSYS_SRC_PATTERN, PSYS_SRC_PATTERN_DROP,
+		PSYS_SRC_BURST_RATE,(float)getConfig("particleBurstRate"),
+		PSYS_SRC_ACCEL, (vector)getConfig("particleGravity"),
+		PSYS_SRC_BURST_PART_COUNT,(integer)getConfig("particleCount"),
+		//PSYS_SRC_BURST_SPEED_MIN,fMinSpeed,
+		//PSYS_SRC_BURST_SPEED_MAX,fMaxSpeed,
+		PSYS_PART_START_GLOW,(float)getConfig("particleGlow"),
+		PSYS_SRC_TARGET_KEY,target,
+		PSYS_SRC_MAX_AGE, 0,
+		PSYS_SRC_TEXTURE, particleTexture
+	];
+
+	integer i;
+	list leashPoints=getLinksByName(getConfig("leashPointName"));
+	if(llGetListLength(leashPoints)<=0){
+		leashPoints+=[LINK_SET]; // No leashpoints, use link_set
+	}
     for(i=0; i<llGetListLength(leashPoints); i++){
-        activeParticles(llList2Integer(leashPoints, i), target, particleMode, particleTexture, particleScale, particleColor, particleGravity, particleCount, particleFullBright, particleGlow, particleMaxAge, particleBurstRate);
+        // activeParticles(llList2Integer(leashPoints, i), target, particleMode, particleTexture, particleScale, particleColor, particleGravity, particleCount, particleFullBright, particleGlow, particleMaxAge, particleBurstRate);
+		llLinkParticleSystem(llList2Integer(leashPoints, i), particleParams);
     }
     return target;
 }
@@ -288,27 +315,20 @@ stopParticles() {
 key leashTarget=NULL_KEY;
 integer leashParticleEnabled;
 float leashLength;
-float leashAwait;
-float leashMaxRange;
-integer leashTurnMode;
-integer leashStrictMode;
 integer leashHolderHandle;
 integer allowAutoTurn=FALSE;
-vector leashPosOffset;
 key leashToTarget(key target, integer particleEnabled){
     leashTarget=target;
     leashParticleEnabled=particleEnabled;
 
     if(leashTarget!=NULL_KEY){ // Leash
-        leashAwait=(float)getConfig("leashAwait");
         leashLength=(float)getConfig("leashLength");
-        leashMaxRange=(float)getConfig("leashMaxRange");
-        leashTurnMode=(integer)getConfig("leashTurnMode");
-        leashStrictMode=(integer)getConfig("leashStrictMode");
-        leashPosOffset=(vector)getConfig("leashPosOffset");
 
-        llRequestPermissions(llGetOwner(),PERMISSION_TRIGGER_ANIMATION); // Request auto turn perm
-        llSetTimerEvent(leashAwait); // Move to target in timer
+		if(REZ_MODE==FALSE){
+        	llRequestPermissions(llGetOwner(),PERMISSION_TRIGGER_ANIMATION); // Request auto turn perm
+		}
+		timerCount=0;
+        llSetTimerEvent((float)getConfig("leashAwait")); // Move to target in timer
 
         if(particleEnabled==TRUE){
             startParticles(leashTarget);
@@ -329,11 +349,11 @@ key leashToTarget(key target, integer particleEnabled){
 integer leashStrictFlag=FALSE;
 applyStrictMode(){
     string strictRestraints="fly=n,tplm=n,tplure=n,tploc=n,tplure:"+(string)leashTarget+"=add,sittp=n,accepttp:"+(string)leashTarget+"=add";
-    if(leashStrictMode==TRUE){
+    if((integer)getConfig("leashStrictMode")==TRUE){
         if(leashTarget==NULL_KEY) return;
         llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.RUN.TEMP|"+strictRestraints, NULL_KEY);
         leashStrictFlag=TRUE;
-    }else if(leashStrictMode==FALSE || leashTarget==NULL_KEY){
+    }else if((integer)getConfig("leashStrictMode")==FALSE || leashTarget==NULL_KEY){
         if(leashStrictFlag==TRUE){ // 严格模式RLV限制清除，只有触发过严格模式才进行。临时执行取消限制后，重新执行记录的RLV限制
             llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.RUN.TEMP|"+replace(replace(strictRestraints, "=add", "=rem"), "=n", "=y")+"&&RLV.RUN", NULL_KEY);
             leashStrictFlag=FALSE;
@@ -395,11 +415,9 @@ showLeashMenu(string parent, key user){
         configBu="Config";
     }
 
-    list leashMenuText=[
-        "This is leash menu.\n%1%%2%%%",
-        statusText,
-        userInfo(leashTarget)
-    ];
+    string leashMenuText="This is leash menu.\n%1%%2%%%;"+
+        statusText+";"+
+        userInfo(leashTarget);
 
     list leashMenuList=[
         grabBu,unleashBu,yankBu,
@@ -407,7 +425,9 @@ showLeashMenu(string parent, key user){
         "Length",styleBu,configBu
     ];
 
-    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+leashMenuName+"|"+list2Data(leashMenuText)+"|"+list2Data(leashMenuList)+"|"+parent, user);
+    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+leashMenuName+"|"+leashMenuText+"|"+list2Data(leashMenuList)+"|"+parent, user);
+	leashMenuText="";
+	leashMenuList=[];
 }
 
 list sensorUserList=[];
@@ -419,10 +439,10 @@ showLeashSubMenu(string menuName, string parent, key user, integer reset){
     leashSubMenuParent=parent;
     leashSubMenuFlag=menuName;
 	leashSubMenuUser=user;
-    list menuText=[];
+    string menuText="";
     list buttonList=[];
     if(menuName=="Follow" || menuName=="Pass"){
-        menuText=["Select user to %1%.%%",menuName];
+        menuText="Select user to %1%.%%;"+menuName;
         integer i;
         for(i=0; i<18; i++){
             key uk=llList2Key(sensorUserList, i);
@@ -434,7 +454,7 @@ showLeashSubMenu(string menuName, string parent, key user, integer reset){
         }
     }
     else if(menuName=="Anchor"){
-        menuText=["Select object to %1%.%%",menuName];
+        menuText="Select object to %1%.%%;"+menuName;
         integer i;
         for(i=0; i<27; i++){
             key uk=llList2Key(sensorUserList, i);
@@ -446,7 +466,7 @@ showLeashSubMenu(string menuName, string parent, key user, integer reset){
         }
     }
     else if(menuName=="Length"){
-        menuText=["Current leash length: %1%.%%",getConfig("leashLength")];
+        menuText="Current leash length: %1%.%%;"+getConfig("leashLength");
         integer i;
         for(i=1; i<=6; i++){
             buttonList+=[i];
@@ -456,15 +476,13 @@ showLeashSubMenu(string menuName, string parent, key user, integer reset){
         }
     }
     else if(menuName=="Style"){
-        menuText=[
-            "Choose a style and color for leash.\nCurrent size: %1%\nCurrent weight: %2%\nCurrent glow: %3%\nCurrent shine: %b4%\nCurrent color: %5%%%",
-			getConfig("particleScale"),
-            getConfig("particleGravity"),
-            getConfig("particleGlow"),
-            getConfig("particleFullBright"),
-            getParticleColor("", getConfig("particleColor"))
-        ];
-		llOwnerSay(list2Data(menuText));
+        menuText="Choose a style and color for leash.\nCurrent size: %1%\nCurrent weight: %2%\nCurrent glow: %3%\nCurrent shine: %b4%\nCurrent color: %5%%%;"+
+			getConfig("particleScale")+";"+
+            getConfig("particleGravity")+";"+
+            getConfig("particleGlow")+";"+
+            getConfig("particleFullBright")+";"+
+            getParticleColor("", getConfig("particleColor"));
+
         buttonList=[
             "Bigger", "Smaller", "Glow",
             "Heavier", "Lighter", "["+(string)(getConfig("particleFullBright")=="1")+"]Shine",
@@ -477,7 +495,7 @@ showLeashSubMenu(string menuName, string parent, key user, integer reset){
         }
     }
     else if(menuName=="Config"){
-        menuText=["Configs of leash."];
+        menuText="Configs of leash.";
         buttonList=[
             "["+getConfig("leashTurnMode")+"]Turn", "["+getConfig("leashStrictMode")+"]Strict"
         ];
@@ -486,7 +504,9 @@ showLeashSubMenu(string menuName, string parent, key user, integer reset){
 	if(reset==TRUE){
 		menuRegOpen="MENU.REG.OPEN.RESET";
 	}
-    llMessageLinked(LINK_SET, MENU_MSG_NUM, menuRegOpen+"|"+leashSubMenuName+"|"+list2Data(menuText)+"|"+list2Data(buttonList)+"|"+parent, user);
+    llMessageLinked(LINK_SET, MENU_MSG_NUM, menuRegOpen+"|"+leashSubMenuName+"|"+menuText+"|"+list2Data(buttonList)+"|"+parent, user);
+	menuText="";
+	buttonList=[];
 }
 
 /*
@@ -532,8 +552,10 @@ integer LEASH_MSG_NUM=1005;
 integer CHANNEL_LOCK_MEISTER = -8888;
 integer CHANNEL_LOCK_GUARD   = -9119;
 
-integer leashPulling=FALSE;
-float leashZoneEdge=0.5;
+// integer leashPulling=FALSE;
+// float leashZoneEdge=0.5;
+integer REZ_MODE=FALSE;
+integer timerCount=0;
 default{
     state_entry(){
         // TODO: Read config notecard
@@ -549,7 +571,20 @@ default{
                 leashToTarget(leashTarget, leashParticleEnabled);
 				llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.GET.NOTIFY", user);
             }
+			REZ_MODE=FALSE;
         }
+    }
+	on_rez(integer start_param){
+        // 登录、穿戴时也会触发on_rez，并且比attach更早触发。有时候登录时不触发attach，因此将attach的部分也添加到这里。
+        integer attached=llGetAttached();
+        if(attached>0){
+            REZ_MODE=FALSE;
+        }else{
+            REZ_MODE=TRUE;
+        }
+    }
+	object_rez(key user){
+        REZ_MODE=TRUE;
     }
     listen(integer channel, string name, key id, string msg){
         if(channel == CHANNEL_LOCK_MEISTER){
@@ -558,9 +593,9 @@ default{
             */
 			if(leashParticleEnabled==TRUE){
 				if(llGetOwnerKey(id) == leashTarget){
-					if(msg=="LEASH_HOLDER_READY"){ // Ready时，粒子向holder发射
+					if(msg=="handle ok"){ // Ready时，粒子向holder发射
 						startParticles(id);
-					}else if(msg=="LEASH_HOLDER_EMBAR"){ // 脱下时，粒子向角色发射
+					}else if(msg=="handle detached"){ // 脱下时，粒子向角色发射
 						startParticles(leashTarget);
 					}
 				}else{
@@ -571,44 +606,52 @@ default{
     }
     timer() {
 		vector avatarPos = llGetPos();
-        vector targetPos = llList2Vector(llGetObjectDetails(leashTarget, [OBJECT_POS]), 0);
-        integer targetInRange=TRUE;
-        // if(targetPos == ZERO_VECTOR || llVecDist(llGetPos(), targetPos)> 255){
-        if(targetPos == ZERO_VECTOR || llVecDist(avatarPos, targetPos)> leashMaxRange){
-            targetInRange=FALSE;
-        }
-        if(targetInRange){
-            float distance = llVecDist(targetPos, avatarPos);
-            if(distance>=leashLength){
+		vector targetPos = llList2Vector(llGetObjectDetails(leashTarget, [OBJECT_POS]), 0);
+		integer targetInRange=TRUE;
+		// if(targetPos == ZERO_VECTOR || llVecDist(llGetPos(), targetPos)> 255){
+		if(targetPos == ZERO_VECTOR || llVecDist(avatarPos, targetPos)> (float)getConfig("leashMaxRange")){
+			targetInRange=FALSE;
+		}
+		if(targetInRange){
+			float distance = llVecDist(targetPos, avatarPos);
+			if(distance>=leashLength){
+				vector dir = llVecNorm(avatarPos - targetPos);
+				vector desiredPos = targetPos + dir * (leashLength-0.2) + (vector)getConfig("leashPosOffset");
+				llMoveToTarget(desiredPos, 0.8); // 平滑地跟随
+				if((integer)getConfig("leashTurnMode")==TRUE && allowAutoTurn==TRUE && timerCount%10==0){
+					vector faceDir = llVecNorm(targetPos - avatarPos);
+					rotation rot = llRotBetween(<1,0,0>, faceDir);
+					llSetAgentRot(rot, 0);
+				}
 				/*
 				TODO：抖动问题存疑，防抖机制暂留。
 				*/
-				if (!leashPulling && distance > (leashLength + leashZoneEdge)){
-					leashPulling=TRUE;
-				}
-				if (leashPulling && distance < (leashLength - leashZoneEdge)){
-					leashPulling=FALSE;
-				}
-				if(leashPulling){
-					vector dir = llVecNorm(avatarPos - targetPos);
-					vector desiredPos = targetPos + dir * leashLength + leashPosOffset;
-					llMoveToTarget(desiredPos, 0.8); // 平滑地跟随
-					if(leashTurnMode==TRUE && allowAutoTurn==TRUE){
-						vector faceDir = llVecNorm(targetPos - avatarPos);
-						rotation rot = llRotBetween(<1,0,0>, faceDir);
-						llSetAgentRot(rot, 0);
-					}
-				}
-            }else{
+				// if (!leashPulling && distance > (leashLength + leashZoneEdge)){
+				// 	leashPulling=TRUE;
+				// }
+				// if (leashPulling && distance < (leashLength - leashZoneEdge)){
+				// 	leashPulling=FALSE;
+				// }
+				// if(leashPulling){
+				// 	vector dir = llVecNorm(avatarPos - targetPos);
+				// 	vector desiredPos = targetPos + dir * leashLength + (vector)getConfig("leashPosOffset");
+				// 	llMoveToTarget(desiredPos, 0.8); // 平滑地跟随
+				// 	if((integer)getConfig("leashTurnMode")==TRUE && allowAutoTurn==TRUE){
+				// 		vector faceDir = llVecNorm(targetPos - avatarPos);
+				// 		rotation rot = llRotBetween(<1,0,0>, faceDir);
+				// 		llSetAgentRot(rot, 0);
+				// 	}
+				// }
+			}else{
 				llStopMoveToTarget();
 			}
-        }
+		}
+		timerCount+=1;
     }
     run_time_permissions(integer perm) {
         if(perm & PERMISSION_TRIGGER_ANIMATION){
             allowAutoTurn=TRUE;
         }
-
     }
     link_message(integer sender_num, integer num, string msg, key user){
         if(num!=LEASH_MSG_NUM && num!=MENU_MSG_NUM && num!=ACCESS_MSG_NUM && num!=LAN_MSG_NUM){
@@ -629,11 +672,9 @@ default{
                 string leashMsg=llList2String(leashMsgGroup, 0);
                 string leashMsgSub=llList2String(leashMsgGroup, 1);
                 string leashMsgExt=llList2String(leashMsgGroup, 2);
-                string leashMsgExt2=llList2String(leashMsgGroup, 3);
 
                 string leashMsgName=llList2String(leashMsgList, 1);
                 string leashMsgCmd=llList2String(leashMsgList, 2);
-                string leashMsgData=llList2String(leashMsgList, 3);
 
                 string result="";
                 if(leashMsgSub=="SET"){
@@ -641,6 +682,7 @@ default{
                     更改配置：LEASH.SET | ConfigName | ConfigValue
                     */
                     result=setConfig(leashMsgName, leashMsgCmd);
+					leashToTarget(leashTarget, leashParticleEnabled);
                 }
                 else if(leashMsgSub=="GET"){
                     /*
@@ -722,12 +764,6 @@ default{
             else if(llGetSubString(str, 0, 4) == "MENU." && includes(str, "ACTIVE")) {
                 // MENU.ACTIVE | mainMenu | Access
                 list menuCmdList=msg2List(str);
-                string menuCmdStr=llList2String(menuCmdList, 0);
-                list menuCmdGroup=llParseStringKeepNulls(menuCmdStr, ["."], [""]);
-    
-                string menuCmd=llList2String(menuCmdGroup, 0);
-                string menuCmdSub=llList2String(menuCmdGroup, 1);
-    
                 string menuName=llList2String(menuCmdList, 1);
                 string menuButton=llList2String(menuCmdList, 2);
 
@@ -780,6 +816,7 @@ default{
                                 leashToTarget(buUser, TRUE);
                             }
                         }
+						sensorUserList=[];
                         menuActiveFlag=-999;
                     }
                     else if(leashSubMenuFlag=="Length"){
@@ -851,6 +888,7 @@ default{
                     }
                     else if(leashSubMenuFlag=="Config"){
                         if(menuButton=="Turn"){
+							integer leashTurnMode=(integer)getConfig("leashTurnMode");
                             if(leashTurnMode==TRUE){
                                 leashTurnMode=FALSE;
                             }else{
@@ -859,6 +897,7 @@ default{
                             setConfig("leashTurnMode",(string)leashTurnMode); // 无需刷新，等下次timer事件即生效
                         }
                         else if(menuButton=="Strict"){
+							integer leashStrictMode=(integer)getConfig("leashStrictMode");
                             if(leashStrictMode==TRUE){
                                 leashStrictMode=FALSE;
                             }else{
@@ -909,6 +948,7 @@ default{
         if(llGetListLength(resultList)>0){
             llMessageLinked(LINK_SET, LEASH_MSG_NUM, list2Bundle(resultList), user); // 处理完成后的回调
         }
+		// llOwnerSay("Leash Memory Used: "+(string)llGetUsedMemory()+" Free: "+(string)llGetFreeMemory());
     }
     dataserver(key query_id, string data){
         if (query_id == readLeashQuery) { // 通过readLeashNotecards触发读取记事卡事件，按行读取配置并应用。
