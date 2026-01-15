@@ -1,0 +1,554 @@
+/*
+Name: Animation
+Author: JMRY
+Description: A better animation control system, use link_message to operate animations.
+
+***更新记录***
+- 1.0 20260115
+    - 初步完成动画功能。
+***更新记录***
+*/
+
+/*
+TODO:
+- 随机动画切换
+- 动画播放列表
+*/
+
+string replace(string src, string target, string replacement) {
+    return llReplaceSubString(src, target, replacement, 0);
+}
+
+integer includes(string src, string target){
+    integer startPos = llSubStringIndex(src, target);
+    if(~startPos){
+        return TRUE;
+    }else{
+        return FALSE;
+    }
+}
+
+// string trim(string k){
+//     return llStringTrim(k, STRING_TRIM);
+// }
+
+list strSplit(string m, string sp){
+    list pl=llParseStringKeepNulls(m,[sp],[""]);
+    list temp=[];
+    integer i;
+    for(i=0; i<llGetListLength(pl); i++){
+        temp+=[llStringTrim(llList2String(pl, i), STRING_TRIM)];
+    }
+    return temp;
+}
+string strJoin(list m, string sp){
+    return llDumpList2String(m, sp);
+}
+
+// string bundleSplit="&&";
+list bundle2List(string b){
+    return strSplit(b, "&&");
+}
+string list2Bundle(list b){
+    return strJoin(b, "&&");
+}
+
+// string messageSplit="|";
+list msg2List(string m){
+    return strSplit(m, "|");
+}
+string list2Msg(list m){
+    return strJoin(m, "|");
+}
+
+// string dataSplit=";";
+list data2List(string d){
+    return strSplit(d, ";");
+}
+string list2Data(list d){
+    return strJoin(d, ";");
+}
+string list2RlvData(list d){
+    return strJoin(d, ",");
+}
+
+list animClassList=[];
+integer addAnimClass(string name){
+    integer rIndex=llListFindList(animClassList, [name]);
+    if(!~rIndex){ // name不存在时，添加
+        animClassList+=[name];
+        return TRUE;
+    }else{
+        return FALSE; // class已存在时，不能重复添加
+    }
+}
+
+integer removeAnimClass(string name){
+    integer rIndex=llListFindList(animClassList, [name]);
+    if(~rIndex){
+        animClassList=llDeleteSubList(animClassList, rIndex, rIndex);
+        return TRUE;
+    }else{
+        return FALSE;
+    }
+}
+
+list animConfigList=[];
+integer animConfigLength=4; // name,params,class,auto
+integer setAnimConfig(string name, string params, string class, integer auto){ // params: animName;interval;floatHeight;Ext1;Ext2;......
+    integer rIndex=llListFindList(animConfigList, [name]);
+    if(~rIndex){
+        animConfigList=llListReplaceList(animConfigList, [params, class, auto], rIndex+1, rIndex+animConfigLength-1);
+    }else{
+        animConfigList+=[name, params, class, auto];
+    }
+	if(class!=""){
+        addAnimClass(class);
+    }
+    return TRUE;
+}
+
+
+string curPlayingAnimName="";
+integer playAnimationByName(string name){
+    integer rIndex=llListFindList(animConfigList, [name]);
+    if(~rIndex){
+        return playAnimationByParams(llList2String(animConfigList, rIndex+1), name);
+    }
+    return FALSE;
+}
+
+string curPlayingAnimParams="";
+integer playAnimationByParams(string params, string name){
+    if(params){
+		curPlayingAnimName=name;
+        curPlayingAnimParams=params;
+        list animParams=data2List(params);
+        // animName;interval;floatHeight;Ext1;Ext2;...
+        playAnimInterval=(float)llList2String(animParams, 1);
+        if(playAnimInterval<=0.0){ // 重播间隔小于等于0时，说明参数解析错误，因此将其修正。
+            playAnimInterval=10.0;
+        }
+        playAnimFloatHeight=(float)llList2String(animParams, 2);
+        if(playAnimFloatHeight<=0.0){
+            playAnimFloatHeight=0.0;
+        }
+
+        curPlayingAnimFileName=llList2String(animParams, 0);
+        if(allowPlayAnim==TRUE){
+            playAnimation(curPlayingAnimFileName, TRUE);
+        }else{
+            playAnimationFlag=TRUE;
+            llRequestPermissions(llGetOwner(),PERMISSION_TRIGGER_ANIMATION);
+        }
+        return TRUE;
+    }else{
+        return FALSE;
+    }
+}
+
+string curPlayingAnimFileName="";
+integer allowPlayAnim=FALSE;
+float playAnimInterval=10;
+float playAnimFloatHeight=0;
+integer playAnimationFlag=FALSE;
+integer playAnimation(string name, integer stop){
+    playAnimationFlag=TRUE;
+    if(allowPlayAnim==TRUE){
+        if(stop==TRUE || curPlayingAnimFileName==""){
+            stopAnimation();
+        }
+        if(name!=""){
+            llStartAnimation(name);
+            curPlayingAnimFileName=name;
+            llSetTimerEvent(playAnimInterval);
+        
+            if(allowAutoAdjustHeight==TRUE){
+                llOwnerSay("@adjustheight:"+(string)playAnimFloatHeight+"=force");
+            };
+        }
+    }
+    return allowPlayAnim;
+}
+
+// integer stopAnimation(){
+//     playAnimationFlag=FALSE;
+//     if(allowPlayAnim==TRUE){
+//         if(curPlayingAnimFileName!=""){
+//             llStopAnimation(curPlayingAnimFileName);
+//             llStartAnimation("stand");
+//             curPlayingAnimName="";
+//             curPlayingAnimFileName="";
+//         }
+//         llSetTimerEvent(0);
+//         if(allowAutoAdjustHeight==TRUE){
+//             llOwnerSay("@adjustheight:0=force");
+//         };
+//     }else{
+//         llRequestPermissions(llGetOwner(),PERMISSION_TRIGGER_ANIMATION);
+//     }
+//     return allowPlayAnim;
+// }
+
+integer stopAnimation(){
+    if(allowPlayAnim){
+        list allAnimList=llGetAnimationList(llGetOwner());
+        llSetTimerEvent(0);
+        if(allowAutoAdjustHeight==TRUE){
+            llOwnerSay("@adjustheight:0=force");
+        };
+        integer i;
+        for(i=0; i<llGetListLength(allAnimList); i++){
+            llStopAnimation(llList2String(allAnimList, i));
+        }
+        llStartAnimation("stand");
+    }
+    return allowPlayAnim;
+}
+
+/*
+配置文件读取
+*/
+string notecardHeader="anim_";
+string readNotecardName="";
+string curNotecardName="";
+key readNotecardQuery=NULL_KEY;
+integer readNotecardLine=0;
+integer readNotecards(string name){
+    /*Clear Current Data*/
+    animClassList=[];
+    animConfigList=[];
+    readNotecardLine=0;
+    curNotecardName=name;
+    readNotecardName=notecardHeader+name;
+    if (llGetInventoryType(readNotecardName) == INVENTORY_NOTECARD) {
+        llOwnerSay("Begin reading animation settings: "+name);
+        readNotecardQuery=llGetNotecardLine(readNotecardName, readNotecardLine); // 通过给readNotecardQuery赋llGetNotecardLine的key，从而触发datasever事件
+        // 后续功能交给下方datasever处理
+        return TRUE;
+    }else{
+        return FALSE;
+    }
+}
+
+list getNotecardsList(){
+    list notecardList=[];
+    integer count = llGetInventoryNumber(INVENTORY_NOTECARD);
+    integer i;
+    for (i=0; i<count; i++){
+        string notecardName = llGetInventoryName(INVENTORY_NOTECARD, i);
+        if(llGetSubString(notecardName, 0, llStringLength(notecardHeader)-1)==notecardHeader){
+            notecardList+=[llGetSubString(notecardName, llStringLength(notecardHeader), -1)];
+        }
+    }
+    return notecardList;
+}
+
+string animMenuText="Animation";
+string animMenuName="AnimationMenu";
+string animParentMenuName="";
+showAnimMenu(string parent, key user){
+    animParentMenuName=parent;
+    list menuList=[];
+    if(allowStopAnim==TRUE){
+        menuList+=["[STOP]"];
+    }
+    menuList+=animClassList;
+    llMessageLinked(LINK_SET, MENU_MSG_NUM, list2Msg([
+        "MENU.REG.OPEN",
+        animMenuName,
+        "Animation Menu\nCurrent Playing: %1%%%;"+curPlayingAnimName,
+        list2Data(menuList),
+        parent
+    ]), user);
+}
+
+string animSubMenuName="AnimationSubMenu";
+string curAnimSubMenu="";
+string animParentSubMenuName="";
+showAnimSubMenu(string parent, string class, key user){
+    animParentSubMenuName=parent;
+    curAnimSubMenu=class;
+    string animSubDesc="This is Animation [%1%] menu.\nCurrent Playing: %2%%%;"+class+";"+curPlayingAnimName;
+    list animCmdList=["[STOP]"];
+    integer animCmdCount=llGetListLength(animConfigList);
+    integer i;
+    for(i=0; i<animCmdCount; i+=animConfigLength){
+        string curName=llList2String(animConfigList, i);
+        string curClass=llList2String(animConfigList, i+2);
+        if(curClass==class){
+            animCmdList+=["["+(string)(curName == curPlayingAnimName)+"]"+curName];
+        }
+    }
+    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+animSubMenuName+"|"+animSubDesc+"|"+list2Data(animCmdList)+"|"+parent, user);
+}
+
+integer MENU_MSG_NUM=1000;
+integer ANIM_MSG_NUM=1006;
+integer allowAutoAdjustHeight=TRUE;
+integer allowStopAnim=TRUE;
+string curAnimClass="";
+default{
+    state_entry(){
+    }
+    timer(){
+        playAnimation(curPlayingAnimFileName, FALSE);
+    }
+    changed(integer change){
+        if(change & CHANGED_OWNER){
+            llResetScript();
+        }
+    }
+    attach(key user){
+        if(user!=NULL_KEY){
+            llRequestPermissions(llGetOwner(),PERMISSION_TRIGGER_ANIMATION);
+        }
+    }
+    run_time_permissions(integer perm) {
+        if(perm & PERMISSION_TRIGGER_ANIMATION){
+            allowPlayAnim=TRUE;
+            if(playAnimationFlag==TRUE){
+                playAnimation(curPlayingAnimFileName,TRUE);
+            }else{
+                stopAnimation();
+            }
+        }
+    }
+    link_message(integer sender_num, integer num, string msg, key user){
+        if(num!=ANIM_MSG_NUM && num!=MENU_MSG_NUM){
+            return;
+        }
+
+        list bundleMsgList=bundle2List(msg);
+        list resultList=[];
+        integer bundleMsgCount=llGetListLength(bundleMsgList);
+        integer mi;
+        for(mi=0; mi<bundleMsgCount; mi++){
+            string str=llList2String(bundleMsgList, mi);
+            list msgList=msg2List(str);
+            string msgHeader=llList2String(msgList, 0);
+            list msgHeaderGroup=llParseStringKeepNulls(msgHeader, ["."], [""]);
+
+            string headerMain=llList2String(msgHeaderGroup, 0);
+            string headerSub=llList2String(msgHeaderGroup, 1);
+            string headerExt=llList2String(msgHeaderGroup, 2);
+
+            string msgName=llList2String(msgList, 1);
+            string msgSub=llList2String(msgList, 2);
+            string msgExt=llList2String(msgList, 3);
+            string msgExt2=llList2String(msgList, 3);
+
+            if(headerMain=="ANIM" && headerSub!="EXEC"){
+                string result="";
+
+                if(headerSub=="SET"){
+                    if(headerExt==""){
+                        /*
+                        添加动画：ANIM.SET | AnimName | AnimParams | AnimClass | AutoPlay
+                        */
+                        result=(string)setAnimConfig(msgName, msgSub, msgExt, (integer)msgExt2);
+                        if((integer)msgExt2==TRUE){
+                            playAnimationByName(msgName);
+                        }
+                    }
+                    else if(headerExt=="CLASS"){
+                        /*
+                        添加Class：ANIM.SET.CLASS | ClassName
+                        */
+                        result=(string)addAnimClass(msgName);
+                    }
+                    else if(headerExt=="AUTOHEIGHT"){
+                        /*
+                        添加Class：ANIM.SET.AUTOHEIGHT | 1
+                        */
+                        allowAutoAdjustHeight=(integer)msgName;
+                        result=(string)allowAutoAdjustHeight;
+                    }
+                    else if(headerExt=="ALLOWSTOP"){
+                        /*
+                        添加Class：ANIM.SET.AUTOHEIGHT | 1
+                        */
+                        allowStopAnim=(integer)msgName;
+                        result=(string)allowStopAnim;
+                    }
+                }
+
+                else if(headerSub=="GET"){
+                    if(headerExt==""){
+                        /*
+                        获取动画列表：ANIM.GET
+                        返回：
+                        ANIM.EXEC | ANIM.GET | AnimName1; AnimParams1; AnimClass1; AnimAutoPlay1; AnimName2; ...
+                        */
+                        result=list2Msg(animConfigList);
+                    }
+                    else if(headerExt=="CLASS"){
+                        /*
+                        获取动画列表：ANIM.GET.CLASS
+                        返回：
+                        ANIM.EXEC | ANIM.GET.CLASS | ClassName1; ClassName2; ...
+                        */
+                        result=list2Data(animClassList);
+                    }
+                    else if(headerExt=="PLAYING"){
+                        /*
+                        获取正在播放的动画：ANIM.GET.PLAYING
+                        返回：
+                        ANIM.EXEC | ANIM.GET.PLAYING | AnimName1
+                        */
+                        result=curPlayingAnimName;
+                    }
+                    else if(headerExt=="PLAYING.PARAMS"){
+                        /*
+                        获取正在播放的动画：ANIM.GET.PLAYING.PARAMS
+                        返回：
+                        ANIM.EXEC | ANIM.GET.PLAYING | AnimParams1
+                        */
+                        result=curPlayingAnimParams;
+                    }
+                    else if(headerExt=="PLAYING.FILE"){
+                        /*
+                        获取正在播放的动画：ANIM.GET.PLAYING.FILE
+                        返回：
+                        ANIM.EXEC | ANIM.GET.PLAYING | AnimFileName1
+                        */
+                        result=curPlayingAnimFileName;
+                    }
+                }
+
+                else if(headerSub=="LOAD"){
+                    /*
+                    读取记事卡
+                    ANIM.LOAD | file1
+                    回调：
+                    ANIM.EXEC | ANIM.LOAD | 1
+                    读取记事卡成功后的回调
+                    ANIM.LOAD.NOTECARD | file1 | 1
+                    */
+                    if(headerExt==""){
+                        result=(string)readNotecards(msgName);
+                    }
+                    /*
+                    读取Leash记事卡列表
+                    ANIM.LOAD.LIST
+                    回调：
+                    ANIM.EXEC | ANIM.LOAD.LIST | leash_1, leash_2, leash_3, ...
+                    */
+                    if(headerExt=="LIST"){
+                        result=(string)list2Data(getNotecardsList());
+                    }
+                }
+
+                else if(headerSub=="PLAY"){
+                    if(headerExt==""){
+                        /*
+                        播放动画：ANIM.PLAY | AnimName1
+                        */
+                        result=(string)playAnimationByName(msgName);
+                    }
+                    else if(headerExt=="PARAMS"){
+                        /*
+                        按参数播放动画：ANIM.PLAY.PARAMS | AnimParams1
+                        */
+                        result=(string)playAnimationByParams(msgName, "");
+                    }
+                    else if(headerExt=="FILE"){
+                        /*
+                        直接播放动画文件：ANIM.PLAY.FILE | AnimFileName1
+                        */
+						curPlayingAnimParams="";
+                        result=(string)playAnimation(msgName, (integer)msgSub);
+                    }
+                }
+                else if(headerSub=="STOP"){
+                    result=(string)stopAnimation();
+                }
+
+				else if(headerSub=="MENU"){
+                    /*
+                    显示菜单
+                    ANIM.MENU | 上级菜单名
+                    */
+                    if(llGetListLength(animClassList)<=1){
+                        showAnimSubMenu(msgName, llList2String(animClassList, 0), user);
+                    }else{
+                        showAnimMenu(msgName, user);
+                    }
+                }
+
+                if(result!=""){
+                    resultList+=[headerMain+".EXEC|"+msgHeader+"|"+result];
+                }
+            }
+
+            else if(headerMain=="MENU" && headerSub=="ACTIVE"){
+                // 动画菜单入口
+                if(msgSub==animMenuText){
+                    if(llGetListLength(animClassList)<=1){
+                        showAnimSubMenu(msgName, llList2String(animClassList, 0), user);
+                    }else{
+                        showAnimMenu(msgName, user);
+                    }
+                }
+                // 动画主菜单（Class菜单）
+                else if(msgName==animMenuName && msgSub!=""){ // MENU.ACTIVE | Class | Class1
+                    if(msgSub=="[STOP]"){
+                        stopAnimation();
+                        showAnimMenu(animParentMenuName, user);
+                    }else{
+                        showAnimSubMenu(animMenuName, msgSub, user);
+                    }
+                }
+                // 动画子菜单（Sub菜单）
+                else if(msgName==animSubMenuName && msgSub!=""){ // MENU.ACTIVE | Class1 | [1]Anim1
+                    if(msgSub=="[STOP]"){
+                        stopAnimation();
+                    }else{
+                        playAnimationByName(msgSub);
+                    }
+                    showAnimSubMenu(animParentSubMenuName, curAnimSubMenu, user);
+                }
+            }
+        }
+
+        if(llGetListLength(resultList)>0){
+            llMessageLinked(LINK_SET, ANIM_MSG_NUM, list2Bundle(resultList), user); // 处理完成后的回调
+            resultList=[];
+        }
+
+        // llOwnerSay("Animation Memory Used: "+(string)llGetUsedMemory()+"/"+(string)(65536-llGetUsedMemory())+" Free: "+(string)llGetFreeMemory());
+    }
+    dataserver(key query_id, string data){
+        if (query_id == readNotecardQuery) { // 通过readNotecardNotecards触发读取记事卡事件，按行读取配置并应用。
+            if (data == EOF) {
+                llOwnerSay("Finished reading animation config: "+curNotecardName);
+                llMessageLinked(LINK_SET, ANIM_MSG_NUM, list2Msg(["ANIM.LOAD.NOTECARD",curNotecardName,TRUE]), NULL_KEY); // 成功读取记事卡后回调
+                readNotecardQuery=NULL_KEY;
+
+                if(curPlayingAnimName!=""){
+                    playAnimationByName(curPlayingAnimName);
+                }
+            } else {
+                if(data!="" && llGetSubString(data,0,0)!="#"){
+                    if(llGetSubString(data,0,0)=="[" && llGetSubString(data,-1,-1)=="]"){
+                        curAnimClass=llGetSubString(data,1,-2);
+                        addAnimClass(curAnimClass);
+                    }else{
+                        list animStrSp=llParseStringKeepNulls(data, ["="], []);
+                        string animName=llList2String(animStrSp,0);
+                        string animParams=llList2String(animStrSp, 1);
+                        integer animAutoPlay=FALSE;
+                        if(llGetSubString(animName, 0, 0)=="*"){
+                            animAutoPlay=TRUE;
+                            animName=llGetSubString(animName, 1, -1);
+                            curPlayingAnimName=animName;
+                        }
+                        setAnimConfig(animName, animParams, curAnimClass, animAutoPlay);
+                    }
+                }
+                ++readNotecardLine;
+                readNotecardQuery=llGetNotecardLine(readNotecardName, readNotecardLine);
+            }
+        }
+    }
+}

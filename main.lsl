@@ -4,6 +4,10 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.0.11 20260115
+    - 加入动画菜单入口。
+    - 加入物品发出命令的监听支持。
+
 - 1.0.10 20260109
     - 加入牵绳功能入口。
     - 加入本地聊天命令功能。
@@ -392,11 +396,8 @@ showMenu(key user){
         (string)group+";"+
         (string)hardcore;
     list mainMenu=applyFeatureList([
-        "["+(string)isLocked+"]Lock",
-        "Leash",
-        "RLV",
-        "Timer",
-        "Renamer",
+        "["+(string)isLocked+"]Lock","Leash","RLV",
+        "Timer","Renamer","Animation",
         "Access",
         "Language"
     ], featureList);
@@ -439,10 +440,13 @@ showMenu(key user){
 integer MAIN_MSG_NUM=9000;
 integer MENU_MSG_NUM=1000;
 integer RLV_MSG_NUM=1001;
+integer RENAMER_MSG_NUM=10011;
+integer RLVEXT_MSG_NUM=10012;
 integer ACCESS_MSG_NUM=1002;
 integer LAN_MSG_NUM=1003;
 integer TIMER_MSG_NUM=1004;
 integer LEASH_MSG_NUM=1005;
+integer ANIM_MSG_NUM=1006;
 
 list owner=[];
 list trust=[];
@@ -459,6 +463,7 @@ initMain(){
     llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.LOAD|main", NULL_KEY);
     llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.GET.NOTIFY", NULL_KEY);
     llMessageLinked(LINK_SET, LEASH_MSG_NUM, "LEASH.LOAD|main", NULL_KEY);
+    llMessageLinked(LINK_SET, ANIM_MSG_NUM, "ANIM.LOAD|main", NULL_KEY);
     initLanguage();
 }
 
@@ -509,14 +514,15 @@ default{
         //llOwnerSay("JSON: "+json);
         //llOwnerSay(llJsonGetValue(json,["test1"]));
     }
-    listen(integer channel, string name, key user, string message){
+    listen(integer channel, string name, key id, string message){
         if(channel==cmdChannel){
+            key user=llGetOwnerKey(id); // 支持使用物品发出命令。user为说话者的uuid，因此需要获取它的所有者uuid。
             if(!allowOperate(user)){
                 return;
             }
-            string ownerName=llGetUsername(llGetOwner());
-            string prefix=llGetSubString(ownerName, 0, 1);
+            string prefix=llGetSubString(llGetUsername(llGetOwner()), 0, 1);
             if(llGetSubString(message, 0, 1) == prefix){
+                // /1 xxmenu, /1 xxleash
                 string msgBody=llToLower(llGetSubString(message, 2, -1));
                 list msgList=llParseStringKeepNulls(msgBody,[" "],[""]);
                 string msgCmd1=llList2String(msgList, 0);

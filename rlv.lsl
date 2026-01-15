@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 1.1.6 20260115
+    - 优化设置RLV限制时的文本描述。
+
 - 1.1.5 20260113
     - 分离RLV Ext模块。
     - 优化RLV Ext的处理逻辑和内存占用。
@@ -1257,7 +1260,7 @@ default{
                         onOff="ON";
                     }
                     resultList+=[applyResult];
-                    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your %1% is set to %2%.%%;"+menuButton+";"+onOff, user);
+                    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your %1% restrictions is set to %2%.%%;"+menuButton+";"+onOff, user);
                     showRLVSubMenu(curRlvSubMenu, user);
                 }
             }

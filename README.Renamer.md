@@ -1,4 +1,4 @@
-# 自动化Renamer系统文档
+# Renamer系统文档
 脚本通过调用llMessageLink方法将Renamer指令传递到Renamer脚本，即可实现相关功能。Renamer的执行结果（如设置Renamer、Renamer执行结果等）也通过触发link_message返回。
 ###### 阅读本文档前，请先阅读[菜单文档](README.Menu.md)，此Renamer系统中的部分功能依赖菜单系统，并且指令格式与用法与菜单系统基本保持一致。
 
