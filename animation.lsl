@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better animation control system, use link_message to operate animations.
 
 ***更新记录***
+- 1.0.1 20260116
+    - 优化停止动画的逻辑，提升流畅度。
+
 - 1.0 20260115
     - 初步完成动画功能。
 ***更新记录***
@@ -201,6 +204,7 @@ integer stopAnimation(){
         for(i=0; i<llGetListLength(allAnimList); i++){
             llStopAnimation(llList2String(allAnimList, i));
         }
+        llSleep(0.1);
         llStartAnimation("stand");
     }
     return allowPlayAnim;
