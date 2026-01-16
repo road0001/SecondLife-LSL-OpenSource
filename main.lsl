@@ -4,6 +4,10 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.0.12 20260116
+    - 优化初始化逻辑，防止丢失部分初始化项目。
+    - 调整初始化重试时间为30秒。
+
 - 1.0.11 20260115
     - 加入动画菜单入口。
     - 加入物品发出命令的监听支持。
@@ -457,17 +461,27 @@ integer hardcore=0;
 
 integer mainInited=FALSE;
 initMain(){
-    llMessageLinked(LINK_SET, MAIN_MSG_NUM, "MAIN.INIT", NULL_KEY);
-    llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.LOAD|main", NULL_KEY);
-    llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.GET.LOCK", NULL_KEY);
-    llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.LOAD|main", NULL_KEY);
-    llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.GET.NOTIFY", NULL_KEY);
-    llMessageLinked(LINK_SET, LEASH_MSG_NUM, "LEASH.LOAD|main", NULL_KEY);
-    llMessageLinked(LINK_SET, ANIM_MSG_NUM, "ANIM.LOAD|main", NULL_KEY);
+    llOwnerSay("Begin Initialize...");
+    list initMessageLinkChain=[
+        MAIN_MSG_NUM, "MAIN.INIT", 0,
+        RLV_MSG_NUM, "RLV.LOAD|main", 0,
+        RLV_MSG_NUM, "RLV.GET.LOCK", 0,
+        ACCESS_MSG_NUM, "ACCESS.LOAD|main", 0,
+        ACCESS_MSG_NUM, "ACCESS.GET.NOTIFY", 0,
+        LEASH_MSG_NUM, "LEASH.LOAD|main", 0,
+        ANIM_MSG_NUM, "ANIM.LOAD|main", 0
+    ];
+    integer i;
+    for(i=0; i<llGetListLength(initMessageLinkChain); i+=3){
+        llMessageLinked(LINK_SET, llList2Integer(initMessageLinkChain, i), llList2String(initMessageLinkChain, i+1), NULL_KEY);
+        llSleep(llList2Float(initMessageLinkChain, i+2));
+    }
     initLanguage();
+    llSleep(0);
+    // llOwnerSay("Initialize Complete, Enjoy!");
 }
 
-integer initRetryTimer=5;
+integer initRetryTimer=30;
 integer cmdChannel=1;
 integer listenHandle;
 default{

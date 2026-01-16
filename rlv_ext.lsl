@@ -4,6 +4,10 @@ Author: JMRY
 Description: A better RLV Extension management system, use link_message to operate RLV Extension restraints.
 
 ***更新记录***
+- 1.0.2 20260116
+    - echo视觉支持监听物品消息（如HUD）。
+    - 修复echo视觉不生效的bug。
+
 - 1.0.1 20260114
     - 调整echo视觉指令名为echoview。
     - 优化RLV扩展执行算法，提升性能。
@@ -96,8 +100,12 @@ string list2MenuData(list d){
 integer RLVRS=-1812221819; // default relay channel
 executeRLVTemp(list rlvList, integer bool){
     string rlvStr=list2Data(rlvList);
-    rlvStr=replace(replace(replace(rlvStr,"=n","=y"),"=add","=rem"),"=force","=rem");
-    llOwnerSay("@"+rlvStr);
+    if(bool==FALSE){
+        rlvStr=replace(replace(replace(rlvStr,"=n","=y"),"=add","=rem"),"=force","=rem");
+    }
+    if(rlvStr!=""){
+        llOwnerSay("@"+rlvStr);
+    }
     // llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.RUN.TEMP|"+list2Data(rlvList), NULL_KEY);
 }
 
@@ -197,7 +205,6 @@ integer setEchoView(integer isAllow, string params){
     if(isAllow){
         return isAllow;
     }
-    llOwnerSay((string)isAllow);
     float echoDistMinNormal=1.4;
     float echoDistMaxNormal=2;
     float echoDistAlphaNormal=1;
@@ -241,7 +248,8 @@ integer setEchoView(integer isAllow, string params){
         "setsphere_tween:"+(string)echoTween+"=force"
     ];
     executeRLVTemp(echoViewRLV+echoViewRLV_normal, TRUE);
-    echoViewListenHandle=llListen(1, "", llGetOwner(), "");
+    echoViewListenHandle=llListen(1, "", NULL_KEY, "");
+    // echoViewListenHandle=llListen(1, "", llGetOwner(), "");
     return isAllow;
 }
 
@@ -273,8 +281,8 @@ default{
     control(key id, integer level, integer edge){
     }
 
-    listen(integer channel, string name, key user, string message){
-        if(channel==1 && message==echoPing){
+    listen(integer channel, string name, key id, string message){
+        if(channel==1 && message==echoPing && llGetOwnerKey(id) == llGetOwner()){ // 启动监听消息时不过滤自己，仅在这里过滤物主id
             executeRLVTemp(echoViewRLV+echoViewRLV_echo, TRUE);
             echoTimerFlag=TRUE;
             llSetTimerEvent(echoKeepTime);

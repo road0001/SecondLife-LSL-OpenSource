@@ -119,19 +119,32 @@ LEASH.EXEC | LEASH.TO | UUID && LEASH.EXEC | LEASH.YANK | UUID
 - 牵绳配置文件名为前缀为leash_的记事卡。
 - 示例中的配置文件为默认状态，请根据自己的需求进行修改。
 - #开头的行为注释行，不做任何处理。
+- 所有带End的参数，必须放在其同名不带End的前面。
 ### 示例
 leash_main
 ```lsl
 # 启用/禁用牵绳粒子效果
 particleEnabled=1
-# 粒子效果模式（可选：Ribbon, Chain, Leather, Rope, None）
+# 粒子行为参数（可使用单个整数或多个整数合成最终掩码，-1保持默认）
+particleFlags=-1
+# 粒子发射模式（0保持默认）
+particleSrcPattern=0
+# 粒子效果模式（根据粒子贴图选择）
 particleMode=Ribbon
 # 粒子最大生命周期
 particleMaxAge=3.5
 # 粒子颜色
 particleColor=<1.0, 1.0, 1.0>
+# 粒子终点颜色
+particleColorEnd=<1.0, 1.0, 1.0>
+# 粒子透明度
+particleAlpha=1.0
+# 粒子终点透明度
+particleAlphaEnd=1.0
 # 粒子大小
 particleScale=<0.04, 0.04, 1.0>
+# 粒子终点大小
+particleScaleEnd=<0.04, 0.04, 1.0>
 # 粒子发射频率
 particleBurstRate=0.0
 # 粒子重量
@@ -142,8 +155,10 @@ particleCount=1
 particleFullBright=1
 # 粒子发光效果
 particleGlow=0.2
+# 粒子终点发光效果
+particleGlowEnd=0.2
 # 各模式下粒子贴图
-particleTexture=Ribbon;cdb7025a-9283-17d9-8d20-cee010f36e90;Chain;4cde01ac-4279-2742-71e1-47ff81cc3529;Leather;8f4c3616-46a4-1ed6-37dc-9705b754b7f1;Rope;9a342cda-d62a-ae1f-fc32-a77a24a85d73;None;8dcd4a48-2d37-4909-9f78-f7a9eb4ef903
+particleTextureList=Ribbon;cdb7025a-9283-17d9-8d20-cee010f36e90;Chain;4cde01ac-4279-2742-71e1-47ff81cc3529;Leather;8f4c3616-46a4-1ed6-37dc-9705b754b7f1;Rope;9a342cda-d62a-ae1f-fc32-a77a24a85d73;None;8dcd4a48-2d37-4909-9f78-f7a9eb4ef903
 # 粒子颜色列表（用于菜单中的Style选项）
 particleColorList=White;<1.0, 1.0, 1.0>;Black;<0.0, 0.0, 0.0>;Gray;<0.5, 0.5, 0.5>;Red;<1.0, 0.0, 0.0>;Green;<0.0, 1.0, 0.0>;Blue;<0.0, 0.0, 1.0>;Yellow;<1.0, 1.0, 0.0>;Pink;<1.0, 0.5, 0.6>;Brown;<0.2, 0.1, 0.0>;Purple;<0.6, 0.2, 0.7>;Barbie;<0.9, 0.0, 0.3>;Orange;<0.9, 0.6, 0.0>;Toad;<0.2, 0.2, 0.0>;Khaki;<0.6, 0.5, 0.3>;Pool;<0.1, 0.8, 0.9>;Blood;<0.5, 0.0, 0.0>;Anthracite;<0.1, 0.1, 0.1>;Midnight;<0.0, 0.1, 0.2>
 # 牵绳link名称

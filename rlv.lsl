@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 1.1.7 20260116
+    - 加入RLV组执行结果通知。
+
 - 1.1.6 20260115
     - 优化设置RLV限制时的文本描述。
 
@@ -192,6 +195,9 @@ RLV指令，参数：@开头的RLV指令
 */
 string RLVExtHeader="rext_";
 integer executeRLV(string rlv){
+    if(rlv=="" || rlv=="@"){
+        return RLV_MODE;
+    }
     llListenRemove(rlvWorldListenHandle);
     if(RLV_MODE==0){
         llOwnerSay(rlv);
@@ -215,6 +221,8 @@ integer executeRLV(string rlv){
     if(rlv=="@clear"){ // clear时，遍历list清除RLV扩展限制
         llMessageLinked(LINK_SET, RLVEXT_MSG_NUM, "RLVEXT.RUN|clear", NULL_KEY);
         llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.EXEC|RLV.CLEAR|1", NULL_KEY);
+    }else{
+        // llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.EXEC|RLV.APPLY|"+rlv, NULL_KEY);
     }
     if(llGetSubString(rlv, 1, llStringLength(RLVExtHeader)) == RLVExtHeader){ // @rext_move=n
         // Execute RLV Ext
@@ -445,6 +453,7 @@ integer applyRLVCmd(string name, integer bool){
         }
     }
     setRLVCmdEnabled(name, bool); // 更新RLV启用状态
+    llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.EXEC|RLV.APPLY|"+name+"|"+(string)bool, NULL_KEY);
     /*
     list rlvApplyRs=[
         name,

@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better access permission control system, use link_message to operate permissions.
 
 ***更新记录***
+- 1.0.12 20260116
+    - 优化RLV指令检测逻辑，自动重应用RLV例外。
+
 - 1.0.11 20260111
     - 加入root和owner的RLV例外。
 
@@ -1041,7 +1044,7 @@ default{
             /*
             接收到RLV清空的通知时，重写RLV例外，防止例外失效
             */
-            else if (llGetSubString(str, 0, 3) == "RLV." && includes(str, "EXEC") && includes(str, "CLEAR")) {
+            else if (llGetSubString(str, 0, 3) == "RLV." && includes(str, "EXEC") && (includes(str, "CLEAR") || includes(str, "APPLY"))) {
                 applyRLVExcepts();
             }
         }

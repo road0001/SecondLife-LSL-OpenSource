@@ -4,10 +4,17 @@ Author: JMRY
 Description: A better leash control system, use link_message to operate leashes.
 
 ***更新记录***
+- 1.1.1 20260116
+	- 加入更多配置项。
+	- 优化菜单中材质和颜色选择按钮。
+	- 调整Leash point的识别方法，在没有Leash point时，使用脚本锁在prim作为Leash point。
+	- 修复无法识别leash holder的bug。
+	- 修复RLV限制清空后，严格模式没有成功恢复的bug。
+
 - 1.1 20260115
-	- 优化牵引时的自动转向体验。
-	- 调整配置储存方式，优化内存占用。
-	- 修复没有Leash point时，松开牵绳粒子效果仍然持续的bug。
+    - 优化牵引时的自动转向体验。
+    - 调整配置储存方式，优化内存占用。
+    - 修复没有Leash point时，松开牵绳粒子效果仍然持续的bug。
 
 - 1.0.4 20260114
     - 优化牵引算法，修复内存溢出的bug。
@@ -169,15 +176,21 @@ list getLinksByName(string name){
 
 integer particleEnabled    = TRUE;
 integer particleFlags      = -1;
+integer particleSrcPattern = PSYS_SRC_PATTERN_DROP;
 string  particleMode       = "Ribbon"; // Ribbon, Chain, Leather, Rope, None
 float   particleMaxAge     = 3.5;
 vector  particleColor      = <1.0,1.0,1.0>;
+vector  particleColorEnd   = <1.0,1.0,1.0>;
+float   particleAlpha      = 1.0;
+float   particleAlphaEnd   = 1.0;
 vector  particleScale      = <0.04,0.04,1.0>;
+vector  particleScaleEnd   = <0.04,0.04,1.0>;
 float   particleBurstRate  = 0.0;
 vector  particleGravity    = <0.0,0.0,-1.0>;
 integer particleCount      = 1;
 integer particleFullBright = TRUE;
 float   particleGlow       = 0.2;
+float   particleGlowEnd    = 0.2;
 list    particleTextureList= [
     "Ribbon",  "cdb7025a-9283-17d9-8d20-cee010f36e90", // Ribbon
     "Chain",   "4cde01ac-4279-2742-71e1-47ff81cc3529", // Chain
@@ -217,29 +230,67 @@ vector  leashPosOffset     = <0.0,0.0,0.0>;
 
 string setConfig(string k, string v){
     if     (k=="particleEnabled") particleEnabled=(integer)v;
-    else if(k=="particleFlags") particleFlags=(integer)v;
+    else if(k=="particleFlags"){
+        list pList=data2List(v);
+        particleFlags=0;
+        integer i;
+        for(i=0; i<llGetListLength(pList); i++){
+            particleFlags=particleFlags | llList2Integer(pList, i);
+        }
+    }
+    else if(k=="particleSrcPattern"){
+        list pList=data2List(v);
+        particleSrcPattern=0;
+        integer i;
+        for(i=0; i<llGetListLength(pList); i++){
+            particleSrcPattern=particleSrcPattern | llList2Integer(pList, i);
+        }
+    }
     else if(k=="particleMode") particleMode=v;
     else if(k=="particleMaxAge") particleMaxAge=(float)v;
-    else if(k=="particleColor") particleColor=(vector)v;
-    else if(k=="particleScale") particleScale=(vector)v;
+
+    else if(k=="particleColor") {
+        particleColor=(vector)v;
+        particleColorEnd=(vector)v;
+    }
+    else if(k=="particleColorEnd") particleColorEnd=(vector)v;
+
+    else if(k=="particleAlpha") {
+        particleAlpha=(float)v;
+        particleAlphaEnd=(float)v;
+    }
+    else if(k=="particleAlphaEnd") particleAlphaEnd=(float)v;
+
+    else if(k=="particleScale") {
+        particleScale=(vector)v;
+        particleScaleEnd=(vector)v;
+    }
+    else if(k=="particleScaleEnd") particleScaleEnd=(vector)v;
+
     else if(k=="particleBurstRate") particleBurstRate=(float)v;
     else if(k=="particleGravity") particleGravity=(vector)v;
     else if(k=="particleCount") particleCount=(integer)v;
     else if(k=="particleFullBright") particleFullBright=(integer)v;
-    else if(k=="particleGlow") particleGlow=(float)v;
+
+    else if(k=="particleGlow") {
+        particleGlow=(float)v;
+        particleGlowEnd=(float)v;
+    }
+    else if(k=="particleGlowEnd") particleGlowEnd=(float)v;
+
     else if(k=="particleTextureList") particleTextureList=data2List(v);
     else if(k=="particleColorList"){
-		list configColorList=data2List(v);
-		particleColorList=[];
-		integer i;
-		for(i=0; i<llGetListLength(configColorList); i++){
-			if(i%2==0){ // 0, 2, 4, 6... ColorName
-				particleColorList+=[llList2String(configColorList, i)]; // ColorName
-			}else{
-				particleColorList+=[(vector)llList2String(configColorList, i)]; // ColorVector
-			}
-		}
-	}
+        list configColorList=data2List(v);
+        particleColorList=[];
+        integer i;
+        for(i=0; i<llGetListLength(configColorList); i++){
+            if(i%2==0){ // 0, 2, 4, 6... ColorName
+                particleColorList+=[llList2String(configColorList, i)]; // ColorName
+            }else{
+                particleColorList+=[(vector)llList2String(configColorList, i)]; // ColorVector
+            }
+        }
+    }
 
     else if(k=="leashPointName") leashPointName=v;
     else if(k=="leashLength") leashLength=(float)v;
@@ -254,16 +305,30 @@ string setConfig(string k, string v){
 
 string getConfig(string k){
     if     (k=="particleEnabled") return (string)particleEnabled;
+
     else if(k=="particleFlags") return (string)particleFlags;
+    else if(k=="particleSrcPattern") return (string)particleSrcPattern;
+
     else if(k=="particleMode") return (string)particleMode;
     else if(k=="particleMaxAge") return (string)particleMaxAge;
+
     else if(k=="particleColor") return (string)particleColor;
+    else if(k=="particleColorEnd") return (string)particleColorEnd;
+
+    else if(k=="particleAlpha") return (string)particleAlpha;
+    else if(k=="particleAlphaEnd") return (string)particleAlphaEnd;
+
     else if(k=="particleScale") return (string)particleScale;
+    else if(k=="particleScaleEnd") return (string)particleScaleEnd;
+
     else if(k=="particleBurstRate") return (string)particleBurstRate;
     else if(k=="particleGravity") return (string)particleGravity;
     else if(k=="particleCount") return (string)particleCount;
     else if(k=="particleFullBright") return (string)particleFullBright;
+
     else if(k=="particleGlow") return (string)particleGlow;
+    else if(k=="particleGlowEnd") return (string)particleGlowEnd;
+    
     else if(k=="particleTextureList") return list2Data(particleTextureList);
     else if(k=="particleColorList") return list2Data(particleColorList);
 
@@ -383,9 +448,9 @@ key startParticles(key target){
     }
 
     // activeParticles
-	if(particleFlags==-1){
-		particleFlags = PSYS_PART_FOLLOW_VELOCITY_MASK | PSYS_PART_TARGET_POS_MASK | PSYS_PART_FOLLOW_SRC_MASK;
-	}
+    if(particleFlags==-1){
+        particleFlags = PSYS_PART_FOLLOW_VELOCITY_MASK | PSYS_PART_TARGET_POS_MASK | PSYS_PART_FOLLOW_SRC_MASK;
+    }
     if(particleMode == "Ribbon"){ // Ribbon
         particleFlags = particleFlags | PSYS_PART_RIBBON_MASK;
     }
@@ -396,16 +461,19 @@ key startParticles(key target){
         PSYS_PART_MAX_AGE,particleMaxAge,
         PSYS_PART_FLAGS,particleFlags,
         PSYS_PART_START_COLOR, particleColor,
-        //PSYS_PART_END_COLOR, g_vLeashColor,
+        PSYS_PART_END_COLOR, particleColorEnd,
+        PSYS_PART_START_ALPHA, particleAlpha,
+        PSYS_PART_END_ALPHA, particleAlphaEnd,
         PSYS_PART_START_SCALE,particleScale,
-        //PSYS_PART_END_SCALE,g_vLeashSize,
-        PSYS_SRC_PATTERN, PSYS_SRC_PATTERN_DROP,
+        PSYS_PART_END_SCALE,particleScaleEnd,
+        PSYS_SRC_PATTERN, particleSrcPattern,
         PSYS_SRC_BURST_RATE,particleBurstRate,
         PSYS_SRC_ACCEL, particleGravity,
         PSYS_SRC_BURST_PART_COUNT,particleCount,
         //PSYS_SRC_BURST_SPEED_MIN,fMinSpeed,
         //PSYS_SRC_BURST_SPEED_MAX,fMaxSpeed,
         PSYS_PART_START_GLOW,particleGlow,
+        PSYS_PART_END_GLOW,particleGlowEnd,
         PSYS_SRC_TARGET_KEY,target,
         PSYS_SRC_MAX_AGE, 0,
         PSYS_SRC_TEXTURE, particleTexture
@@ -414,7 +482,7 @@ key startParticles(key target){
     integer i;
     list leashPoints=getLinksByName(leashPointName);
     if(llGetListLength(leashPoints)<=0){
-        leashPoints+=[LINK_SET]; // No leashpoints, use link_set
+        leashPoints+=[LINK_THIS]; // No leashpoints, use link_set
     }
     for(i=0; i<llGetListLength(leashPoints); i++){
         // activeParticles(llList2Integer(leashPoints, i), target, particleMode, particleTexture, particleScale, particleColor, particleGravity, particleCount, particleFullBright, particleGlow, particleMaxAge, particleBurstRate);
@@ -425,8 +493,8 @@ key startParticles(key target){
 
 stopParticles() {
     list leashPoints=getLinksByName(leashPointName);
-	if(llGetListLength(leashPoints)<=0){
-        leashPoints+=[LINK_SET]; // No leashpoints, use link_set
+    if(llGetListLength(leashPoints)<=0){
+        leashPoints+=[LINK_THIS]; // No leashpoints, use link_set
     }
     integer i;
     for(i=0; i<llGetListLength(leashPoints); i++){
@@ -471,13 +539,13 @@ key leashToTarget(key target, integer particleEnabled){
 integer leashStrictFlag=FALSE;
 applyStrictMode(){
     string strictRestraints="fly=n,tplm=n,tplure=n,tploc=n,tplure:"+(string)leashTarget+"=add,sittp=n,accepttp:"+(string)leashTarget+"=add";
-    if(leashStrictMode==TRUE){
-        if(leashTarget==NULL_KEY) return;
-        llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.RUN.TEMP|"+strictRestraints, NULL_KEY);
+    if(leashStrictMode==TRUE && leashTarget!=NULL_KEY){
+        llOwnerSay("@"+strictRestraints);
         leashStrictFlag=TRUE;
     }else if(leashStrictMode==FALSE || leashTarget==NULL_KEY){
         if(leashStrictFlag==TRUE){ // 严格模式RLV限制清除，只有触发过严格模式才进行。临时执行取消限制后，重新执行记录的RLV限制
-            llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.RUN.TEMP|"+replace(replace(strictRestraints, "=add", "=rem"), "=n", "=y")+"&&RLV.RUN", NULL_KEY);
+			llOwnerSay("@"+replace(replace(strictRestraints, "=add", "=rem"), "=n", "=y"));
+            llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.RUN", NULL_KEY);
             leashStrictFlag=FALSE;
         }
     }
@@ -598,21 +666,27 @@ showLeashSubMenu(string menuName, string parent, key user, integer reset){
         }
     }
     else if(menuName=="Style"){
+        string particleColorName=getParticleColorName(particleColor);
         menuText="Choose a style and color for leash.\nCurrent size: %1%\nCurrent weight: %2%\nCurrent glow: %3%\nCurrent shine: %b4%\nCurrent color: %5%%%;"+
             (string)particleScale+";"+
             (string)particleGravity+";"+
             (string)particleGlow+";"+
             (string)particleFullBright+";"+
-            getParticleColorName(particleColor);
+            particleColorName;
 
         buttonList=[
             "Bigger", "Smaller", "Glow",
-            "Heavier", "Lighter", "["+(string)(particleFullBright==TRUE)+"]Shine",
-            "["+(string)(particleMode=="Chain")+"]Chain", "["+(string)(particleMode=="Ribbon")+"]Ribbon", "["+(string)(particleMode=="None")+"]None"
+            "Heavier", "Lighter", "["+(string)(particleFullBright==TRUE)+"]Shine"
+            // "["+(string)(particleMode=="Chain")+"]Chain", "["+(string)(particleMode=="Ribbon")+"]Ribbon", "["+(string)(particleMode=="None")+"]None"
         ];
         integer i;
+        for(i=0; i<llGetListLength(particleTextureList); i+=2){
+            string curTexture=llList2String(particleTextureList, i);
+            buttonList+="["+(string)(particleMode==curTexture)+"]T."+curTexture;
+        }
         for(i=0; i<llGetListLength(particleColorList); i+=2){
-            buttonList+=llList2String(particleColorList, i);
+            string curColor=llList2String(particleColorList, i);
+            buttonList+="["+(string)(particleColorName==curColor)+"]"+curColor;
         }
     }
     else if(menuName=="Config"){
@@ -715,9 +789,9 @@ default{
             */
             if(leashParticleEnabled==TRUE){
                 if(llGetOwnerKey(id) == leashTarget){
-                    if(msg=="handle ok"){ // Ready时，粒子向holder发射
+                    if(msg==(string)leashTarget+"handle ok"){ // Ready时，粒子向holder发射
                         startParticles(id);
-                    }else if(msg=="handle detached"){ // 脱下时，粒子向角色发射
+                    }else if(msg==(string)leashTarget+"handle detached"){ // 脱下时，粒子向角色发射
                         startParticles(leashTarget);
                     }
                 }else{
@@ -776,7 +850,7 @@ default{
         }
     }
     link_message(integer sender_num, integer num, string msg, key user){
-        if(num!=LEASH_MSG_NUM && num!=MENU_MSG_NUM && num!=ACCESS_MSG_NUM && num!=LAN_MSG_NUM){
+        if(num!=LEASH_MSG_NUM && num!=MENU_MSG_NUM && num!=ACCESS_MSG_NUM && num!=LAN_MSG_NUM && num!=RLV_MSG_NUM){
             return;
         }
 
@@ -895,7 +969,11 @@ default{
                         menuActiveFlag=1;
                     }
                     else if(msgSub=="Unleash" || msgSub=="Unfollow"){
-                        leashToTarget(NULL_KEY, FALSE);
+						if(leashStrictMode==TRUE && user==llGetOwner()){
+							llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|You can't %1% yourself in Strict mode!%%;"+msgSub, user);
+						}else{
+							leashToTarget(NULL_KEY, FALSE);
+						}
                         menuActiveFlag=2;
                     }
                     else if(msgSub=="Yank"){
@@ -963,8 +1041,8 @@ default{
                             if(particleGravity.z<-3.0){
                                 particleGravity.z=-3.0;
                             }
-                            if(particleGravity.z>0.0){
-                                particleGravity.z=0.0;
+                            if(particleGravity.z>3.0){
+                                particleGravity.z=3.0;
                             }
                         }
                         else if(msgSub=="Glow"){
@@ -980,8 +1058,9 @@ default{
                                 particleFullBright=TRUE;
                             }
                         }
-                        else if(msgSub=="Chain" || msgSub=="Ribbon" || msgSub=="None"){
-                            particleMode=msgSub;
+                        // else if(msgSub=="Chain" || msgSub=="Ribbon" || msgSub=="None"){
+                        else if(includes(msgSub, "T.")){
+                            particleMode=llGetSubString(msgSub, 2, -1);
                         }
                         else{
                             particleColor=getParticleColorVector(msgSub);
@@ -1017,8 +1096,8 @@ default{
             /*
             接收到RLV清空的通知时，重新应用严格模式限制
             */
-            else if (headerMain=="RLV" && headerSub=="EXEC" && msgName=="CLEAR"){
-                // RLV.EXEC | CLEAR | 1
+            else if (headerMain=="RLV" && headerSub=="EXEC" && (msgName=="RLV.CLEAR" || msgName=="RLV.APPLY")){
+                // RLV.EXEC | RLV.CLEAR | 1
                 applyStrictMode();
             }
             else if (headerMain=="ACCESS" && headerSub=="NOTIFY"){
