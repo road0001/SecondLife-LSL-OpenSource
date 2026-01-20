@@ -29,14 +29,14 @@ default{
 	}
 	attach(key user){
 		if(user!=NULL_KEY){
-			llSay(CHANNEL_LOCK_MEISTER, LEASH_HOLDER_READY);
+			llSay(CHANNEL_LOCK_MEISTER, llGetOwner()+LEASH_HOLDER_READY);
 			llSetTimerEvent(refreshTime);
 		}else{
-			llSay(CHANNEL_LOCK_MEISTER, LEASH_HOLDER_EMBAR);
+			llSay(CHANNEL_LOCK_MEISTER, llGetOwner()+LEASH_HOLDER_EMBAR);
 			llSetTimerEvent(0);
 		}
 	}
 	timer(){
-		llSay(CHANNEL_LOCK_MEISTER, LEASH_HOLDER_READY);
+		llSay(CHANNEL_LOCK_MEISTER, llGetOwner()+LEASH_HOLDER_READY);
 	}
 }

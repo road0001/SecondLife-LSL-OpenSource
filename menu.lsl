@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better menu management system, use link_message to operate menus.
 
 ***更新记录***
+- 1.1.15 20260119
+    - 修复语言系统回调判定错误的bug。
+
 - 1.1.14 20260111
     - 修复重新注册菜单时，页面数据被覆盖的bug。
 
@@ -719,7 +722,7 @@ default{
                     //llMessageLinked(LINK_SET, 0, list2Msg(menuExeResult), user); // 菜单处理完成后的回调
                 }
             }
-            else if (llGetSubString(str, 0, 2) == "LAN" && includes(str, "INIT")) { // 接收语言系统INIT回调，并启用语言功能
+            else if (includes(str, "LANGUAGE.EXEC") && includes(str, "INIT")) { // 接收语言系统INIT回调，并启用语言功能
                 hasLanguage=TRUE;
             }
             else if (llGetSubString(str, 0, 2) == "LAN" && includes(str, "ACTIVE")) { // 接收语言系统ACTIVE回调，并应用语言数据

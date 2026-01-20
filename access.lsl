@@ -4,6 +4,13 @@ Author: JMRY
 Description: A better access permission control system, use link_message to operate permissions.
 
 ***更新记录***
+- 1.0.14 20260121
+    - 优化内存占用。
+    - 优化RLV例外触发机制，提升性能。
+
+- 1.0.13 20260120
+    - 加入自动锁定机制。
+
 - 1.0.12 20260116
     - 优化RLV指令检测逻辑，自动重应用RLV例外。
 
@@ -37,15 +44,15 @@ Description: A better access permission control system, use link_message to oper
     - 优化内存占用。
 
 - 1.0.3 20250117
-	- 调整公开、群组、硬核模式函数返回结果为更新后的结果。
+    - 调整公开、群组、硬核模式函数返回结果为更新后的结果。
 
 - 1.0.2 20250115
-	- 加入配置文件中忽略#注释功能。
+    - 加入配置文件中忽略#注释功能。
 
 - 1.0.1 20250112
-	- 优化检测玩家的逻辑。
-	- 优化添加删除owner、trust、black的逻辑。
-	- 修复逻辑和菜单的bugs。
+    - 优化检测玩家的逻辑。
+    - 优化添加删除owner、trust、black的逻辑。
+    - 修复逻辑和菜单的bugs。
 
 - 1.0 20250109
     - 完成管理菜单功能。
@@ -87,21 +94,21 @@ TODO:
 string userInfo(key user){
     return "secondlife:///app/agent/"+(string)user+"/about";
 }
-string userName(key user, integer type){
-    string username=llGetUsername(user);
-    string displayname=llGetDisplayName(user);
-    if(type==1){
-        return username;
-    }else if(type==2){
-        return displayname;
-    }else{
-        return displayname+" ("+username+")";
-    }
-}
+// string userName(key user, integer type){
+//     string username=llGetUsername(user);
+//     string displayname=llGetDisplayName(user);
+//     if(type==1){
+//         return username;
+//     }else if(type==2){
+//         return displayname;
+//     }else{
+//         return displayname+" ("+username+")";
+//     }
+// }
 
-string replace(string src, string target, string replacement) {
-    return llReplaceSubString(src, target, replacement, 0);
-}
+// string replace(string src, string target, string replacement) {
+//     return llReplaceSubString(src, target, replacement, 0);
+// }
 
 integer includes(string src, string target){
     integer startPos = llSubStringIndex(src, target);
@@ -112,16 +119,16 @@ integer includes(string src, string target){
     }
 }
 
-string trim(string k){
-    return llStringTrim(k, STRING_TRIM);
-}
+// string trim(string k){
+//     return llStringTrim(k, STRING_TRIM);
+// }
 
 list strSplit(string m, string sp){
     list pl=llParseStringKeepNulls(m,[sp],[""]);
     list temp=[];
     integer i;
     for(i=0; i<llGetListLength(pl); i++){
-        temp+=[trim(llList2String(pl, i))];
+        temp+=[llStringTrim(llList2String(pl, i), STRING_TRIM)];
     }
     return temp;
 }
@@ -129,26 +136,18 @@ string strJoin(list m, string sp){
     return llDumpList2String(m, sp);
 }
 
-// string bundleSplit="&&";
-list bundle2List(string b){
-    return strSplit(b, "&&");
-}
-string list2Bundle(list b){
-    return strJoin(b, "&&");
-}
-
 // string messageSplit="|";
-list msg2List(string m){
-    return strSplit(m, "|");
-}
+// list msg2List(string m){
+//     return strSplit(m, "|");
+// }
 string list2Msg(list m){
     return strJoin(m, "|");
 }
 
 // string dataSplit=";";
-list data2List(string d){
-    return strSplit(d, ";");
-}
+// list data2List(string d){
+//     return strSplit(d, ";");
+// }
 string list2Data(list d){
     return strJoin(d, ";");
 }
@@ -169,7 +168,7 @@ integer setRootOwner(key user){
         ownerList+=[user];
     }else{
         removeRLVExcepts(llList2Key(ownerList, 0)); // 移除当前Root的RLV例外
-        integer oIndex=findOwner(user);
+        integer oIndex=llListFindList(ownerList, [user]);
         if(oIndex>0){ // 大于0表示该用户存在于owner列表，因此要先删掉，再加root，防止重复
             removeOwner(user);
         }
@@ -180,14 +179,14 @@ integer setRootOwner(key user){
 /*
 查找owner，-1为不存在，0为root，大于0为owner
 */
-integer findOwner(key user){
-    return llListFindList(ownerList, [user]);
-}
+// integer findOwner(key user){
+//     return llListFindList(ownerList, [user]);
+// }
 /*
 添加owner，列表中用户唯一，因此root和owner互斥不能共存
 */
 integer addOwner(key user){
-    integer oIndex=findOwner(user);
+    integer oIndex=llListFindList(ownerList, [user]);
     if(!~oIndex){ // 未找到key时，插入并返回TRUE
         removeTrust(user); // 添加主人时，移除信任和黑名单
         removeBlack(user);
@@ -198,7 +197,7 @@ integer addOwner(key user){
     }
 }
 integer removeOwner(key user){
-    integer oIndex=findOwner(user);
+    integer oIndex=llListFindList(ownerList, [user]);
     if(oIndex<=0){ // 0不可以移除，-1未找到，都返回FALSE
         return FALSE;
     }else{
@@ -212,15 +211,15 @@ integer removeOwner(key user){
 信任列表
 */
 list trustList=[];
-integer findTrust(key user){
-    return llListFindList(trustList, [user]);
-}
+// integer findTrust(key user){
+//     return llListFindList(trustList, [user]);
+// }
 integer addTrust(key user){
-    integer oIndex=findOwner(user);
+    integer oIndex=llListFindList(ownerList, [user]);
     if(~oIndex){
         return FALSE; // 已添加owner时，不能添加trust
     }
-    integer tIndex=findTrust(user);
+    integer tIndex=llListFindList(trustList, [user]);
     if(!~tIndex){ // 未找到key时，插入并返回TRUE
         trustList+=[user];
         removeBlack(user); // 加入信任列表时，移除黑名单
@@ -230,7 +229,7 @@ integer addTrust(key user){
     }
 }
 integer removeTrust(key user){
-    integer tIndex=findTrust(user);
+    integer tIndex=llListFindList(trustList, [user]);
     if(!~tIndex){
         return FALSE;
     }else{
@@ -243,11 +242,11 @@ integer removeTrust(key user){
 黑名单
 */
 list blackList=[];
-integer findBlack(key user){
-    return llListFindList(blackList, [user]);
-}
+// integer findBlack(key user){
+//     return llListFindList(blackList, [user]);
+// }
 integer addBlack(key user){
-    integer bIndex=findBlack(user);
+    integer bIndex=llListFindList(blackList, [user]);
     if(!~bIndex){ // 未找到key时，插入并返回TRUE
         blackList+=[user];
         removeOwner(user); // 加入黑名单时，移除owner权限
@@ -258,7 +257,7 @@ integer addBlack(key user){
     }
 }
 integer removeBlack(key user){
-    integer bIndex=findBlack(user);
+    integer bIndex=llListFindList(blackList, [user]);
     if(!~bIndex){
         return FALSE;
     }else{
@@ -282,9 +281,6 @@ integer setPublicMode(integer bool){
     publicMode=bool;
     return bool;
 }
-integer getPublicMode(){
-    return publicMode;
-}
 
 /*
 群组模式管理
@@ -300,9 +296,6 @@ integer setGroupMode(integer bool){
     }
     groupMode=bool;
     return bool;
-}
-integer getGroupMode(){
-    return groupMode;
 }
 
 /*
@@ -320,17 +313,31 @@ integer setHardcoreMode(integer bool){
     hardcore=bool;
     return bool;
 }
-integer getHardcoreMode(){
-    return hardcore;
-}
 integer clearAll(){
-    if(getHardcoreMode()){
+    if(hardcore==TRUE){
         return FALSE;
     }else{
         llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.EXEC|ACCESS.RESET|1", NULL_KEY);
         llResetScript();
         return TRUE;
     }
+}
+
+/*
+自动锁定系统
+*/
+integer autoLock=FALSE;
+integer setAutoLockMode(integer bool){
+    if(bool==-1){
+        if(autoLock==FALSE){
+            bool=TRUE;
+        }else{
+            bool=FALSE;
+        }
+    }
+    autoLock=bool;
+    llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.LOCK|"+(string)autoLock, llList2Key(ownerList, 0)); // 发送RLV锁定指令，其锁定者为root
+    return bool;
 }
 
 /*
@@ -342,7 +349,10 @@ applyRLVExcepts(){
     integer r;
     for(i=0; i<llGetListLength(ownerList); i++){
         for(r=0; r<llGetListLength(rlvExcepts); r++){
-            llOwnerSay("@"+llList2String(rlvExcepts, r)+":"+llList2String(ownerList, i)+"=add");
+            string curOwner=llList2String(ownerList, i);
+            if(curOwner!=llGetOwner()){ // 自己本人不需要例外，因此过滤掉
+                llOwnerSay("@"+llList2String(rlvExcepts, r)+":"+curOwner+"=add");
+            }
         }
     }
 }
@@ -368,16 +378,16 @@ integer getAccess(key user){
     if(user==NULL_KEY){
         return ACCESS_NONE;
     }else{
-        integer owneri=findOwner(user);
+        integer owneri=llListFindList(ownerList, [user]);
         if(~owneri){
             return owneri;
-        }else if(~findTrust(user)){
+        }else if(~llListFindList(trustList, [user])){
             return ACCESS_TRUST;
-        }else if(~findBlack(user)){
+        }else if(~llListFindList(blackList, [user])){
             return ACCESS_BLACK;
-        }else if(getPublicMode()==TRUE){
+        }else if(publicMode==TRUE){
             return ACCESS_PUBLIC;
-        }else if(getGroupMode()==TRUE && llSameGroup(user)==TRUE){
+        }else if(groupMode==TRUE && llSameGroup(user)==TRUE){
             return ACCESS_GROUP;
         }else{
             return ACCESS_NONE;
@@ -405,7 +415,7 @@ integer notifyAccess(){
         "BLACK",
         list2Data(blackList)
     ];
-    list modeList=[publicMode, groupMode, hardcore];
+    list modeList=[publicMode, groupMode, hardcore, autoLock];
     list modeNotify=[
         "ACCESS.NOTIFY",
         "MODE",
@@ -495,7 +505,7 @@ showAccessMenu(string parent, key user){
         buttonList+=["AccessList"];
     }
     if(user==llGetOwner()){
-        if(getHardcoreMode()==FALSE){
+        if(hardcore==FALSE){
             buttonList+=["Escape"];
         }else{
             buttonList+=[" "];
@@ -503,32 +513,22 @@ showAccessMenu(string parent, key user){
     }
     
     if(userPerm>=ACCESS_ROOT){
-        string publicBu="["+(string)getPublicMode()+"]Public";
-        string groupBu="["+(string)getGroupMode()+"]Group";
-        string hardcoreBu="["+(string)getHardcoreMode()+"]Hardcore";
+        string publicBu="["+(string)publicMode+"]Public";
+        string groupBu="["+(string)groupMode+"]Group";
+        string hardcoreBu="["+(string)hardcore+"]Hardcore";
         if(userPerm>ACCESS_ROOT){
             hardcoreBu=" "; // 只有root才能修改硬核模式
         }
         buttonList+=["Owner", "Trust", "Black", publicBu, groupBu, hardcoreBu];
     }
 
-    list menuText=[
-        "This is access menu, you can manage who can access %1%'s %2%.\nPublic mode: %b3%\nGroup mode: %b4%\nHardcore mode: %b5%%%",
-        userInfo(llGetOwner()),
-        llGetObjectName(),
-        getPublicMode(),
-        getGroupMode(),
-        getHardcoreMode()
-    ];
-
-    list accMenuList=[
-        "MENU.REG.OPEN",
-        accessMenuName,
-        list2Data(menuText),
-        list2Data(buttonList),
-        parent
-    ];
-    llMessageLinked(LINK_SET, MENU_MSG_NUM, list2Msg(accMenuList), user);
+    string menuText="This is access menu, you can manage who can access %1%'s %2%.\nPublic mode: %b3%\nGroup mode: %b4%\nHardcore mode: %b5%%%;"+
+        userInfo(llGetOwner())+";"+
+        llGetObjectName()+";"+
+        (string)publicMode+";"+
+        (string)groupMode+";"+
+        (string)hardcore;
+    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+accessMenuName+"|"+menuText+"|"+list2Data(buttonList)+"|"+parent, user);
 }
 
 string accessSubMenuName="AccessSubMenu";
@@ -537,14 +537,11 @@ showAccessSubMenu(string button, key user){
     if(userPerm<0 && user!=llGetOwner()){
         return;
     }
-    list menuText=[];
+    string menuText="";
     list buttonList=[];
 
     if(button=="Root" && userPerm==ACCESS_ROOT){
-        menuText=[
-            "Current Root: %1%. Click SetRoot to set new Root owner, click Restore to reset Root owner to wearer.%%",
-            userInfo(llList2Key(ownerList, 0))
-        ];
+        menuText="Current Root: %1%. Click SetRoot to set new Root owner, click Restore to reset Root owner to wearer.%%;"+userInfo(llList2Key(ownerList, 0));
         buttonList+=["SetRoot", "Restore"];
     }
     else if(button=="Owner"){
@@ -556,54 +553,46 @@ showAccessSubMenu(string button, key user){
             rootText="";
         }
         buttonList+=["RemoveOwner"];
-        menuText=[
-            "%1%%2%%%",rootText,ownerText
-        ];
+        menuText="%1%%2%%%;"+rootText+";"+ownerText;
     }
     else if(button=="Trust"){
         if(userPerm>=ACCESS_ROOT){
             buttonList+=["AddTrust", "RemoveTrust"];
         }
-        menuText=["Click AddTrust to add trust user.\nClick RemoveTrust to remove trust user."];
+        menuText="Click AddTrust to add trust user.\nClick RemoveTrust to remove trust user.";
     }
     else if(button=="Black"){
         if(userPerm>=ACCESS_ROOT){
             buttonList+=["AddBlack", "RemoveBlack"];
         }
-        menuText=["Click AddBlack to add black user.\nClick RemoveBlack to remove black user."];
+        menuText="Click AddBlack to add black user.\nClick RemoveBlack to remove black user.";
     }
     else if(button=="Public"){
         setPublicMode(-1);
-		notifyAccess();
-        // llOwnerSay("Your public mode is set to "+(string)getPublicMode());
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your public mode is set to %1%.%%;"+(string)getPublicMode(), user);
+        notifyAccess();
+        // llOwnerSay("Your public mode is set to "+(string)publicMode);
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your public mode is set to %1%.%%;"+(string)publicMode, user);
         showAccessMenu(accessParentMenuName, user);
         return;
     }
     else if(button=="Group"){
         setGroupMode(-1);
-		notifyAccess();
-        // llOwnerSay("Your group mode is set to "+(string)getGroupMode());
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your group mode is set to %1%.%%;"+(string)getGroupMode(), user);
+        notifyAccess();
+        // llOwnerSay("Your group mode is set to "+(string)groupMode);
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your group mode is set to %1%.%%;"+(string)groupMode, user);
         showAccessMenu(accessParentMenuName, user);
         return;
     }
     else if(button=="Hardcore"){
         setHardcoreMode(-1);
-		notifyAccess();
-        // llOwnerSay("Your hardcore mode is set to "+(string)getHardcoreMode());
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your hardcore mode is set to %1%.%%;"+(string)getHardcoreMode(), user);
+        notifyAccess();
+        // llOwnerSay("Your hardcore mode is set to "+(string)hardcore);
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your hardcore mode is set to %1%.%%;"+(string)hardcore, user);
         showAccessMenu(accessParentMenuName, user);
         return;
     }
     else if(button=="Escape"){
-        list escapeMsgList=[
-            "MENU.CONFIRM",
-            "AccessEscape",
-            "Are you sure to escape? This will clear all of your access data, and restore Root to yourself.",
-            list2Data(["Yes", "No"])
-        ];
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, list2Msg(escapeMsgList), user);
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.CONFIRM|AccessEscape|Are you sure to escape? This will clear all of your access data, and restore Root to yourself.|"+list2Data(["Yes", "No"]), user);
         return;
     }
     else if(button=="AccessList"){
@@ -630,24 +619,16 @@ showAccessSubMenu(string button, key user){
             // llRegionSayTo(user, 0, userInfo(llList2Key(blackList, i)));
             llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|"+userInfo(llList2Key(blackList, i))+"|0|"+(string)user, user);
         }
-        // llRegionSayTo(user, 0, "Public mode: "+(string)getPublicMode());
-        // llRegionSayTo(user, 0, "Group mode: "+(string)getGroupMode());
-        // llRegionSayTo(user, 0, "Hardcore mode: "+(string)getHardcoreMode());
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Public mode: %1%%%;"+(string)getPublicMode()+"|0|"+(string)user, user);
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Group mode: %1%%%;"+(string)getGroupMode()+"|0|"+(string)user, user);
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Hardcore mode: %1%%%;"+(string)getHardcoreMode()+"|0|"+(string)user, user);
+        // llRegionSayTo(user, 0, "Public mode: "+(string)publicMode);
+        // llRegionSayTo(user, 0, "Group mode: "+(string)groupMode);
+        // llRegionSayTo(user, 0, "Hardcore mode: "+(string)hardcore);
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Public mode: %1%%%;"+(string)publicMode+"|0|"+(string)user, user);
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Group mode: %1%%%;"+(string)groupMode+"|0|"+(string)user, user);
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Hardcore mode: %1%%%;"+(string)hardcore+"|0|"+(string)user, user);
         showAccessMenu(accessParentMenuName, user);
         return;
     }
-
-    list accSubMenuList=[
-        "MENU.REG.OPEN",
-        accessSubMenuName,
-        list2Data(menuText),
-        list2Data(buttonList),
-        accessMenuName
-    ];
-    llMessageLinked(LINK_SET, MENU_MSG_NUM, list2Msg(accSubMenuList), user);
+    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+accessSubMenuName+"|"+menuText+"|"+list2Data(buttonList)+"|"+accessMenuName, user);
 }
 
 string accessActiveMenuName="AccessActiveMenu";
@@ -658,16 +639,17 @@ showAccessActiveMenu(string button, key user){
         return;
     }
     accessActiveFlag=button;
-    list menuText=[];
+    string menuText="";
     list buttonList=[];
     if(button=="SetRoot" || button=="AddOwner" || button=="AddTrust" || button=="AddBlack"){
-        menuText=["Select user to %1%.%%",button];
+        menuText="Select user to %1%.%%;"+button;
         // list userList=[];
         integer i;
         for(i=0; i<9; i++){
             key uk=llList2Key(sensorUserList, i);
             if(uk){
-                string un=userName(uk,1);
+                // string un=userName(uk,1);
+                string un=llGetUsername(uk);
                 // userList+=[(string)(i+1) + ". " + un];
                 buttonList+=[(string)i + ". " + un];
             }
@@ -675,15 +657,15 @@ showAccessActiveMenu(string button, key user){
         // menuText+=[llDumpList2String(userList, "\n")];
     }
     else if(button=="RemoveOwner" || button=="RemoveTrust" || button=="RemoveBlack"){
-        menuText=["Select user to %1%.%%",button];
+        menuText="Select user to %1%.%%;"+button;
         list dataList=[];
         integer i=0;
         if(button=="RemoveOwner"){
-			if(user==llList2Key(ownerList, 0)){
-				dataList=llDeleteSubList(ownerList,0,0);
-			}else{
-				dataList=[user];
-			}
+            if(user==llList2Key(ownerList, 0)){
+                dataList=llDeleteSubList(ownerList,0,0);
+            }else{
+                dataList=[user];
+            }
         }else if(button=="RemoveTrust"){
             dataList=trustList;
         }else if(button=="RemoveBlack"){
@@ -693,7 +675,8 @@ showAccessActiveMenu(string button, key user){
         for(i=0; i<llGetListLength(dataList); i++){
             key uk=llList2Key(dataList, i);
             if(uk!=NULL_KEY){
-                string un=userName(uk,1);
+                // string un=userName(uk,1);
+                string un=llGetUsername(uk);
                 buttonList+=[(string)(i+1) + ". " + un];
             }
         }
@@ -704,15 +687,7 @@ showAccessActiveMenu(string button, key user){
         showAccessMenu(accessParentMenuName, user);
         return;
     }
-
-    list accActiveMenuList=[
-        "MENU.REG.OPEN",
-        accessActiveMenuName,
-        list2Data(menuText),
-        list2Data(buttonList),
-        accessSubMenuName
-    ];
-    llMessageLinked(LINK_SET, MENU_MSG_NUM, list2Msg(accActiveMenuList), user);
+    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+accessActiveMenuName+"|"+menuText+"|"+list2Data(buttonList)+"|"+accessSubMenuName, user);
 }
 
 integer REZ_MODE=FALSE;
@@ -741,13 +716,13 @@ default{
         }
     }
     attach(key user) {
-		REZ_MODE=FALSE;
+        REZ_MODE=FALSE;
         if(user==llGetOwner()){
             notifyAccess();
         }
     }
     on_rez(integer start_param){
-		REZ_MODE=TRUE;
+        REZ_MODE=TRUE;
         notifyAccess();
     }
     link_message(integer sender_num, integer num, string msg, key user){
@@ -755,20 +730,21 @@ default{
             return;
         }
 
-        list msgList=bundle2List(msg);
+        list msgList=strSplit(msg, "&&");
         list resultList=[];
         integer msgCount=llGetListLength(msgList);
         integer mi;
         for(mi=0; mi<msgCount; mi++){
             string str=llList2String(msgList, mi);
             if (llGetSubString(str, 0, 6) == "ACCESS." && !includes(str, "EXEC")) {
-                list accessMsgList=msg2List(str);
+                list accessMsgList=strSplit(str, "|");
                 string accessMsgStr=llList2String(accessMsgList, 0);
                 list accessMsgGroup=llParseStringKeepNulls(accessMsgStr, ["."], [""]);
 
                 string accessMsg=llList2String(accessMsgGroup, 0);
                 string accessMsgSub=llList2String(accessMsgGroup, 1);
                 string accessMsgExt=llList2String(accessMsgGroup, 2);
+                string accessMsgExt2=llList2String(accessMsgGroup, 3);
 
                 string accessMsgName=llList2String(accessMsgList, 1);
                 string accessMsgCmd=llList2String(accessMsgList, 2);
@@ -871,20 +847,24 @@ default{
                     else if(accessMsgExt=="MODE"){
                         if(accessMsgName==""){
                             list modes=[
-                                getPublicMode(),
-                                getGroupMode(),
-                                getHardcoreMode()
+                                publicMode,
+                                groupMode,
+                                hardcore,
+                                autoLock
                             ];
                             result=list2Data(modes);
                         }
                         else if(accessMsgName=="PUBLIC"){
-                            result=(string)getPublicMode();
+                            result=(string)publicMode;
                         }
                         else if(accessMsgName=="GROUP"){
-                            result=(string)getGroupMode();
+                            result=(string)groupMode;
                         }
                         else if(accessMsgName=="HARDCORE"){
-                            result=(string)getHardcoreMode();
+                            result=(string)hardcore;
+                        }
+                        else if(accessMsgName=="AUTOLOCK"){
+                            result=(string)autoLock;
                         }
                     }
                 }
@@ -898,7 +878,14 @@ default{
                     ACCESS.SET.MODE | HARDCORE | 1/0
                     */
                     if(accessMsgExt=="ROOT"){
-                        result=(string)setRootOwner((key)accessMsgName);
+                        if(accessMsgExt2==""){
+                            result=(string)setRootOwner((key)accessMsgName);
+                        }
+                        else if(accessMsgExt2=="KEEP"){
+                            if(llList2Key(ownerList, 0) == NULL_KEY || llList2Key(ownerList, 0) == llGetOwner()){
+                                result=(string)setRootOwner((key)accessMsgName);
+                            }
+                        }
                     }
                     else if(accessMsgExt=="MODE"){
                         if(accessMsgName=="PUBLIC"){
@@ -909,6 +896,9 @@ default{
                         }
                         if(accessMsgName=="HARDCORE"){
                             result=(string)setHardcoreMode((integer)accessMsgCmd);
+                        }
+                        if(accessMsgName=="AUTOLOCK"){
+                            result=(string)setAutoLockMode((integer)accessMsgCmd);
                         }
                     }
                 }
@@ -948,7 +938,7 @@ default{
                     */
                     showAccessMenu(accessMsgName, user);
                 }
-				if(result!=""){
+                if(result!=""){
                     list accessExeResult=[
                         "ACCESS.EXEC", accessMsgStr, result
                     ];
@@ -957,7 +947,7 @@ default{
             }
             else if(llGetSubString(str, 0, 4) == "MENU." && includes(str, "ACTIVE")) {
                 // MENU.ACTIVE | mainMenu | Access
-                list menuCmdList=msg2List(str);
+                list menuCmdList=strSplit(str, "|");
                 string menuCmdStr=llList2String(menuCmdList, 0);
                 list menuCmdGroup=llParseStringKeepNulls(menuCmdStr, ["."], [""]);
     
@@ -979,7 +969,7 @@ default{
                     showAccessActiveMenu(menuButton, user);
                 }
                 else if(menuName==accessActiveMenuName && menuButton!=""){
-					integer menuActiveFlag=-999;
+                    integer menuActiveFlag=-999;
                     list buList=llParseStringKeepNulls(menuButton,[". "],[""]);
                     integer buIndex=llList2Integer(buList,0);
                     string buName=llList2String(buList,1);
@@ -1007,7 +997,8 @@ default{
                         integer u;
                         for(u=1; u<llGetListLength(ownerList); u++){
                             buUser=llList2Key(ownerList, u);
-                            string name=userName(buUser,1);
+                            // string name=userName(buUser,1);
+                            string name=llGetUsername(buUser);
                             if(name==buName){
                                 menuActiveFlag=removeOwner(buUser);
                             }
@@ -1022,14 +1013,14 @@ default{
                         menuActiveFlag=removeBlack(buUser);
                     }
                     showAccessMenu(accessParentMenuName, user);
-					if(menuActiveFlag!=-999){
+                    if(menuActiveFlag!=-999){
                         string buUserName="";
                         if(buUser!=NULL_KEY){
                             buUserName=" "+userInfo(buUser);
                         }
                         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|%1%%2% success!%%;"+accessActiveFlag+";"+buUserName, user);
-						notifyAccess();
-					}
+                        notifyAccess();
+                    }
                 }
                 else if(menuName=="AccessEscape"){
                     if(menuButton=="Yes"){
@@ -1044,22 +1035,22 @@ default{
             /*
             接收到RLV清空的通知时，重写RLV例外，防止例外失效
             */
-            else if (llGetSubString(str, 0, 3) == "RLV." && includes(str, "EXEC") && (includes(str, "CLEAR") || includes(str, "APPLY"))) {
+            else if (llGetSubString(str, 0, 3) == "RLV." && includes(str, "EXEC") && (includes(str, "CLEAR") || includes(str, "APPLY.ALL"))) {
                 applyRLVExcepts();
             }
         }
         if(llGetListLength(resultList)>0){
-            llMessageLinked(LINK_SET, ACCESS_MSG_NUM, list2Bundle(resultList), user); // 处理完成后的回调
-			notifyAccess();
+            llMessageLinked(LINK_SET, ACCESS_MSG_NUM, strJoin(resultList, "&&"), user); // 处理完成后的回调
+            notifyAccess();
         }
-		//llOwnerSay("Access Memory Used: "+(string)llGetUsedMemory()+" Free: "+(string)llGetFreeMemory());
+        // llOwnerSay("Access Memory Used: "+(string)llGetUsedMemory()+" Free: "+(string)llGetFreeMemory());
     }
 
     sensor(integer detected) {
         sensorUserList=[];
-		if(REZ_MODE==FALSE){
-			sensorUserList+=[llGetOwner()]; // 穿在身上时，添加自己
-		}
+        if(REZ_MODE==FALSE){
+            sensorUserList+=[llGetOwner()]; // 穿在身上时，添加自己
+        }
         integer i;
         for (i = 0; i < detected; i++) {
             key uuid = llDetectedKey(i);
@@ -1086,51 +1077,47 @@ default{
                 lock=1
                 */
                 if(data!="" && llGetSubString(data,0,0)!="#"){
-					list accStrSp=llParseStringKeepNulls(data, ["="], []);
-					string accName=llList2String(accStrSp,0);
-					list accData=data2List(llList2String(accStrSp,1));
+                    list accStrSp=llParseStringKeepNulls(data, ["="], []);
+                    string accName=llList2String(accStrSp,0);
+                    list accData=strSplit(llList2String(accStrSp,1), ";");
 
-					if(accName=="root"){
-						// 当库存发生变化时，会读取access文件。为了防止修改其他数据影响rootOwner，因此只有在脚本重置后，root为玩家自己时，才应用此项
-						if(llList2Key(ownerList, 0) == NULL_KEY || llList2Key(ownerList, 0) == llGetOwner()){
-							setRootOwner(llList2Key(accData, 0));
-						}
-					}
-					else if(accName=="owner"){
-						integer i;
-						for(i=0; i<llGetListLength(accData); i++){
-							addOwner(llList2Key(accData, i));
-						}
-					}
-					else if(accName=="trust"){
-						integer i;
-						for(i=0; i<llGetListLength(accData); i++){
-							addTrust(llList2Key(accData, i));
-						}
-					}
-					else if(accName=="black"){
-						integer i;
-						for(i=0; i<llGetListLength(accData); i++){
-							addBlack(llList2Key(accData, i));
-						}
-					}
-					else if(accName=="public"){
-						setPublicMode(llList2Integer(accData, 0));
-					}
-					else if(accName=="group"){
-						setGroupMode(llList2Integer(accData, 0));
-					}
-					else if(accName=="hardcore"){
-						setHardcoreMode(llList2Integer(accData, 0));
-					}
-					else if(accName=="lock"){
-						list lockMsg=[
-							"RLV.LOCK",
-							llList2Integer(accData, 0)
-						];
-						llMessageLinked(LINK_SET, RLV_MSG_NUM, list2Msg(lockMsg), llList2Key(ownerList, 0)); // 发送RLV锁定指令，其锁定者为root
-					}
-				}
+                    if(accName=="root"){
+                        // 当库存发生变化时，会读取access文件。为了防止修改其他数据影响rootOwner，因此只有在脚本重置后，root为玩家自己时，才应用此项
+                        if(llList2Key(ownerList, 0) == NULL_KEY || llList2Key(ownerList, 0) == llGetOwner()){
+                            setRootOwner(llList2Key(accData, 0));
+                        }
+                    }
+                    else if(accName=="owner"){
+                        integer i;
+                        for(i=0; i<llGetListLength(accData); i++){
+                            addOwner(llList2Key(accData, i));
+                        }
+                    }
+                    else if(accName=="trust"){
+                        integer i;
+                        for(i=0; i<llGetListLength(accData); i++){
+                            addTrust(llList2Key(accData, i));
+                        }
+                    }
+                    else if(accName=="black"){
+                        integer i;
+                        for(i=0; i<llGetListLength(accData); i++){
+                            addBlack(llList2Key(accData, i));
+                        }
+                    }
+                    else if(accName=="public"){
+                        setPublicMode(llList2Integer(accData, 0));
+                    }
+                    else if(accName=="group"){
+                        setGroupMode(llList2Integer(accData, 0));
+                    }
+                    else if(accName=="hardcore"){
+                        setHardcoreMode(llList2Integer(accData, 0));
+                    }
+                    else if(accName=="lock"){
+                        setAutoLockMode(llList2Integer(accData, 0));
+                    }
+                }
 
                 // increment line count
                 ++readAccessLine;

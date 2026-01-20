@@ -4,6 +4,17 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.0.15 20260121
+    - 加入配置脚本触发功能（仅示例）。
+    - 优化内存占用。
+
+- 1.0.14 20260119
+    - 修复语言系统回调判定错误的bug。
+
+- 1.0.13 20260118
+    - 加入穿戴时，初始化先上锁功能。
+    - 加入Access记事卡读取状态检测功能。
+
 - 1.0.12 20260116
     - 优化初始化逻辑，防止丢失部分初始化项目。
     - 调整初始化重试时间为30秒。
@@ -237,12 +248,7 @@ integer setLock(integer lock, key user, integer isShowMenu){
     }else{
         isLocked=lock;
     }
-    list lockLink=[
-        "RLV.LOCK",
-        (string)isLocked
-    ];
-    llMessageLinked(LINK_SET, RLV_MSG_NUM, llDumpList2String(lockLink,"|"), user);
-
+    llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.LOCK|"+(string)isLocked, user);
     integer tempLockTime=lockTime;
 
     string lockedStatus;
@@ -442,6 +448,7 @@ showMenu(key user){
 }
 
 integer MAIN_MSG_NUM=9000;
+integer CONF_MSG_NUM=8000;
 integer MENU_MSG_NUM=1000;
 integer RLV_MSG_NUM=1001;
 integer RENAMER_MSG_NUM=10011;
@@ -458,16 +465,20 @@ list black=[];
 integer public=1;
 integer group=0;
 integer hardcore=0;
+integer autoLock=0;
 
-integer mainInited=FALSE;
+integer rlvInited=FALSE;
+integer accessInited=FALSE;
 initMain(){
     llOwnerSay("Begin Initialize...");
     list initMessageLinkChain=[
-        MAIN_MSG_NUM, "MAIN.INIT", 0,
+        MAIN_MSG_NUM, "MAIN.INIT", 1,
+        RLV_MSG_NUM, "RLV.RUN.TEMP|detach=n", 1, // 首次初始化时，先将道具上锁，待初始化完（Access、RLV）后，根据结果更改上锁状态
+        // CONF_MSG_NUM, "CONFIG.LOAD", 1
         RLV_MSG_NUM, "RLV.LOAD|main", 0,
-        RLV_MSG_NUM, "RLV.GET.LOCK", 0,
+        // RLV_MSG_NUM, "RLV.GET.LOCK", 0,
         ACCESS_MSG_NUM, "ACCESS.LOAD|main", 0,
-        ACCESS_MSG_NUM, "ACCESS.GET.NOTIFY", 0,
+        // ACCESS_MSG_NUM, "ACCESS.GET.NOTIFY", 0,
         LEASH_MSG_NUM, "LEASH.LOAD|main", 0,
         ANIM_MSG_NUM, "ANIM.LOAD|main", 0
     ];
@@ -477,7 +488,7 @@ initMain(){
         llSleep(llList2Float(initMessageLinkChain, i+2));
     }
     initLanguage();
-    llSleep(0);
+    // llSleep(0);
     // llOwnerSay("Initialize Complete, Enjoy!");
 }
 
@@ -500,17 +511,24 @@ default{
     attach(key user){
         llMessageLinked(LINK_SET, MAIN_MSG_NUM, "MAIN.ATTACH|"+(string)user, NULL_KEY);
         if(user!=NULL_KEY){
-            if(mainInited==FALSE){ // 穿戴时，如果未成功初始化数据，则重新读取
+            if(rlvInited==FALSE){ // 穿戴时，如果未成功初始化数据，则重新读取
                 initMain();
                 llSetTimerEvent(initRetryTimer);
             }
+            // if(autoLock==TRUE){
+            //     if(lockUser!=NULL_KEY){
+            //         setLock(TRUE, lockUser, FALSE);
+            //     }else if(llGetListLength(owner)>=1){
+            //         setLock(TRUE, llList2Key(owner, 0), FALSE);
+            //     }
+            // }
             listenHandle=llListen(cmdChannel, "", NULL_KEY, "");
         }else{
             llListenRemove(listenHandle);
         }
     }
     timer(){
-        if(mainInited==FALSE){ // 如果未成功初始化数据，则每5秒重新读取一次，直到读取成功
+        if(rlvInited==FALSE){ // 如果未成功初始化数据，则每5秒重新读取一次，直到读取成功
             initMain();
         }else{
             llSetTimerEvent(0);
@@ -608,12 +626,16 @@ default{
                     public=llList2Integer(accessData, 0);
                     group=llList2Integer(accessData, 1);
                     hardcore=llList2Integer(accessData, 2);
+                    autoLock=llList2Integer(accessData, 3);
                 }
                 // llOwnerSay("Access updated. Owner: "+list2Data(owner)+" Trust: "+list2Data(trust)+" Black: "+list2Data(black)+" Public: "+(string)public+" Group: "+(string)group+" Hardcore: "+(string)hardcore);
             }else if(accessCmdStr=="ACCESS.EXEC"){
                 if(accessName=="ACCESS.RESET" && llList2Integer(accessData, 0)==TRUE){ // Access重置（逃跑）时，解锁
                     setLock(FALSE, NULL_KEY, FALSE);
                 }
+            }else if(accessCmdStr=="ACCESS.LOAD.NOTECARD"){
+                accessInited=TRUE;
+                llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.GET.LOCK", NULL_KEY);
             }
         }
         else if(num==RLV_MSG_NUM){
@@ -629,18 +651,22 @@ default{
                     lockUser=llList2Key(rlvCmdData, 1);
                     if(isLocked){
                         lockTime=llGetUnixTime();
+                        llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.RUN.TEMP|detach=n", NULL_KEY);
                     }else{
                         lockTime=0;
+                        llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.RUN.TEMP|detach=y", NULL_KEY);
                     }
                 }
             }
             if(rlvCmdStr=="RLV.LOAD.NOTECARD"){
-                mainInited=(integer)rlvCmdText; // 处理RLV读取记事卡的逻辑，读取完成后不再重新读取
+                rlvInited=(integer)rlvCmdText; // 处理RLV读取记事卡的逻辑，读取完成后不再重新读取
+                llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.GET.LOCK", NULL_KEY);
             }
         }
         else if(num==LAN_MSG_NUM){
             // 语言功能监听
-            if (llGetSubString(str, 0, 2) == "LAN" && includes(str, "INIT")) { // 接收语言系统INIT回调，并启用语言功能
+            // if (llGetSubString(str, 0, 2) == "LAN" && includes(str, "INIT")) { // 接收语言系统INIT回调，并启用语言功能
+            if (includes(str, "LANGUAGE.EXEC") && includes(str, "INIT")) { // 接收语言系统INIT回调，并启用语言功能
                 hasLanguage=TRUE;
             }
             else if (llGetSubString(str, 0, 2) == "LAN" && includes(str, "ACTIVE")) { // 接收语言系统ACTIVE回调，并应用语言数据
@@ -648,7 +674,7 @@ default{
             }
         }
         else if(num==TIMER_MSG_NUM){
-            // 语言功能监听
+            // 计时器功能监听
             if (includes(str, "TIMER.TIMEOUT")) { // 接收计时器系统回调
                 if(isLocked){
                     setLock(FALSE, NULL_KEY, FALSE); // 计时结束时，解锁

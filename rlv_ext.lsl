@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better RLV Extension management system, use link_message to operate RLV Extension restraints.
 
 ***更新记录***
+- 1.0.3 20260118
+    - 修复echo视觉关闭时，会导致部分已生效的RLV失效的bug。
+
 - 1.0.2 20260116
     - echo视觉支持监听物品消息（如HUD）。
     - 修复echo视觉不生效的bug。
@@ -198,13 +201,19 @@ string echoPing="echo";
 float echoKeepTime=5;
 integer echoTimerFlag=FALSE;
 integer echoViewListenHandle;
+integer curEchoViewAllow=FALSE;
 integer setEchoView(integer isAllow, string params){
     llListenRemove(echoViewListenHandle);
     executeRLVTemp(echoViewRLV+echoViewRLV_normal+echoViewRLV_echo, FALSE);
     // llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.RUN", NULL_KEY);
     if(isAllow){
+        if(curEchoViewAllow==FALSE){
+            llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.RUN", NULL_KEY);
+        }
+        curEchoViewAllow=isAllow;
         return isAllow;
     }
+    curEchoViewAllow=isAllow;
     float echoDistMinNormal=1.4;
     float echoDistMaxNormal=2;
     float echoDistAlphaNormal=1;

@@ -157,9 +157,9 @@ particleFullBright=1
 particleGlow=0.2
 # 粒子终点发光效果
 particleGlowEnd=0.2
-# 各模式下粒子贴图
-particleTextureList=Ribbon;cdb7025a-9283-17d9-8d20-cee010f36e90;Chain;4cde01ac-4279-2742-71e1-47ff81cc3529;Leather;8f4c3616-46a4-1ed6-37dc-9705b754b7f1;Rope;9a342cda-d62a-ae1f-fc32-a77a24a85d73;None;8dcd4a48-2d37-4909-9f78-f7a9eb4ef903
-# 粒子颜色列表（用于菜单中的Style选项）
+# 各模式下粒子贴图（用于菜单中的Style选项，请勿配置超过3个以节省内存）
+particleTextureList=Ribbon;cdb7025a-9283-17d9-8d20-cee010f36e90;Chain;4cde01ac-4279-2742-71e1-47ff81cc3529;None;8dcd4a48-2d37-4909-9f78-f7a9eb4ef903
+# 粒子颜色列表（用于菜单中的Style选项，请勿配置超过20个以节省内存）
 particleColorList=White;<1.0, 1.0, 1.0>;Black;<0.0, 0.0, 0.0>;Gray;<0.5, 0.5, 0.5>;Red;<1.0, 0.0, 0.0>;Green;<0.0, 1.0, 0.0>;Blue;<0.0, 0.0, 1.0>;Yellow;<1.0, 1.0, 0.0>;Pink;<1.0, 0.5, 0.6>;Brown;<0.2, 0.1, 0.0>;Purple;<0.6, 0.2, 0.7>;Barbie;<0.9, 0.0, 0.3>;Orange;<0.9, 0.6, 0.0>;Toad;<0.2, 0.2, 0.0>;Khaki;<0.6, 0.5, 0.3>;Pool;<0.1, 0.8, 0.9>;Blood;<0.5, 0.0, 0.0>;Anthracite;<0.1, 0.1, 0.1>;Midnight;<0.0, 0.1, 0.2>
 # 牵绳link名称
 leashPointName=leashpoint

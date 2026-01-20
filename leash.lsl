@@ -4,12 +4,15 @@ Author: JMRY
 Description: A better leash control system, use link_message to operate leashes.
 
 ***更新记录***
+- 1.1.2 20260120
+    - 优化内存占用。
+
 - 1.1.1 20260116
-	- 加入更多配置项。
-	- 优化菜单中材质和颜色选择按钮。
-	- 调整Leash point的识别方法，在没有Leash point时，使用脚本锁在prim作为Leash point。
-	- 修复无法识别leash holder的bug。
-	- 修复RLV限制清空后，严格模式没有成功恢复的bug。
+    - 加入更多配置项。
+    - 优化菜单中材质和颜色选择按钮。
+    - 调整Leash point的识别方法，在没有Leash point时，使用脚本锁在prim作为Leash point。
+    - 修复无法识别leash holder的bug。
+    - 修复RLV限制清空后，严格模式没有成功恢复的bug。
 
 - 1.1 20260115
     - 优化牵引时的自动转向体验。
@@ -56,17 +59,17 @@ string userInfo(key user){
     }
 }
 
-string userName(key user, integer type){
-    string username=llGetUsername(user);
-    string displayname=llGetDisplayName(user);
-    if(type==1){
-        return username;
-    }else if(type==2){
-        return displayname;
-    }else{
-        return displayname+" ("+username+")";
-    }
-}
+// string userName(key user, integer type){
+//     string username=llGetUsername(user);
+//     string displayname=llGetDisplayName(user);
+//     if(type==1){
+//         return username;
+//     }else if(type==2){
+//         return displayname;
+//     }else{
+//         return displayname+" ("+username+")";
+//     }
+// }
 
 
 string replace(string src, string target, string replacement) {
@@ -99,22 +102,6 @@ string strJoin(list m, string sp){
     return llDumpList2String(m, sp);
 }
 
-// string bundleSplit="&&";
-list bundle2List(string b){
-    return strSplit(b, "&&");
-}
-string list2Bundle(list b){
-    return strJoin(b, "&&");
-}
-
-// string messageSplit="|";
-list msg2List(string m){
-    return strSplit(m, "|");
-}
-string list2Msg(list m){
-    return strJoin(m, "|");
-}
-
 // string dataSplit=";";
 list data2List(string d){
     return strSplit(d, ";");
@@ -122,9 +109,9 @@ list data2List(string d){
 string list2Data(list d){
     return strJoin(d, ";");
 }
-string list2RlvData(list d){
-    return strJoin(d, ",");
-}
+// string list2RlvData(list d){
+//     return strJoin(d, ",");
+// }
 
 /*
 连接点查找
@@ -194,8 +181,8 @@ float   particleGlowEnd    = 0.2;
 list    particleTextureList= [
     "Ribbon",  "cdb7025a-9283-17d9-8d20-cee010f36e90", // Ribbon
     "Chain",   "4cde01ac-4279-2742-71e1-47ff81cc3529", // Chain
-    "Leather", "8f4c3616-46a4-1ed6-37dc-9705b754b7f1", // Leather
-    "Rope",    "9a342cda-d62a-ae1f-fc32-a77a24a85d73", // Rope
+    // "Leather", "8f4c3616-46a4-1ed6-37dc-9705b754b7f1", // Leather
+    // "Rope",    "9a342cda-d62a-ae1f-fc32-a77a24a85d73", // Rope
     "None",    "8dcd4a48-2d37-4909-9f78-f7a9eb4ef903"  // None, TEXTURE_TRANSPARENT
 ];
 list    particleColorList  = [
@@ -430,7 +417,16 @@ string getParticleColorName(vector color){
 // }
 
 key startParticles(key target){
-    stopParticles();
+    // stopParticles();
+    list leashPoints=getLinksByName(leashPointName);
+    if(llGetListLength(leashPoints)<=0){
+        leashPoints+=[LINK_THIS]; // No leashpoints, use link_set
+    }
+    integer i;
+    for(i=0; i<llGetListLength(leashPoints); i++){
+        llLinkParticleSystem(llList2Integer(leashPoints, i), []);
+    }
+
     if(target==NULL_KEY){
         return target;
     }
@@ -448,18 +444,19 @@ key startParticles(key target){
     }
 
     // activeParticles
-    if(particleFlags==-1){
-        particleFlags = PSYS_PART_FOLLOW_VELOCITY_MASK | PSYS_PART_TARGET_POS_MASK | PSYS_PART_FOLLOW_SRC_MASK;
+    integer innerParticleFlags=particleFlags;
+    if(innerParticleFlags==-1){
+        innerParticleFlags = PSYS_PART_FOLLOW_VELOCITY_MASK | PSYS_PART_TARGET_POS_MASK | PSYS_PART_FOLLOW_SRC_MASK;
     }
     if(particleMode == "Ribbon"){ // Ribbon
-        particleFlags = particleFlags | PSYS_PART_RIBBON_MASK;
+        innerParticleFlags = innerParticleFlags | PSYS_PART_RIBBON_MASK;
     }
     if(particleFullBright==TRUE){
-        particleFlags = particleFlags | PSYS_PART_EMISSIVE_MASK;
+        innerParticleFlags = innerParticleFlags | PSYS_PART_EMISSIVE_MASK;
     }
     list particleParams = [
         PSYS_PART_MAX_AGE,particleMaxAge,
-        PSYS_PART_FLAGS,particleFlags,
+        PSYS_PART_FLAGS,innerParticleFlags,
         PSYS_PART_START_COLOR, particleColor,
         PSYS_PART_END_COLOR, particleColorEnd,
         PSYS_PART_START_ALPHA, particleAlpha,
@@ -479,8 +476,9 @@ key startParticles(key target){
         PSYS_SRC_TEXTURE, particleTexture
     ];
 
-    integer i;
-    list leashPoints=getLinksByName(leashPointName);
+    // integer i;
+    // list leashPoints=getLinksByName(leashPointName);
+    leashPoints=getLinksByName(leashPointName);
     if(llGetListLength(leashPoints)<=0){
         leashPoints+=[LINK_THIS]; // No leashpoints, use link_set
     }
@@ -491,16 +489,16 @@ key startParticles(key target){
     return target;
 }
 
-stopParticles() {
-    list leashPoints=getLinksByName(leashPointName);
-    if(llGetListLength(leashPoints)<=0){
-        leashPoints+=[LINK_THIS]; // No leashpoints, use link_set
-    }
-    integer i;
-    for(i=0; i<llGetListLength(leashPoints); i++){
-        llLinkParticleSystem(llList2Integer(leashPoints, i), []);
-    }
-}
+// stopParticles() {
+//     list leashPoints=getLinksByName(leashPointName);
+//     if(llGetListLength(leashPoints)<=0){
+//         leashPoints+=[LINK_THIS]; // No leashpoints, use link_set
+//     }
+//     integer i;
+//     for(i=0; i<llGetListLength(leashPoints); i++){
+//         llLinkParticleSystem(llList2Integer(leashPoints, i), []);
+//     }
+// }
 
 /*
 牵引系统
@@ -510,6 +508,16 @@ integer leashParticleEnabled;
 integer leashHolderHandle;
 integer allowAutoTurn=FALSE;
 key leashToTarget(key target, integer particleEnabled){
+    if(particleEnabled<0){ // Yank模式
+        if (llGetAgentInfo(llGetOwner()) & AGENT_SITTING){
+            llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.RUN.TEMP|unsit=force", NULL_KEY);
+        }
+        llMoveToTarget(llList2Vector(llGetObjectDetails(target, [OBJECT_POS]), 0), 0.5);
+        llSleep(2.0);
+        llStopMoveToTarget();
+        return target;
+    }
+
     leashTarget=target;
     leashParticleEnabled=particleEnabled;
 
@@ -522,13 +530,16 @@ key leashToTarget(key target, integer particleEnabled){
 
         if(particleEnabled==TRUE){
             startParticles(leashTarget);
+            llSay(CHANNEL_LOCK_MEISTER, (string)target+"collar"); // 发送LockMeister指令以链接holder
             leashHolderHandle=llListen(CHANNEL_LOCK_MEISTER, "", NULL_KEY, "");
         }else{
-            stopParticles();
+            // stopParticles();
+            startParticles(NULL_KEY);
             llListenRemove(leashHolderHandle);
         }
     }else{ // Unleash
-        stopParticles();
+        // stopParticles();
+        startParticles(NULL_KEY);
         llSetTimerEvent(0);
         llListenRemove(leashHolderHandle);
     }
@@ -544,35 +555,35 @@ applyStrictMode(){
         leashStrictFlag=TRUE;
     }else if(leashStrictMode==FALSE || leashTarget==NULL_KEY){
         if(leashStrictFlag==TRUE){ // 严格模式RLV限制清除，只有触发过严格模式才进行。临时执行取消限制后，重新执行记录的RLV限制
-			llOwnerSay("@"+replace(replace(strictRestraints, "=add", "=rem"), "=n", "=y"));
+            llOwnerSay("@"+replace(replace(strictRestraints, "=add", "=rem"), "=n", "=y"));
             llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.RUN", NULL_KEY);
             leashStrictFlag=FALSE;
         }
     }
 }
 
-key yankToTarget(key target){
-    if (llGetAgentInfo(llGetOwner()) & AGENT_SITTING){
-        llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.RUN.TEMP|unsit=force", NULL_KEY);
-    }
-    llMoveToTarget(llList2Vector(llGetObjectDetails(target, [OBJECT_POS]), 0), 0.5);
-    llSleep(2.0);
-    llStopMoveToTarget();
-    return target;
-}
+// key yankToTarget(key target){
+//     if (llGetAgentInfo(llGetOwner()) & AGENT_SITTING){
+//         llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.RUN.TEMP|unsit=force", NULL_KEY);
+//     }
+//     llMoveToTarget(llList2Vector(llGetObjectDetails(target, [OBJECT_POS]), 0), 0.5);
+//     llSleep(2.0);
+//     llStopMoveToTarget();
+//     return target;
+// }
 
 /*
 权限控制
 */
 list owner=[];
-integer checkOwner(key user){
-    integer index=llListFindList(owner, [(string)user]); // 从link_message接收的list被直接转化为了string的list而没转成key，因此要将key转成string再判断。
-    if(~index){
-        return TRUE;
-    }else{
-        return FALSE;
-    }
-}
+// integer checkOwner(key user){
+//     integer index=llListFindList(owner, [(string)user]); // 从link_message接收的list被直接转化为了string的list而没转成key，因此要将key转成string再判断。
+//     if(~index){
+//         return TRUE;
+//     }else{
+//         return FALSE;
+//     }
+// }
 
 
 string leashMenuText="Leash";
@@ -600,7 +611,8 @@ showLeashMenu(string parent, key user){
             statusText="Leashed to: ";
         }
     }
-    if(checkOwner(user)){ // 只有Root和Owner才能修改配置
+    integer ownerIndex=llListFindList(owner, [(string)user]); // 从link_message接收的list被直接转化为了string的list而没转成key，因此要将key转成string再判断。
+    if(~ownerIndex){
         styleBu="Style";
         configBu="Config";
     }
@@ -637,9 +649,10 @@ showLeashSubMenu(string menuName, string parent, key user, integer reset){
         for(i=0; i<llGetListLength(sensorUserList); i++){
             key uk=llList2Key(sensorUserList, i);
             if(uk){
-                string un=userName(uk,1);
+                // string un=userName(uk,1);
                 // userList+=[(string)(i+1) + ". " + un];
-                buttonList+=[(string)(i+1) + ". " + un];
+                // buttonList+=[(string)(i+1) + ". " + un];
+                buttonList+=[(string)(i+1) + ". " + llGetUsername(uk)];
             }
         }
     }
@@ -712,32 +725,32 @@ integer readLeashLine=0;
 string leashHeader="leash_";
 string readLeashName="";
 string curLeashName="";
-integer readLeashNotecards(string aname){
-    readLeashLine=0;
-    curLeashName=aname;
-    readLeashName=leashHeader+aname;
-    if (llGetInventoryType(readLeashName) == INVENTORY_NOTECARD) {
-        llOwnerSay("Begin reading leash settings: "+aname);
-        readLeashQuery=llGetNotecardLine(readLeashName, readLeashLine); // 通过给readLeashQuery赋llGetNotecardLine的key，从而触发datasever事件
-        // 后续功能交给下方datasever处理
-        return TRUE;
-    }else{
-        return FALSE;
-    }
-}
+// integer readLeashNotecards(string aname){
+//     readLeashLine=0;
+//     curLeashName=aname;
+//     readLeashName=leashHeader+aname;
+//     if (llGetInventoryType(readLeashName) == INVENTORY_NOTECARD) {
+//         llOwnerSay("Begin reading leash settings: "+aname);
+//         readLeashQuery=llGetNotecardLine(readLeashName, readLeashLine); // 通过给readLeashQuery赋llGetNotecardLine的key，从而触发datasever事件
+//         // 后续功能交给下方datasever处理
+//         return TRUE;
+//     }else{
+//         return FALSE;
+//     }
+// }
 
-list getLeashNotecards(){
-    list leashList=[];
-    integer count = llGetInventoryNumber(INVENTORY_NOTECARD);
-    integer i;
-    for (i=0; i<count; i++){
-        string notecardName = llGetInventoryName(INVENTORY_NOTECARD, i);
-        if(llGetSubString(notecardName, 0, llStringLength(leashHeader)-1)==leashHeader){
-            leashList+=[llGetSubString(notecardName, llStringLength(leashHeader), -1)];
-        }
-    }
-    return leashList;
-}
+// list getLeashNotecards(){
+//     list leashList=[];
+//     integer count = llGetInventoryNumber(INVENTORY_NOTECARD);
+//     integer i;
+//     for (i=0; i<count; i++){
+//         string notecardName = llGetInventoryName(INVENTORY_NOTECARD, i);
+//         if(llGetSubString(notecardName, 0, llStringLength(leashHeader)-1)==leashHeader){
+//             leashList+=[llGetSubString(notecardName, llStringLength(leashHeader), -1)];
+//         }
+//     }
+//     return leashList;
+// }
 
 integer MENU_MSG_NUM=1000;
 integer RLV_MSG_NUM=1001;
@@ -754,7 +767,7 @@ integer timerCount=0;
 integer maxSensor=18;
 default{
     state_entry(){
-        // TODO: Read config notecard
+        llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.GET.NOTIFY", NULL_KEY);
     }
     changed(integer change){
         if(change & CHANGED_OWNER){
@@ -850,17 +863,20 @@ default{
         }
     }
     link_message(integer sender_num, integer num, string msg, key user){
-        if(num!=LEASH_MSG_NUM && num!=MENU_MSG_NUM && num!=ACCESS_MSG_NUM && num!=LAN_MSG_NUM && num!=RLV_MSG_NUM){
+        if(num!=LEASH_MSG_NUM && num!=MENU_MSG_NUM && num!=ACCESS_MSG_NUM && num!=RLV_MSG_NUM){
+            return;
+        }
+        if(!includes(msg, "LEASH") && !includes(msg, "MENU.ACTIVE") && !includes(msg, "ACCESS.NOTIFY") && !includes(msg, "RLV.EXEC")){
             return;
         }
 
-        list bundleMsgList=bundle2List(msg);
+        list bundleMsgList=strSplit(msg, "&&");
         list resultList=[];
         integer bundleMsgCount=llGetListLength(bundleMsgList);
         integer mi;
         for(mi=0; mi<bundleMsgCount; mi++){
             string str=llList2String(bundleMsgList, mi);
-            list msgList=msg2List(str);
+            list msgList=strSplit(str, "|");
             string msgHeader=llList2String(msgList, 0);
             list msgHeaderGroup=llParseStringKeepNulls(msgHeader, ["."], [""]);
 
@@ -910,7 +926,8 @@ default{
                     if(msgName==""){
                         msgName=(string)leashTarget;
                     }
-                    result=(string)yankToTarget((key)msgName);
+                    result=(string)leashToTarget((key)msgName, -1);
+                    // result=(string)yankToTarget((key)msgName);
                 }
                 else if(headerSub=="PARTICLE"){
                     /*
@@ -932,7 +949,17 @@ default{
                     LEASH.LOAD.NOTECARD | file1 | 1
                     */
                     if(headerExt==""){
-                        result=(string)readLeashNotecards(msgName);
+                        readLeashLine=0;
+                        curLeashName=msgName;
+                        readLeashName=leashHeader+msgName;
+                        if (llGetInventoryType(readLeashName) == INVENTORY_NOTECARD) {
+                            llOwnerSay("Begin reading leash settings: "+msgName);
+                            readLeashQuery=llGetNotecardLine(readLeashName, readLeashLine); // 通过给readLeashQuery赋llGetNotecardLine的key，从而触发datasever事件
+                            // 后续功能交给下方datasever处理
+                            result=(string)TRUE;
+                        }else{
+                            result=(string)FALSE;
+                        }
                     }
                     /*
                     读取Leash记事卡列表
@@ -941,7 +968,16 @@ default{
                     LEASH.EXEC | LEASH.LOAD.LIST | leash_1, leash_2, leash_3, ...
                     */
                     if(headerExt=="LIST"){
-                        result=(string)list2Data(getLeashNotecards());
+                        list leashList=[];
+                        integer count = llGetInventoryNumber(INVENTORY_NOTECARD);
+                        integer i;
+                        for (i=0; i<count; i++){
+                            string notecardName = llGetInventoryName(INVENTORY_NOTECARD, i);
+                            if(llGetSubString(notecardName, 0, llStringLength(leashHeader)-1)==leashHeader){
+                                leashList+=[llGetSubString(notecardName, llStringLength(leashHeader), -1)];
+                            }
+                        }
+                        result=list2Data(leashList);
                     }
                 }
                 else if(headerSub=="MENU"){
@@ -969,15 +1005,16 @@ default{
                         menuActiveFlag=1;
                     }
                     else if(msgSub=="Unleash" || msgSub=="Unfollow"){
-						if(leashStrictMode==TRUE && user==llGetOwner()){
-							llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|You can't %1% yourself in Strict mode!%%;"+msgSub, user);
-						}else{
-							leashToTarget(NULL_KEY, FALSE);
-						}
+                        if(leashStrictMode==TRUE && user==llGetOwner()){
+                            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|You can't %1% yourself in Strict mode!%%;"+msgSub, user);
+                        }else{
+                            leashToTarget(NULL_KEY, FALSE);
+                        }
                         menuActiveFlag=2;
                     }
                     else if(msgSub=="Yank"){
-                        yankToTarget(user);
+                        // yankToTarget(user);
+                        leashToTarget(user, -1);
                         menuActiveFlag=3;
                     }
                     else if(msgSub=="Follow" || msgSub=="Pass" || msgSub=="Anchor"){
@@ -1110,7 +1147,7 @@ default{
         }
 
         if(llGetListLength(resultList)>0){
-            llMessageLinked(LINK_SET, LEASH_MSG_NUM, list2Bundle(resultList), user); // 处理完成后的回调
+            llMessageLinked(LINK_SET, LEASH_MSG_NUM, strJoin(resultList, "&&"), user); // 处理完成后的回调
             resultList=[];
         }
         // llOwnerSay("Leash Memory Used: "+(string)llGetUsedMemory()+"/"+(string)(65536-llGetUsedMemory())+" Free: "+(string)llGetFreeMemory());
@@ -1119,8 +1156,10 @@ default{
         if (query_id == readLeashQuery) { // 通过readLeashNotecards触发读取记事卡事件，按行读取配置并应用。
             if (data == EOF) {
                 llOwnerSay("Finished reading leash config: "+curLeashName);
-                llMessageLinked(LINK_SET, ACCESS_MSG_NUM, list2Msg(["LEASH.LOAD.NOTECARD",curLeashName,TRUE]), NULL_KEY); // 成功读取记事卡后回调
+                llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "LEASH.LOAD.NOTECARD|"+curLeashName+"1", NULL_KEY); // 成功读取记事卡后回调
                 readLeashQuery=NULL_KEY;
+                curLeashName="";
+                readLeashName="";
             } else {
                 if(data!="" && llGetSubString(data,0,0)!="#"){
                     list leashStrSp=llParseStringKeepNulls(data, ["="], []);

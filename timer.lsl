@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better timer control system, use link_message to operate timers.
 
 ***更新记录***
+- 1.0.3 20260119
+    - 修复语言系统回调判定错误的bug。
+
 - 1.0.2 2260114
 	- 优化计时器状态通知格式。
 	- 修复计时器启动时显示负数时间的bug。
@@ -485,7 +488,7 @@ default{
             }
             else if(num==LAN_MSG_NUM){
                 // 语言功能监听
-                if (llGetSubString(msg, 0, 2) == "LAN" && includes(msg, "INIT")) { // 接收语言系统INIT回调，并启用语言功能
+                if (includes(str, "LANGUAGE.EXEC") && includes(str, "INIT")) { // 接收语言系统INIT回调，并启用语言功能
                     hasLanguage=TRUE;
                 }
             }

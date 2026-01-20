@@ -76,9 +76,11 @@ RLV.EXEC | RLV.CLEAR.CLASS | 1
 ```lsl
 RLV.REG | RLV组名 | RLV限制1 ? 生效值 ? 失效值 ? 扩展值, RLV限制2, RLV限制3, ...
 RLV.REGIST | RLV组名 | RLV限制1, RLV限制2, RLV限制3, ... | RLV类别名
+RLV.REGIST | RLV组名 | RLV限制1, RLV限制2, RLV限制3, ... | RLV类别名 | RLV立即生效开关
 // 示例（为了便于阅读，在分隔符中间加了空格，实际使用时不应加此空格）：
 RLV.REG | RLVName | RLV1 ? n ? y, RLV2 ? add ?rem, RLV3 ? force ? rem ? ext, ...
 RLV.REGIST | RLVName | RLV1, RLV2, RLV3, ... | Class 1
+RLV.REGIST | RLVName | RLV1, RLV2, RLV3, ... | Class 1 | 1
 // 回调：
 RLV.EXEC | RLV.REG | 1
 RLV.EXEC | RLV.REGIST | 1
@@ -94,9 +96,11 @@ RLV.EXEC | RLV.REGIST | 1
 ```lsl
 RLV.REG.APPLY | RLV组名 | RLV限制1, RLV限制2, RLV限制3, ... | RLV限制开关
 RLV.REGIST.APPLY | RLV组名 | RLV限制1, RLV限制2, RLV限制3, ... | RLV限制开关 | RLV类别名
+RLV.REGIST.APPLY | RLV组名 | RLV限制1, RLV限制2, RLV限制3, ... | RLV限制开关 | RLV类别名 | RLV立即生效开关
 // 示例：
 RLV.REG.APPLY | RLVName | RLV1, RLV2, RLV3, ... | -1
 RLV.REGIST.APPLY | RLVName | RLV1, RLV2, RLV3, ... | 1 | Class 1
+RLV.REGIST.APPLY | RLVName | RLV1, RLV2, RLV3, ... | 1 | Class 1 | 1
 // 回调：
 RLV.EXEC | RLV.REG.APPLY | 0
 RLV.EXEC | RLV.REGIST.APPLY | 1
@@ -336,10 +340,14 @@ RLV.MENU | 上级菜单名
 
 ## RLV回调
 - 当执行RLV指令时，将回调执行结果。根据不同情况，结果的格式也有所不同。
+- 当应用RLV组、应用全部RLV组、清空RLV限制时，会有相应回调。
 ```lsl
 RLV.EXEC | RLV.REG.CLASS | 1
 RLV.EXEC | RLV.APPLY | 0
 RLV.EXEC | RLV.LOAD | 0
+RLV.EXEC | RLV.CLEAR | 1
+RLV.EXEC | RLV.APPLY | 1
+RLV.EXEC | RLV.APPLY.ALL | 1
 ```
 
 ## RLV扩展指令

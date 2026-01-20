@@ -162,13 +162,14 @@ ACCESS.EXEC | ACCESS.GET.TRUST | UUID1; UUID2; UUID3; ...
 ACCESS.EXEC | ACCESS.GET.BLACK | UUID1; UUID2; UUID3; ...
 ```
 
-### 获取公开/群组/硬核模式
+### 获取公开/群组/硬核/自动上锁模式
 #### ACCESS.GET.MODE
-- 获取公开/群组/硬核模式的状态。
+- 获取公开/群组/硬核/自动上锁模式的状态。
 - 1为启用，0为禁用。
 - 公开模式允许非授权用户访问。
 - 群组模式允许相同群组的用户访问。
 - 硬核模式禁用逃跑功能。
+- 自动上锁模式即穿戴时自动上锁。
 - 执行后，将回调当前设置的结果。
 	- 如果不指定参数，则按顺序回调公开、群组、硬核模式的状态。
 	- 如果指定参数，则回调指定模式的状态。
@@ -177,11 +178,13 @@ ACCESS.GET.MODE
 ACCESS.GET.MODE | PUBLIC
 ACCESS.GET.MODE | GROUP
 ACCESS.GET.MODE | HARDCORE
+ACCESS.GET.MODE | AUTOLOCK
 // 回调：
-ACCESS.EXEC | ACCESS.GET.MODE | 1; 0; 0
+ACCESS.EXEC | ACCESS.GET.MODE | 1; 0; 0; 1
 ACCESS.EXEC | ACCESS.GET.MODE | 1
 ACCESS.EXEC | ACCESS.GET.MODE | 0
 ACCESS.EXEC | ACCESS.GET.MODE | 0
+ACCESS.EXEC | ACCESS.GET.MODE | 1
 ```
 
 ### 设置公开/群组/硬核模式
@@ -247,9 +250,8 @@ ACCESS.MENU | 上级菜单名
 
 ### 请求推送权限状态通知
 #### ACCESS.GET.NOTIFY
-- 将触发权限更新通知。权限通知将分别推送主人列表、信任列表、黑名单、公开/群组/硬核模式状态，其他脚本接收后，可自行进行处理。
-- 当脚本重置、读取记事卡、通过菜单变更权限时，都会自动发送此通知。
-- 使用权限指令调用脚本时，不会主动推送，请在操作完成后，调用此指令来推送权限状态。
+- 将触发权限更新通知。权限通知将分别推送主人列表、信任列表、黑名单、公开/群组/硬核/自动上锁模式状态，其他脚本接收后，可自行进行处理。
+- 当脚本重置、读取记事卡、变更权限时，都会自动发送此通知。
 - 权限通知将只推送，不进行回调。
 ```lsl
 ACCESS.GET.NOTIFY
@@ -257,7 +259,7 @@ ACCESS.GET.NOTIFY
 ACCESS.NOTIFY | OWNER | UUID1; UUID2; ...
 ACCESS.NOTIFY | TRUST | UUID1; UUID2; ...
 ACCESS.NOTIFY | BLACK | UUID1; UUID2; ...
-ACCESS.NOTIFY | MODE | 1; 0; 0
+ACCESS.NOTIFY | MODE | 1; 0; 0; 0
 ```
 
 ## 权限执行回调
@@ -265,7 +267,7 @@ ACCESS.NOTIFY | MODE | 1; 0; 0
 ```lsl
 ACCESS.EXEC | ACCESS.ADD.OWNER | 1
 ACCESS.EXEC | ACCESS.SET.PUBLIC | 0
-ACCESS.EXEC | ACCESS.GET.MODE | 1; 0; 0
+ACCESS.EXEC | ACCESS.GET.MODE | 1; 0; 0; 0
 ```
 
 ## 扩展用法
