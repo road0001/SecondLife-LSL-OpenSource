@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better timer control system, use link_message to operate timers.
 
 ***更新记录***
+- 1.0.4 20260127
+    - 修复初始化时显示错误计时的bug。
+
 - 1.0.3 20260119
     - 修复语言系统回调判定错误的bug。
 
@@ -164,7 +167,7 @@ integer addTimer(integer second){
     return timerLength;
 }
 
-integer timerRunning=TRUE;
+integer timerRunning=FALSE;
 string timerStatus="";
 integer timerStamp=0;
 integer setTimerRunning(integer bool){ // 0=Pause, 1=Running, 2=Reset and Running

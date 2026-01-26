@@ -1156,7 +1156,7 @@ default{
         if (query_id == readLeashQuery) { // 通过readLeashNotecards触发读取记事卡事件，按行读取配置并应用。
             if (data == EOF) {
                 llOwnerSay("Finished reading leash config: "+curLeashName);
-                llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "LEASH.LOAD.NOTECARD|"+curLeashName+"1", NULL_KEY); // 成功读取记事卡后回调
+                llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "LEASH.LOAD.NOTECARD|"+curLeashName+"|1", NULL_KEY); // 成功读取记事卡后回调
                 readLeashQuery=NULL_KEY;
                 curLeashName="";
                 readLeashName="";

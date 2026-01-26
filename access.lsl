@@ -7,6 +7,7 @@ Description: A better access permission control system, use link_message to oper
 - 1.0.14 20260121
     - 优化内存占用。
     - 优化RLV例外触发机制，提升性能。
+    - 限制检测周围玩家的数量。
 
 - 1.0.13 20260120
     - 加入自动锁定机制。
@@ -695,6 +696,7 @@ integer MENU_MSG_NUM=1000;
 integer RLV_MSG_NUM=1001;
 integer ACCESS_MSG_NUM=1002;
 list sensorUserList=[];
+integer maxSensor=18;
 default{
     state_entry(){
         if(llGetListLength(ownerList)==0){
@@ -1052,7 +1054,7 @@ default{
             sensorUserList+=[llGetOwner()]; // 穿在身上时，添加自己
         }
         integer i;
-        for (i = 0; i < detected; i++) {
+        for (i = 0; i < detected && i<maxSensor; i++) {
             key uuid = llDetectedKey(i);
             sensorUserList+=uuid;
         }

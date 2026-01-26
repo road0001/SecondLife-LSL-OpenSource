@@ -4,6 +4,10 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 1.1.9 20260126
+    - 加入一键应用当前RLV类别中的全部RLV组功能。
+    - 调整RLV菜单打开方式，当只有一个RLV类别时，直接打开子菜单。
+
 - 1.1.8 20260121
     - 优化内存占用。
 
@@ -741,12 +745,13 @@ showRLVMenu(string parent, key user){
 }
 
 string rlvSubMenuName="RLVSubMenu";
-string rlvRenamerMenuName="RLVRenamerMenu";
+string rlvParentMenuName="";
 string curRlvSubMenu="";
-showRLVSubMenu(string class, key user){
+showRLVSubMenu(string parent, string class, key user){
+    rlvParentMenuName=parent;
     curRlvSubMenu=class;
     string rlvSubDesc="This is RLV %1% menu.%%;"+class;
-    list rlvCmdList=[];
+    list rlvCmdList=["[ALL]"];
     string rlvSubMenuList;
     integer rlvCmdCount=llGetListLength(rlvCmdNameKeyClass);
     integer i;
@@ -757,7 +762,7 @@ showRLVSubMenu(string class, key user){
             rlvCmdList+=["["+(string)hasRLVCmd(cueName)+"]"+cueName];
         }
     }
-    rlvSubMenuList="MENU.REG.OPEN|"+rlvSubMenuName+"|"+rlvSubDesc+"|"+list2Data(rlvCmdList)+"|"+rlvMenuName;
+    rlvSubMenuList="MENU.REG.OPEN|"+rlvSubMenuName+"|"+rlvSubDesc+"|"+list2Data(rlvCmdList)+"|"+parent;
     llMessageLinked(LINK_SET, MENU_MSG_NUM, rlvSubMenuList, user);
 }
 
@@ -1234,20 +1239,39 @@ default{
                 string menuButton=llList2String(menuCmdList, 2);
 
                 if(menuButton==rlvMenuText){
-                    showRLVMenu(menuName, user);
+                    if(llGetListLength(rlvClassName)<=1){
+                        showRLVSubMenu(menuName, llList2String(rlvClassName, 0), user);
+                    }else{
+                        showRLVMenu(menuName, user);
+                    }
+                    
                 }
                 else if(menuName==rlvMenuName && menuButton!=""){ // MENU.ACTIVE | Class | Class1
-                    showRLVSubMenu(menuButton, user);
+                    showRLVSubMenu(rlvMenuName, menuButton, user);
                 }
                 else if(menuName==rlvSubMenuName && menuButton!=""){ // MENU.ACTIVE | Class1 | [1]RLV1
-                    integer applyResult=applyRLVCmd(menuButton, -1);
+                    integer applyResult;
+                    if(menuButton=="[ALL]"){
+                        integer i;
+                        integer allEnabled=-1;
+                        for(i=0; i<llGetListLength(rlvCmdNameKeyClass); i+=rlvCmdLength){
+                            if(llList2String(rlvCmdNameKeyClass, i+2) == curRlvSubMenu){
+                                if(!~allEnabled){
+                                    allEnabled=!llList2Integer(rlvCmdNameKeyClass, i+3);
+                                }
+                                applyResult=applyRLVCmd(llList2String(rlvCmdNameKeyClass, i), allEnabled);
+                            }
+                        }
+                    }else{
+                        applyResult=applyRLVCmd(menuButton, -1);
+                    }
                     string onOff="OFF";
                     if(applyResult>=1){
                         onOff="ON";
                     }
                     resultList+=[applyResult];
-                    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your %1% restrictions is set to %2%.%%;"+menuButton+";"+onOff, user);
-                    showRLVSubMenu(curRlvSubMenu, user);
+                    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your %1% - %2% restrictions is set to %3%.%%;"+curRlvSubMenu+";"+menuButton+";"+onOff, user);
+                    showRLVSubMenu(rlvParentMenuName, curRlvSubMenu, user);
                 }
             }
         }
