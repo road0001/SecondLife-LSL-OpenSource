@@ -4,6 +4,14 @@ Author: JMRY
 Description: A better RLV Extension management system, use link_message to operate RLV Extension restraints.
 
 ***更新记录***
+- 1.0.5 20260130
+    - 加入Rez模式下的RLV扩展指令执行功能。
+    - 加入速度设定（speed）扩展指令。
+    - 优化申请权限的逻辑。
+
+- 1.0.4 20260128
+    - 优化内存占用。
+
 - 1.0.3 20260118
     - 修复echo视觉关闭时，会导致部分已生效的RLV失效的bug。
 
@@ -64,50 +72,67 @@ list strSplit(string m, string sp){
     }
     return temp;
 }
-string strJoin(list m, string sp){
-    return llDumpList2String(m, sp);
-}
+// string strJoin(list m, string sp){
+//     return llDumpList2String(m, sp);
+// }
 
-// string bundleSplit="&&";
-list bundle2List(string b){
-    return strSplit(b, "&&");
-}
-string list2Bundle(list b){
-    return strJoin(b, "&&");
-}
+// // string bundleSplit="&&";
+// list bundle2List(string b){
+//     return strSplit(b, "&&");
+// }
+// string list2Bundle(list b){
+//     return strJoin(b, "&&");
+// }
 
-// string messageSplit="|";
-list msg2List(string m){
-    return strSplit(m, "|");
-}
-string list2Msg(list m){
-    return strJoin(m, "|");
-}
+// // string messageSplit="|";
+// list msg2List(string m){
+//     return strSplit(m, "|");
+// }
+// string list2Msg(list m){
+//     return strJoin(m, "|");
+// }
 
-// string dataSplit=",";
-list data2List(string d){
-    return strSplit(d, ",");
-}
-string list2Data(list d){
-    return strJoin(d, ",");
-}
+// // string dataSplit=",";
+// list data2List(string d){
+//     return strSplit(d, ",");
+// }
+// string list2Data(list d){
+//     return strJoin(d, ",");
+// }
 
-// string mdataSplit=";";
-list menuData2List(string d){
-    return strSplit(d, ";");
-}
-string list2MenuData(list d){
-    return strJoin(d, ";");
-}
-
+// // string mdataSplit=";";
+// list menuData2List(string d){
+//     return strSplit(d, ";");
+// }
+// string list2MenuData(list d){
+//     return strJoin(d, ";");
+// }
+key VICTIM_UUID=NULL_KEY;
+integer RLV_MODE=0; // 0： wear mode；1：rez mode say；2：rez mode whisper；3：rez mode shout；else：rez mode regionSayTo
 integer RLVRS=-1812221819; // default relay channel
 executeRLVTemp(list rlvList, integer bool){
-    string rlvStr=list2Data(rlvList);
+    string rlvStr=llDumpList2String(rlvList, ",");
     if(bool==FALSE){
         rlvStr=replace(replace(replace(rlvStr,"=n","=y"),"=add","=rem"),"=force","=rem");
     }
     if(rlvStr!=""){
-        llOwnerSay("@"+rlvStr);
+        if(RLV_MODE==0){
+            llOwnerSay("@"+rlvStr);
+        }else{
+            string rlvCmdName="RLVEXT_EXECUTE_" + llGetObjectName();
+            list rlvExecList =[rlvCmdName, VICTIM_UUID, llReplaceSubString("@"+rlvStr,",","|",0)];
+            string rlvExecStr=llDumpList2String(rlvExecList, ",");
+
+            if(RLV_MODE==1){
+                llSay(RLVRS,rlvExecStr);
+            }else if(RLV_MODE==2){
+                llWhisper(RLVRS,rlvExecStr);
+            }else if(RLV_MODE==3){
+                llShout(RLVRS,rlvExecStr);
+            }else{
+                llRegionSay(RLVRS,rlvExecStr);
+            }
+        }
     }
     // llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.RUN.TEMP|"+list2Data(rlvList), NULL_KEY);
 }
@@ -119,7 +144,8 @@ string RLVExtHeader="rext_";
 list RLVExtList=[
     "move",
     "turn",
-    "echoview"
+    "echoview",
+    "speed"
 ];
 /*
 RLV扩展指令执行接口
@@ -134,15 +160,20 @@ integer executeRLVExt(string rname, string rval, string rparams){
     if(rname==llList2String(RLVExtList, 0) || rname==llList2String(RLVExtList, 1)){ // move or turn
         return setMoveTurn(isAllow, rname);
     }
-    else if(rname==llList2String(RLVExtList, 2)){ // echo
+    else if(rname==llList2String(RLVExtList, 2)){ // echoview
         return setEchoView(isAllow, rparams);
+    }
+    else if(rname==llList2String(RLVExtList, 3)){ // speed
+        return setSpeed(isAllow, rparams);
     }
     return isAllow;
 }
 
 list takeControlList=[];
+integer controlVal=0;
 integer setMoveTurn(integer isAllow, string rname){
-    llRequestPermissions(llGetOwner(), PERMISSION_TAKE_CONTROLS);
+    if(VICTIM_UUID==NULL_KEY) return FALSE;
+    // llRequestPermissions(llGetOwner(), PERMISSION_TAKE_CONTROLS);
     // 将传入的指令写入takeControlList
     integer tindex=llListFindList(takeControlList, [rname]);
     if(isAllow==FALSE){
@@ -155,7 +186,7 @@ integer setMoveTurn(integer isAllow, string rname){
         }
     }
     // 遍历takeControlList获取开关状态并按位OR
-    integer controlVal=0;
+    controlVal=0;
     integer i;
     for(i=0; i<llGetListLength(takeControlList); i++){
         if(llList2String(takeControlList, i) == llList2String(RLVExtList, 0)){ // move
@@ -165,16 +196,18 @@ integer setMoveTurn(integer isAllow, string rname){
             controlVal=controlVal | CONTROL_ROT_LEFT | CONTROL_ROT_RIGHT;
         }
     }
-    if(controlVal==0){
-        // controlVal==0说明没有任何控制，释放之
-        // 使用llReleaseControls()会撤销PERMISSION_TAKE_CONTROLS，因此在撤销后要重新申请一次。
-        // controlVal=CONTROL_FWD | CONTROL_BACK | CONTROL_LEFT | CONTROL_RIGHT | CONTROL_UP | CONTROL_DOWN | CONTROL_ROT_LEFT | CONTROL_ROT_RIGHT | CONTROL_LBUTTON | CONTROL_ML_LBUTTON;
-        // llTakeControls(controlVal,TRUE,TRUE);
-        llReleaseControls();
-        llRequestPermissions(llGetOwner(), PERMISSION_TAKE_CONTROLS);
-    }else{
-        llTakeControls(controlVal,TRUE,FALSE);
-    }
+    llRequestPermissions(VICTIM_UUID, PERMISSION_TAKE_CONTROLS);
+
+    // if(controlVal==0){
+    //     // controlVal==0说明没有任何控制，释放之
+    //     // 使用llReleaseControls()会撤销PERMISSION_TAKE_CONTROLS，因此在撤销后要重新申请一次。
+    //     // controlVal=CONTROL_FWD | CONTROL_BACK | CONTROL_LEFT | CONTROL_RIGHT | CONTROL_UP | CONTROL_DOWN | CONTROL_ROT_LEFT | CONTROL_ROT_RIGHT | CONTROL_LBUTTON | CONTROL_ML_LBUTTON;
+    //     // llTakeControls(controlVal,TRUE,TRUE);
+    //     llReleaseControls();
+    //     llRequestPermissions(llGetOwner(), PERMISSION_TAKE_CONTROLS);
+    // }else{
+    //     llTakeControls(controlVal,TRUE,FALSE);
+    // }
     return isAllow;
 }
 
@@ -222,7 +255,7 @@ integer setEchoView(integer isAllow, string params){
     float echoDistAlpha=5;
     float echoTween=5;
     if(params!=""){
-        list paramsList=menuData2List(params); // echo:ping;5;1.4;2;10.5;15;5=n
+        list paramsList=strSplit(params, ";"); // echo:ping;5;1.4;2;10.5;15;5=n
         if(llList2String(paramsList, 0)!=""){
             echoPing=llList2String(paramsList, 0);
         }
@@ -262,32 +295,97 @@ integer setEchoView(integer isAllow, string params){
     return isAllow;
 }
 
+float moveSpeed=0;
+integer setSpeed(integer isAllow, string params){
+    if(VICTIM_UUID==NULL_KEY) return FALSE;
+    float DEFAULT_MOVE_SPEED=3.2;
+    if(isAllow){
+        moveSpeed=0;
+    }else if(params!=""){
+        list paramsList=strSplit(params, ";"); // echo:ping;5;1.4;2;10.5;15;5=n
+        if(llList2String(paramsList, 0)!=""){
+            moveSpeed=DEFAULT_MOVE_SPEED - (DEFAULT_MOVE_SPEED * llList2Float(paramsList, 0));
+        }
+    }else{
+        moveSpeed=0;
+    }
+    llRequestPermissions(VICTIM_UUID, PERMISSION_TAKE_CONTROLS);
+    return isAllow;
+}
+
 integer MENU_MSG_NUM=1000;
 integer RLV_MSG_NUM=1001;
 integer RLVEXT_MSG_NUM=10012;
 default{
     state_entry(){
-        llRequestPermissions(llGetOwner(), PERMISSION_TAKE_CONTROLS);
+        VICTIM_UUID=llGetOwner();
+        // llRequestPermissions(llGetOwner(), PERMISSION_TAKE_CONTROLS);
     }
     changed(integer change){
         if(change & CHANGED_OWNER){
             llResetScript();
         }
+        if (change & CHANGED_LINK) {
+            RLV_MODE=1;
+            VICTIM_UUID = llAvatarOnSitTarget();
+            if (VICTIM_UUID != NULL_KEY){
+                llRequestPermissions(VICTIM_UUID, PERMISSION_TAKE_CONTROLS);
+            }
+        }
     }
     attach(key user) {
-        if(user!=NULL_KEY){
-            llRequestPermissions(user, PERMISSION_TAKE_CONTROLS);
+        RLV_MODE=0;
+        VICTIM_UUID=user;
+        if(VICTIM_UUID!=NULL_KEY){
+            llRequestPermissions(VICTIM_UUID, PERMISSION_TAKE_CONTROLS);
         }
     }
     on_rez(integer start_param){
         // 登录、穿戴时也会触发on_rez，并且比attach更早触发。有时候登录时不触发attach，因此将attach的部分也添加到这里。
         integer attached=llGetAttached();
-        if(attached>0){
-            llRequestPermissions(llGetOwner(), PERMISSION_TAKE_CONTROLS);
+        if(attached!=0){
+            RLV_MODE=0;
+            VICTIM_UUID=llGetOwner();
+            llRequestPermissions(VICTIM_UUID, PERMISSION_TAKE_CONTROLS);
+        }else{
+            RLV_MODE=1;
         }
     }
-
+    object_rez(key user){
+        RLV_MODE=1;
+        VICTIM_UUID=NULL_KEY;
+    }
+    run_time_permissions(integer perm){
+        if(perm & PERMISSION_TAKE_CONTROLS){
+            if(controlVal==0){
+                // controlVal==0说明没有任何控制，释放之
+                // 使用llReleaseControls()会撤销PERMISSION_TAKE_CONTROLS，因此在撤销后要重新申请一次。
+                // controlVal=CONTROL_FWD | CONTROL_BACK | CONTROL_LEFT | CONTROL_RIGHT | CONTROL_UP | CONTROL_DOWN | CONTROL_ROT_LEFT | CONTROL_ROT_RIGHT | CONTROL_LBUTTON | CONTROL_ML_LBUTTON;
+                // llTakeControls(controlVal,TRUE,TRUE);
+                // llReleaseControls();
+                llTakeControls(CONTROL_FWD | CONTROL_BACK | CONTROL_LEFT | CONTROL_RIGHT | CONTROL_UP | CONTROL_DOWN | CONTROL_LBUTTON | CONTROL_ML_LBUTTON | CONTROL_ROT_LEFT | CONTROL_ROT_RIGHT,TRUE,TRUE);
+            }else{
+                llTakeControls(controlVal,TRUE,FALSE);
+            }
+        }
+    }
     control(key id, integer level, integer edge){
+        if(moveSpeed!=0){
+            vector v;
+            if (level & CONTROL_FWD)
+                v.x = -moveSpeed;
+            else if (level & CONTROL_BACK)
+                v.x = moveSpeed;
+            else if (level & CONTROL_LEFT)
+                v.y = -moveSpeed;
+            else if (level & CONTROL_RIGHT)
+                v.y = moveSpeed;
+            else if (level & CONTROL_UP)
+                v.z = -moveSpeed;
+            else if (level & CONTROL_DOWN)
+                v.z = moveSpeed;
+            llApplyImpulse(v, TRUE);
+        }
     }
 
     listen(integer channel, string name, key id, string message){
@@ -308,14 +406,14 @@ default{
         if(num!=RLVEXT_MSG_NUM && num!=RLV_MSG_NUM && num!=MENU_MSG_NUM){
             return;
         }
-        list msgList=bundle2List(msg);
+        list msgList=strSplit(msg, "&&");
         list resultList=[];
         integer msgCount=llGetListLength(msgList);
         integer mi;
         for(mi=0; mi<msgCount; mi++){
             string str=llList2String(msgList, mi);
             if (llGetSubString(str, 0, 6) == "RLVEXT." && !includes(str, "EXEC")) {
-                list rlvMsgList=msg2List(str);
+                list rlvMsgList=strSplit(str, "|");
                 string rlvMsgStr=llList2String(rlvMsgList, 0);
                 list rlvMsgGroup=llParseStringKeepNulls(rlvMsgStr, ["."], [""]);
 
@@ -353,13 +451,14 @@ default{
                     list rlvExeResult=[
                         "RLVEXT.EXEC", rlvMsgStr, result
                     ];
-                    resultList+=[list2Msg(rlvExeResult)];
+                    resultList+=[llDumpList2String(rlvExeResult, "|")];
                 }
             }
         }
         if(llGetListLength(resultList)>0){
-            llMessageLinked(LINK_SET, RLV_MSG_NUM, list2Bundle(resultList), user); // RLV处理完成后的回调
+            llMessageLinked(LINK_SET, RLV_MSG_NUM, llDumpList2String(resultList, "&&"), user); // RLV处理完成后的回调
         }
-        // llOwnerSay("RLV Ext Memory Used: "+(string)llGetUsedMemory()+" Free: "+(string)llGetFreeMemory());
+        // llSleep(0.01);
+        // llOwnerSay("RLVEXT Memory Used: "+(string)llGetUsedMemory()+"/"+(string)(65536-llGetUsedMemory())+" Free: "+(string)llGetFreeMemory());
     }
 }

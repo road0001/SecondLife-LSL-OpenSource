@@ -683,5 +683,7 @@ default{
         }
         // llOwnerSay("LINK_MESSAGE: "+str);
         //llOwnerSay("OPERATER: "+(string)user);
+        // llSleep(0.01);
+        // llOwnerSay("Main Memory Used: "+(string)llGetUsedMemory()+"/"+(string)(65536-llGetUsedMemory())+" Free: "+(string)llGetFreeMemory());
     }
 }

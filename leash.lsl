@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better leash control system, use link_message to operate leashes.
 
 ***更新记录***
+- 1.1.3 20260128
+    - 优化内存占用。
+
 - 1.1.2 20260120
     - 优化内存占用。
 
@@ -98,16 +101,16 @@ list strSplit(string m, string sp){
     }
     return temp;
 }
-string strJoin(list m, string sp){
-    return llDumpList2String(m, sp);
-}
+// string strJoin(list m, string sp){
+//     return llDumpList2String(m, sp);
+// }
 
 // string dataSplit=";";
 list data2List(string d){
     return strSplit(d, ";");
 }
 string list2Data(list d){
-    return strJoin(d, ";");
+    return llDumpList2String(d, ";");
 }
 // string list2RlvData(list d){
 //     return strJoin(d, ",");
@@ -755,7 +758,7 @@ string curLeashName="";
 integer MENU_MSG_NUM=1000;
 integer RLV_MSG_NUM=1001;
 integer ACCESS_MSG_NUM=1002;
-integer LAN_MSG_NUM=1003;
+// integer LAN_MSG_NUM=1003;
 integer LEASH_MSG_NUM=1005;
 integer CHANNEL_LOCK_MEISTER = -8888;
 integer CHANNEL_LOCK_GUARD   = -9119;
@@ -1147,9 +1150,10 @@ default{
         }
 
         if(llGetListLength(resultList)>0){
-            llMessageLinked(LINK_SET, LEASH_MSG_NUM, strJoin(resultList, "&&"), user); // 处理完成后的回调
+            llMessageLinked(LINK_SET, LEASH_MSG_NUM, llDumpList2String(resultList, "&&"), user); // 处理完成后的回调
             resultList=[];
         }
+        // llSleep(0.01);
         // llOwnerSay("Leash Memory Used: "+(string)llGetUsedMemory()+"/"+(string)(65536-llGetUsedMemory())+" Free: "+(string)llGetFreeMemory());
     }
     dataserver(key query_id, string data){

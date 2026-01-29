@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better menu management system, use link_message to operate menus.
 
 ***更新记录***
+- 1.1.16 20260128
+    - 优化内存占用。
+
 - 1.1.15 20260119
     - 修复语言系统回调判定错误的bug。
 
@@ -135,11 +138,6 @@ TODO:
 /*
 基础功能依赖函数
 */
-/*
-根据用户UUID获取用户信息URL。
-返回：带链接的 显示名称(用户名)
-*/
-
 string replace(string src, string target, string replacement) {
     return llReplaceSubString(src, target, replacement, 0);
 }
@@ -171,33 +169,33 @@ list strSplit(string m, string sp){
     }
     return temp;
 }
-string strJoin(list m, string sp){
-    return llDumpList2String(m, sp);
-}
+// string strJoin(list m, string sp){
+//     return llDumpList2String(m, sp);
+// }
 
-// string bundleSplit="&&";
-list bundle2List(string b){
-    return strSplit(b, "&&");
-}
-string list2Bundle(list b){
-    return strJoin(b, "&&");
-}
+// // string bundleSplit="&&";
+// list bundle2List(string b){
+//     return strSplit(b, "&&");
+// }
+// string list2Bundle(list b){
+//     return strJoin(b, "&&");
+// }
 
-// string messageSplit="|";
-list msg2List(string m){
-    return strSplit(m, "|");
-}
-string list2Msg(list m){
-    return strJoin(m, "|");
-}
+// // string messageSplit="|";
+// list msg2List(string m){
+//     return strSplit(m, "|");
+// }
+// string list2Msg(list m){
+//     return strJoin(m, "|");
+// }
 
-// string dataSplit=";";
-list data2List(string d){
-    return strSplit(d, ";");
-}
-string list2Data(list d){
-    return strJoin(d, ";");
-}
+// // string dataSplit=";";
+// list data2List(string d){
+//     return strSplit(d, ";");
+// }
+// string list2Data(list d){
+//     return strJoin(d, ";");
+// }
 /*
 菜单多语言通用方法。
 设置语言（文字KEY，文字值），返回：当前语言的KEY对应文字
@@ -242,7 +240,7 @@ string getLanguageKey(string v){
 string getLanguageVar(string k){ // 拼接字符串方法，用于首尾拼接变量等内容。格式：Text text %1% %2%.%%var1;var2
     list ksp=llParseStringKeepNulls(k, ["%%;"], [""]); // ["Text text %1% %2%.", "var1;var2"]
     string text=getLanguage(trim(llList2String(ksp, 0)));
-    list var=data2List(llList2String(ksp, 1)); // ["var1", "var2"]
+    list var=strSplit(llList2String(ksp, 1), ";"); // ["var1", "var2"]
     integer i;
     for(i=0; i<llGetListLength(var); i++){
         integer vi=i+1;
@@ -258,7 +256,7 @@ list boolList;
 string getLanguageBool(string k){ // 拼接字符串方法之开关，根据传入字符串来判断开关并显示。格式：[0/1]BUTTON_NAME，返回：◇ 按钮名 / ◆ 按钮名
     //return getLanguageVar(k, LVPOS_BEFORE, llList2String(boolStrList,bool));
     // list boolList=msg2List(boolStrList);
-    boolList=msg2List(defaultBoolStrList);
+    boolList=strSplit(defaultBoolStrList, "|");
     integer bool=FALSE;
     if(includes(k, "[1]")){
         bool=TRUE;
@@ -277,10 +275,10 @@ string getLanguageBool(string k){ // 拼接字符串方法之开关，根据传�
 integer applyLanguage(){
     string switchStr=getLanguage("ButtonSwitch"); // 更改开关样式。格式：关|开
     if(switchStr=="ButtonSwitch"){ // 如果返回的是buttonSwitch（即不存在此字段，则应用默认样式）
-        boolList=msg2List(defaultBoolStrList);
+        boolList=strSplit(defaultBoolStrList, "|");
         // boolStrList=defaultBoolStrList;
     }else{
-        boolList=msg2List(switchStr);
+        boolList=strSplit(switchStr, "|");
         // boolStrList=switchStr;
     }
     return TRUE;
@@ -376,9 +374,9 @@ integer executeMenu(string mname, integer reset, key user){
         return FALSE;
     }
 }
-integer reshowMenu(string mname, key user){
-    return executeMenu(mname, FALSE, user);
-}
+// integer reshowMenu(string mname, key user){
+//     return executeMenu(mname, FALSE, user);
+// }
 
 // list showMenuPageList=[];
 integer setShowMenuPageList(string mname, integer mpage){
@@ -453,7 +451,7 @@ integer showMenu(string mname, string mtext, string mlist, string mparent, integ
         list menuItems=[];
         // 正常菜单，处理翻页情况
         if(mtype==1){
-            list showMenuList=data2List(mlist);
+            list showMenuList=strSplit(mlist, ";");
             // 计算总页数（向上取整）和偏移数（从0开始计算（0~8，9~17……）
             integer buttonsPerPage=9;
             integer totalPages=llCeil((float)llGetListLength(showMenuList) / (float)buttonsPerPage); // 向上取整，需要将数值转换成float再算
@@ -504,7 +502,7 @@ integer showMenu(string mname, string mtext, string mlist, string mparent, integ
         }
         // 简易菜单，只处理按钮的语言
         else if(mtype==2){
-            menuItems=data2List(mlist);
+            menuItems=strSplit(mlist, ";");
             integer menuCount=llGetListLength(menuItems);
             if(menuCount==1 && llList2String(menuItems,0)==""){
                 menuItems=["OK"];
@@ -565,7 +563,7 @@ showMenuHandle(string message, key user){
             message
         ];
         // MENU.ACTIVE|MainMenu|Button 1
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, list2Msg(menuCmdList), user);
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, llDumpList2String(menuCmdList, "|"), user);
     }
 }
 
@@ -634,14 +632,14 @@ default{
         菜单执行后，会发送执行结果回调，格式：
         MENU.EXEC | MENU.REG.OPEN.RESET | 1 // 1=成功，0=失败，或其他结果字符串
         */
-        list msgList=bundle2List(msg);
+        list msgList=strSplit(msg, "&&");
         list resultList=[];
         integer msgCount=llGetListLength(msgList);
         integer mi;
         for(mi=0; mi<msgCount; mi++){
             string str=llList2String(msgList, mi);
             if (llGetSubString(str, 0, 4) == "MENU." && !includes(str, "EXEC")) {
-                list menuCmdList=msg2List(str);
+                list menuCmdList=strSplit(str, "|");
                 string menuCmdStr=llList2String(menuCmdList, 0);
                 list menuCmdGroup=llParseStringKeepNulls(menuCmdStr, ["."], [""]);
     
@@ -718,7 +716,7 @@ default{
                     list menuExeResult=[
                         "MENU.EXEC", menuCmdStr, result
                     ];
-                    resultList+=[list2Msg(menuExeResult)];
+                    resultList+=[llDumpList2String(menuExeResult, "|")];
                     //llMessageLinked(LINK_SET, 0, list2Msg(menuExeResult), user); // 菜单处理完成后的回调
                 }
             }
@@ -730,8 +728,9 @@ default{
             }
         }
         if(llGetListLength(resultList)>0){
-            llMessageLinked(LINK_SET, MENU_MSG_NUM, list2Bundle(resultList), user); // 菜单处理完成后的回调
+            llMessageLinked(LINK_SET, MENU_MSG_NUM, llDumpList2String(resultList, "&&"), user); // 菜单处理完成后的回调
         }
-        // llOwnerSay("Menu Memory Used: "+(string)llGetUsedMemory()+" Free: "+(string)llGetFreeMemory());
+        // llSleep(0.01);
+        // llOwnerSay("Menu Memory Used: "+(string)llGetUsedMemory()+"/"+(string)(65536-llGetUsedMemory())+" Free: "+(string)llGetFreeMemory());
     }
 }

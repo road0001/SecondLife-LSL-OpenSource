@@ -4,6 +4,12 @@ Author: JMRY
 Description: A better animation control system, use link_message to operate animations.
 
 ***更新记录***
+- 1.1 2026130
+    - 优化播放、停止动画的申请权限逻辑。
+
+- 1.0.2 20260128
+    - 优化内存占用。
+
 - 1.0.1 20260116
     - 优化停止动画的逻辑，提升流畅度。
 
@@ -18,18 +24,18 @@ TODO:
 - 动画播放列表
 */
 
-string replace(string src, string target, string replacement) {
-    return llReplaceSubString(src, target, replacement, 0);
-}
+// string replace(string src, string target, string replacement) {
+//     return llReplaceSubString(src, target, replacement, 0);
+// }
 
-integer includes(string src, string target){
-    integer startPos = llSubStringIndex(src, target);
-    if(~startPos){
-        return TRUE;
-    }else{
-        return FALSE;
-    }
-}
+// integer includes(string src, string target){
+//     integer startPos = llSubStringIndex(src, target);
+//     if(~startPos){
+//         return TRUE;
+//     }else{
+//         return FALSE;
+//     }
+// }
 
 // string trim(string k){
 //     return llStringTrim(k, STRING_TRIM);
@@ -44,36 +50,36 @@ list strSplit(string m, string sp){
     }
     return temp;
 }
-string strJoin(list m, string sp){
-    return llDumpList2String(m, sp);
-}
+// string strJoin(list m, string sp){
+//     return llDumpList2String(m, sp);
+// }
 
-// string bundleSplit="&&";
-list bundle2List(string b){
-    return strSplit(b, "&&");
-}
-string list2Bundle(list b){
-    return strJoin(b, "&&");
-}
+// // string bundleSplit="&&";
+// list bundle2List(string b){
+//     return strSplit(b, "&&");
+// }
+// string list2Bundle(list b){
+//     return strJoin(b, "&&");
+// }
 
-// string messageSplit="|";
-list msg2List(string m){
-    return strSplit(m, "|");
-}
-string list2Msg(list m){
-    return strJoin(m, "|");
-}
+// // string messageSplit="|";
+// list msg2List(string m){
+//     return strSplit(m, "|");
+// }
+// string list2Msg(list m){
+//     return strJoin(m, "|");
+// }
 
-// string dataSplit=";";
-list data2List(string d){
-    return strSplit(d, ";");
-}
+// // string dataSplit=";";
+// list data2List(string d){
+//     return strSplit(d, ";");
+// }
 string list2Data(list d){
-    return strJoin(d, ";");
+    return llDumpList2String(d, ";");
 }
-string list2RlvData(list d){
-    return strJoin(d, ",");
-}
+// string list2RlvData(list d){
+//     return strJoin(d, ",");
+// }
 
 list animClassList=[];
 integer addAnimClass(string name){
@@ -126,7 +132,7 @@ integer playAnimationByParams(string params, string name){
     if(params){
 		curPlayingAnimName=name;
         curPlayingAnimParams=params;
-        list animParams=data2List(params);
+        list animParams=strSplit(params, ";");
         // animName;interval;floatHeight;Ext1;Ext2;...
         playAnimInterval=(float)llList2String(animParams, 1);
         if(playAnimInterval<=0.0){ // 重播间隔小于等于0时，说明参数解析错误，因此将其修正。
@@ -137,13 +143,15 @@ integer playAnimationByParams(string params, string name){
             playAnimFloatHeight=0.0;
         }
 
-        curPlayingAnimFileName=llList2String(animParams, 0);
-        if(allowPlayAnim==TRUE){
-            playAnimation(curPlayingAnimFileName, TRUE);
-        }else{
-            playAnimationFlag=TRUE;
-            llRequestPermissions(llGetOwner(),PERMISSION_TRIGGER_ANIMATION);
-        }
+        // curPlayingAnimFileName=llList2String(animParams, 0);
+        playAnimation(llList2String(animParams, 0), TRUE);
+        // playAnimation(curPlayingAnimFileName, TRUE);
+        // if(allowPlayAnim==TRUE){ // 不在playAnimation申请权限，防止死循环
+        //     playAnimation(curPlayingAnimFileName, TRUE);
+        // }else{
+        //     playAnimationFlag=2;
+        //     llRequestPermissions(animPlayer,PERMISSION_TRIGGER_ANIMATION);
+        // }
         return TRUE;
     }else{
         return FALSE;
@@ -151,64 +159,93 @@ integer playAnimationByParams(string params, string name){
 }
 
 string curPlayingAnimFileName="";
+string lastPlayingAnimFileName="";
 integer allowPlayAnim=FALSE;
 float playAnimInterval=10;
 float playAnimFloatHeight=0;
 integer playAnimationFlag=FALSE;
 integer playAnimation(string name, integer stop){
-    playAnimationFlag=TRUE;
-    if(allowPlayAnim==TRUE){
-        if(stop==TRUE || curPlayingAnimFileName==""){
-            stopAnimation();
-        }
-        if(name!=""){
-            llStartAnimation(name);
-            curPlayingAnimFileName=name;
-            llSetTimerEvent(playAnimInterval);
-        
-            if(allowAutoAdjustHeight==TRUE){
-                llOwnerSay("@adjustheight:"+(string)playAnimFloatHeight+"=force");
-            };
-        }
+    if(animPlayer==NULL_KEY) return FALSE;
+    if(stop==TRUE){
+        playAnimationFlag=2;
+    }else{
+        playAnimationFlag=TRUE;
     }
-    return allowPlayAnim;
+    curPlayingAnimFileName=name;
+    llRequestPermissions(animPlayer,PERMISSION_TRIGGER_ANIMATION);
+    return playAnimationFlag;
 }
+
+integer stopAnimation(){
+    if(animPlayer==NULL_KEY) return FALSE;
+    playAnimationFlag=FALSE;
+    llRequestPermissions(animPlayer,PERMISSION_TRIGGER_ANIMATION);
+    return playAnimationFlag;
+}
+
+integer stopAllAnimation(){
+    if(animPlayer==NULL_KEY) return FALSE;
+    playAnimationFlag=-1;
+    llRequestPermissions(animPlayer,PERMISSION_TRIGGER_ANIMATION);
+    return playAnimationFlag;
+}
+// integer playAnimation(string name, integer stop){
+//     playAnimationFlag=TRUE;
+//     if(allowPlayAnim==TRUE){
+//         if(stop==TRUE || curPlayingAnimFileName==""){
+//             stopAnimation();
+//         }
+//         if(name!=""){
+//             llStartAnimation(name);
+//             curPlayingAnimFileName=name;
+//             llSetTimerEvent(playAnimInterval);
+        
+//             if(allowAutoAdjustHeight==TRUE && playAnimFloatHeight!=0){
+//                 llOwnerSay("@adjustheight:"+(string)playAnimFloatHeight+"=force");
+//             };
+//         }
+//     }else{
+//         // llRequestPermissions(animPlayer,PERMISSION_TRIGGER_ANIMATION);
+//     }
+//     return allowPlayAnim;
+// }
 
 // integer stopAnimation(){
 //     playAnimationFlag=FALSE;
 //     if(allowPlayAnim==TRUE){
 //         if(curPlayingAnimFileName!=""){
-//             llStopAnimation(curPlayingAnimFileName);
-//             llStartAnimation("stand");
-//             curPlayingAnimName="";
-//             curPlayingAnimFileName="";
+//             llStopAnimation(lastPlayingAnimFileName);
+//             // llStartAnimation("stand");
+//             // curPlayingAnimName="";
+//             // curPlayingAnimFileName="";
 //         }
 //         llSetTimerEvent(0);
-//         if(allowAutoAdjustHeight==TRUE){
+//         if(allowAutoAdjustHeight==TRUE && playAnimFloatHeight!=0){
 //             llOwnerSay("@adjustheight:0=force");
+//             // playAnimFloatHeight=0;
 //         };
 //     }else{
-//         llRequestPermissions(llGetOwner(),PERMISSION_TRIGGER_ANIMATION);
+//         // llRequestPermissions(animPlayer,PERMISSION_TRIGGER_ANIMATION);
 //     }
 //     return allowPlayAnim;
 // }
 
-integer stopAnimation(){
-    if(allowPlayAnim){
-        list allAnimList=llGetAnimationList(llGetOwner());
-        llSetTimerEvent(0);
-        if(allowAutoAdjustHeight==TRUE){
-            llOwnerSay("@adjustheight:0=force");
-        };
-        integer i;
-        for(i=0; i<llGetListLength(allAnimList); i++){
-            llStopAnimation(llList2String(allAnimList, i));
-        }
-        llSleep(0.1);
-        llStartAnimation("stand");
-    }
-    return allowPlayAnim;
-}
+// integer stopAllAnimation(){
+//     if(allowPlayAnim){
+//         list allAnimList=llGetAnimationList(llGetOwner());
+//         llSetTimerEvent(0);
+//         if(allowAutoAdjustHeight==TRUE){
+//             llOwnerSay("@adjustheight:0=force");
+//         };
+//         integer i;
+//         for(i=0; i<llGetListLength(allAnimList); i++){
+//             llStopAnimation(llList2String(allAnimList, i));
+//         }
+//         llSleep(0.1);
+//         llStartAnimation("stand");
+//     }
+//     return allowPlayAnim;
+// }
 
 /*
 配置文件读取
@@ -258,13 +295,14 @@ showAnimMenu(string parent, key user){
         menuList+=["[STOP]"];
     }
     menuList+=animClassList;
-    llMessageLinked(LINK_SET, MENU_MSG_NUM, list2Msg([
-        "MENU.REG.OPEN",
-        animMenuName,
-        "Animation Menu\nCurrent Playing: %1%%%;"+curPlayingAnimName,
-        list2Data(menuList),
-        parent
-    ]), user);
+    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+animMenuName+"|Animation Menu\nCurrent Playing: %1%%%;"+curPlayingAnimName+"|"+list2Data(menuList)+"|"+parent, user);
+    // llMessageLinked(LINK_SET, MENU_MSG_NUM, list2Msg([
+    //     "MENU.REG.OPEN",
+    //     animMenuName,
+    //     "Animation Menu\nCurrent Playing: %1%%%;"+curPlayingAnimName,
+    //     list2Data(menuList),
+    //     parent
+    // ]), user);
 }
 
 string animSubMenuName="AnimationSubMenu";
@@ -287,6 +325,7 @@ showAnimSubMenu(string parent, string class, key user){
     llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+animSubMenuName+"|"+animSubDesc+"|"+list2Data(animCmdList)+"|"+parent, user);
 }
 
+key animPlayer=NULL_KEY;
 integer MENU_MSG_NUM=1000;
 integer ANIM_MSG_NUM=1006;
 integer allowAutoAdjustHeight=TRUE;
@@ -294,6 +333,7 @@ integer allowStopAnim=TRUE;
 string curAnimClass="";
 default{
     state_entry(){
+        // animPlayer=llGetOwner();
     }
     timer(){
         playAnimation(curPlayingAnimFileName, FALSE);
@@ -302,34 +342,90 @@ default{
         if(change & CHANGED_OWNER){
             llResetScript();
         }
-    }
-    attach(key user){
-        if(user!=NULL_KEY){
-            llRequestPermissions(llGetOwner(),PERMISSION_TRIGGER_ANIMATION);
-        }
-    }
-    run_time_permissions(integer perm) {
-        if(perm & PERMISSION_TRIGGER_ANIMATION){
-            allowPlayAnim=TRUE;
-            if(playAnimationFlag==TRUE){
-                playAnimation(curPlayingAnimFileName,TRUE);
-            }else{
-                stopAnimation();
+        if(change & CHANGED_LINK){
+            animPlayer=llAvatarOnSitTarget();
+            if(animPlayer!=NULL_KEY){
+                playAnimation(curPlayingAnimFileName, FALSE);
+                // llRequestPermissions(animPlayer,PERMISSION_TRIGGER_ANIMATION);
             }
         }
     }
+    attach(key user){
+        animPlayer=user;
+        if(user!=NULL_KEY){
+            playAnimation(curPlayingAnimFileName, FALSE);
+            // llRequestPermissions(animPlayer,PERMISSION_TRIGGER_ANIMATION);
+        }else if(allowAutoAdjustHeight==TRUE && playAnimFloatHeight!=0){
+            llOwnerSay("@adjustheight:0=force");
+        }
+    }
+    object_rez(key user){
+        animPlayer=NULL_KEY;
+    }
+    run_time_permissions(integer perm) {
+        if(perm & PERMISSION_TRIGGER_ANIMATION){
+            if(playAnimationFlag>=TRUE){
+                if(playAnimationFlag>TRUE && lastPlayingAnimFileName!=""){
+                    llStopAnimation(lastPlayingAnimFileName);
+                }
+                if(curPlayingAnimFileName==""){
+                    return;
+                }
+                lastPlayingAnimFileName=curPlayingAnimFileName;
+                llStartAnimation(curPlayingAnimFileName);
+                llSetTimerEvent(playAnimInterval);
+                if(allowAutoAdjustHeight==TRUE && playAnimFloatHeight!=0){
+                    llOwnerSay("@adjustheight:"+(string)playAnimFloatHeight+"=force");
+                };
+            }else if(playAnimationFlag==FALSE){
+                if(lastPlayingAnimFileName==""){
+                    return;
+                }
+                llStopAnimation(lastPlayingAnimFileName);
+                llSetTimerEvent(0);
+                if(allowAutoAdjustHeight==TRUE && playAnimFloatHeight!=0){
+                    llOwnerSay("@adjustheight:0=force");
+                };
+            }else if(playAnimationFlag==-1){
+                llSetTimerEvent(0);
+                list allAnimList=llGetAnimationList(llGetOwner());
+                integer i;
+                for(i=0; i<llGetListLength(allAnimList); i++){
+                    llStopAnimation(llList2String(allAnimList, i));
+                }
+                if(allowAutoAdjustHeight==TRUE && playAnimFloatHeight!=0){
+                    llOwnerSay("@adjustheight:0=force");
+                };
+                llSleep(0.1);
+                llStartAnimation("stand");
+            }
+        }
+    }
+    // run_time_permissions(integer perm) {
+    //     if(perm & PERMISSION_TRIGGER_ANIMATION){
+    //         allowPlayAnim=TRUE;
+    //         if(playAnimationFlag>=TRUE){
+    //             if(playAnimationFlag>TRUE){
+    //                 stopAnimation();
+    //             }
+    //             playAnimation(curPlayingAnimFileName,TRUE);
+    //         }else{
+    //             stopAnimation();
+    //         }
+    //     }
+    // }
     link_message(integer sender_num, integer num, string msg, key user){
         if(num!=ANIM_MSG_NUM && num!=MENU_MSG_NUM){
             return;
         }
 
-        list bundleMsgList=bundle2List(msg);
+        list bundleMsgList=strSplit(msg, "&&");
         list resultList=[];
         integer bundleMsgCount=llGetListLength(bundleMsgList);
         integer mi;
         for(mi=0; mi<bundleMsgCount; mi++){
             string str=llList2String(bundleMsgList, mi);
-            list msgList=msg2List(str);
+            list msgList=strSplit(str, "|");
             string msgHeader=llList2String(msgList, 0);
             list msgHeaderGroup=llParseStringKeepNulls(msgHeader, ["."], [""]);
 
@@ -384,7 +480,7 @@ default{
                         返回：
                         ANIM.EXEC | ANIM.GET | AnimName1; AnimParams1; AnimClass1; AnimAutoPlay1; AnimName2; ...
                         */
-                        result=list2Msg(animConfigList);
+                        result=llDumpList2String(animConfigList, "|");
                     }
                     else if(headerExt=="CLASS"){
                         /*
@@ -433,10 +529,10 @@ default{
                         result=(string)readNotecards(msgName);
                     }
                     /*
-                    读取Leash记事卡列表
+                    读取Anim记事卡列表
                     ANIM.LOAD.LIST
                     回调：
-                    ANIM.EXEC | ANIM.LOAD.LIST | leash_1, leash_2, leash_3, ...
+                    ANIM.EXEC | ANIM.LOAD.LIST | anim_1, anim_2, anim_3, ...
                     */
                     if(headerExt=="LIST"){
                         result=(string)list2Data(getNotecardsList());
@@ -466,6 +562,9 @@ default{
                 }
                 else if(headerSub=="STOP"){
                     result=(string)stopAnimation();
+                }
+                else if(headerSub=="STOPALL"){
+                    result=(string)stopAllAnimation();
                 }
 
 				else if(headerSub=="MENU"){
@@ -516,17 +615,17 @@ default{
         }
 
         if(llGetListLength(resultList)>0){
-            llMessageLinked(LINK_SET, ANIM_MSG_NUM, list2Bundle(resultList), user); // 处理完成后的回调
+            llMessageLinked(LINK_SET, ANIM_MSG_NUM, llDumpList2String(resultList, "&&"), user); // 处理完成后的回调
             resultList=[];
         }
-
+        // llSleep(0.01);
         // llOwnerSay("Animation Memory Used: "+(string)llGetUsedMemory()+"/"+(string)(65536-llGetUsedMemory())+" Free: "+(string)llGetFreeMemory());
     }
     dataserver(key query_id, string data){
         if (query_id == readNotecardQuery) { // 通过readNotecardNotecards触发读取记事卡事件，按行读取配置并应用。
             if (data == EOF) {
                 llOwnerSay("Finished reading animation config: "+curNotecardName);
-                llMessageLinked(LINK_SET, ANIM_MSG_NUM, list2Msg(["ANIM.LOAD.NOTECARD",curNotecardName,TRUE]), NULL_KEY); // 成功读取记事卡后回调
+                llMessageLinked(LINK_SET, ANIM_MSG_NUM, "ANIM.LOAD.NOTECARD|"+curNotecardName+"|1", NULL_KEY); // 成功读取记事卡后回调
                 readNotecardQuery=NULL_KEY;
 
                 if(curPlayingAnimName!=""){

@@ -4,6 +4,17 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 1.1.12 20260130
+    - 优化RLV组的执行性能。
+    - 优化Rez模式下RLV的执行效果。
+    - 修复在Rez模式下，输出异常指令的bug。
+
+- 1.1.11 20260128
+    - 优化内存占用。
+
+- 1.1.10 20260127
+    - 修复使用指令打开菜单时，未能直接打开子菜单的bug。
+
 - 1.1.9 20260126
     - 加入一键应用当前RLV类别中的全部RLV组功能。
     - 调整RLV菜单打开方式，当只有一个RLV类别时，直接打开子菜单。
@@ -192,7 +203,6 @@ integer executeRLV(string rlv){
         string rlvCmdName="RLV_EXECUTE_" + llGetObjectName();
         list rlvExecList =[rlvCmdName, VICTIM_UUID, llReplaceSubString(rlv,",","|",0)];
         string rlvExecStr=list2RlvData(rlvExecList);
-        llOwnerSay(rlvExecStr);
         if(RLV_MODE==1){
             llSay(RLVRS,rlvExecStr);
         }else if(RLV_MODE==2){
@@ -462,7 +472,9 @@ integer applyAllRLVCmd(){
         string curRlvCmdName=llList2String(rlvCmdNameKeyClass, i);
         // string curRlvCmd=llList2String(rlvCmdNameKeyClass, i+1);
         integer curRlvEnabled=llList2Integer(rlvCmdNameKeyClass, i+3);
-        applyRLVCmd(curRlvCmdName, curRlvEnabled);
+        if(curRlvEnabled==TRUE){
+            applyRLVCmd(curRlvCmdName, curRlvEnabled);
+        }
     }
     llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.EXEC|RLV.APPLY.ALL|1", NULL_KEY);
     return TRUE;
@@ -472,13 +484,23 @@ list rlvClassName=[];
 // integer getRLVClass(string name){
 //     return llListFindList(rlvClassName, [name]);
 // }
-integer addRLVClass(string name){
-    integer rIndex=llListFindList(rlvClassName, [name]);
-    if(!~rIndex){ // name不存在时，添加
-        rlvClassName+=[name];
-        return TRUE;
+integer addRLVClass(string name, integer bool){
+    if(bool==TRUE){
+        integer rIndex=llListFindList(rlvClassName, [name]);
+        if(!~rIndex){ // name不存在时，添加
+            rlvClassName+=[name];
+            return TRUE;
+        }else{
+            return FALSE; // class已存在时，不能重复添加
+        }
     }else{
-        return FALSE; // class已存在时，不能重复添加
+        integer rIndex=llListFindList(rlvClassName, [name]);
+        if(~rIndex){
+            rlvClassName=llDeleteSubList(rlvClassName, rIndex, rIndex);
+            return TRUE;
+        }else{
+            return FALSE;
+        }
     }
 }
 // integer removeRLVClass(string name){
@@ -519,7 +541,7 @@ integer setRLVCmd(string name, list k, string class, integer enabled){
         rlvCmdNameKeyClass+=[name, llDumpList2String(k,rlvCmdSpStr), class, enabled];
     }
     if(class!=""){
-        addRLVClass(class);
+        addRLVClass(class, TRUE);
     }
     return TRUE;
     // integer rIndex=llListFindList(rlvCmdNameKeyClass, [name]);
@@ -825,10 +847,6 @@ default{
         }
     }
 
-    control(key id, integer level, integer edge){
-
-    }
-
     listen(integer channel, string name, key user, string message){
         if(channel==rlvChannel){ // 监听RLV返回数据并发送消息
             list msgList=["RLV.EXEC","CALLBACK",message];
@@ -886,7 +904,7 @@ default{
     on_rez(integer start_param){
         // 登录、穿戴时也会触发on_rez，并且比attach更早触发。有时候登录时不触发attach，因此将attach的部分也添加到这里。
         integer attached=llGetAttached();
-        if(attached>0){
+        if(attached!=0){
             RLV_MODE=0;
             runRLV();
         }else{
@@ -1017,7 +1035,7 @@ default{
                         list rstList=[];
                         integer i;
                         for(i=0; i<llGetListLength(rlvClsList); i++){
-                            rstList+=[addRLVClass(llList2String(rlvClsList, i))];
+                            rstList+=[addRLVClass(llList2String(rlvClsList, i), TRUE)];
                         }
                         result=list2RlvData(rstList);
                     }
@@ -1037,13 +1055,14 @@ default{
                         result=(string)removeRLVCmd(rlvMsgName);
                     }
                     else if(rlvMsgExt=="CLASS"){
-                        integer rIndex=llListFindList(rlvClassName, [rlvMsgName]);
-                        if(~rIndex){
-                            rlvClassName=llDeleteSubList(rlvClassName, rIndex, rIndex);
-                            result="1";
-                        }else{
-                            result="0";
-                        }
+                        result=(string)addRLVClass(rlvMsgName, FALSE);
+                        // integer rIndex=llListFindList(rlvClassName, [rlvMsgName]);
+                        // if(~rIndex){
+                        //     rlvClassName=llDeleteSubList(rlvClassName, rIndex, rIndex);
+                        //     result="1";
+                        // }else{
+                        //     result="0";
+                        // }
                     }
                 }
                 else if(rlvMsgSub=="CLEAR"){
@@ -1218,7 +1237,11 @@ default{
                     }
                 }
                 else if(rlvMsgSub=="MENU"){
-                    showRLVMenu(rlvMsgName, user);
+                    if(llGetListLength(rlvClassName)<=1){
+                        showRLVSubMenu(rlvMsgName, llList2String(rlvClassName, 0), user);
+                    }else{
+                        showRLVMenu(rlvMsgName, user);
+                    }
                 }
                 if(result!=""){
                     list rlvExeResult=[
@@ -1244,7 +1267,6 @@ default{
                     }else{
                         showRLVMenu(menuName, user);
                     }
-                    
                 }
                 else if(menuName==rlvMenuName && menuButton!=""){ // MENU.ACTIVE | Class | Class1
                     showRLVSubMenu(rlvMenuName, menuButton, user);
@@ -1278,7 +1300,8 @@ default{
         if(llGetListLength(resultList)>0){
             llMessageLinked(LINK_SET, RLV_MSG_NUM, llDumpList2String(resultList, "&&"), user); // RLV处理完成后的回调
         }
-        // llOwnerSay("RLV Memory Used: "+(string)llGetUsedMemory()+" Free: "+(string)llGetFreeMemory());
+        // llSleep(0.01);
+        // llOwnerSay("RLV Memory Used: "+(string)llGetUsedMemory()+"/"+(string)(65536-llGetUsedMemory())+" Free: "+(string)llGetFreeMemory());
     }
 
     dataserver(key query_id, string data){
@@ -1300,7 +1323,7 @@ default{
                 if(data!="" && llGetSubString(data,0,0)!="#"){
                     if(llGetSubString(data,0,0)=="[" && llGetSubString(data,-1,-1)=="]"){
                         curRLVClass=llGetSubString(data,1,-2);
-                        addRLVClass(curRLVClass);
+                        addRLVClass(curRLVClass, TRUE);
                     }else{
                         list rlvStrSp=llParseStringKeepNulls(data, ["="], []);
                         string rlvName=llList2String(rlvStrSp,0);

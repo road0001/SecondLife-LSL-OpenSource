@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better access permission control system, use link_message to operate permissions.
 
 ***更新记录***
+- 1.0.15 20260128
+    - 优化内存占用。
+
 - 1.0.14 20260121
     - 优化内存占用。
     - 优化RLV例外触发机制，提升性能。
@@ -133,24 +136,24 @@ list strSplit(string m, string sp){
     }
     return temp;
 }
-string strJoin(list m, string sp){
-    return llDumpList2String(m, sp);
-}
+// string strJoin(list m, string sp){
+//     return llDumpList2String(m, sp);
+// }
 
 // string messageSplit="|";
 // list msg2List(string m){
 //     return strSplit(m, "|");
 // }
-string list2Msg(list m){
-    return strJoin(m, "|");
-}
+// string list2Msg(list m){
+//     return strJoin(m, "|");
+// }
 
 // string dataSplit=";";
 // list data2List(string d){
 //     return strSplit(d, ";");
 // }
 string list2Data(list d){
-    return strJoin(d, ";");
+    return llDumpList2String(d, ";");
 }
 
 /*
@@ -168,10 +171,10 @@ integer setRootOwner(key user){
     if(llGetListLength(ownerList)==0){
         ownerList+=[user];
     }else{
-        removeRLVExcepts(llList2Key(ownerList, 0)); // 移除当前Root的RLV例外
+        applyRLVExcepts(FALSE, llList2Key(ownerList, 0)); // 移除当前Root的RLV例外
         integer oIndex=llListFindList(ownerList, [user]);
         if(oIndex>0){ // 大于0表示该用户存在于owner列表，因此要先删掉，再加root，防止重复
-            removeOwner(user);
+            addOwner(user, FALSE);
         }
         ownerList=llListReplaceList(ownerList, [user], 0, 0);
     }
@@ -186,27 +189,38 @@ integer setRootOwner(key user){
 /*
 添加owner，列表中用户唯一，因此root和owner互斥不能共存
 */
-integer addOwner(key user){
-    integer oIndex=llListFindList(ownerList, [user]);
-    if(!~oIndex){ // 未找到key时，插入并返回TRUE
-        removeTrust(user); // 添加主人时，移除信任和黑名单
-        removeBlack(user);
-        ownerList+=[user];
-        return TRUE;
-    }else{ // 找到key时，返回FALSE，包括root
-        return FALSE;
-    }
-}
-integer removeOwner(key user){
-    integer oIndex=llListFindList(ownerList, [user]);
-    if(oIndex<=0){ // 0不可以移除，-1未找到，都返回FALSE
-        return FALSE;
+integer addOwner(key user, integer bool){
+    if(bool==TRUE){
+        integer oIndex=llListFindList(ownerList, [user]);
+        if(!~oIndex){ // 未找到key时，插入并返回TRUE
+            addTrust(user, FALSE); // 添加主人时，移除信任和黑名单
+            addBlack(user, FALSE);
+            ownerList+=[user];
+            return TRUE;
+        }else{ // 找到key时，返回FALSE，包括root
+            return FALSE;
+        }
     }else{
-        removeRLVExcepts(llList2Key(ownerList, oIndex));
-        ownerList=llDeleteSubList(ownerList, oIndex, oIndex);
-        return TRUE;
+        integer oIndex=llListFindList(ownerList, [user]);
+        if(oIndex<=0){ // 0不可以移除，-1未找到，都返回FALSE
+            return FALSE;
+        }else{
+            applyRLVExcepts(FALSE, llList2Key(ownerList, oIndex));
+            ownerList=llDeleteSubList(ownerList, oIndex, oIndex);
+            return TRUE;
+        }
     }
 }
+// integer removeOwner(key user){
+//     integer oIndex=llListFindList(ownerList, [user]);
+//     if(oIndex<=0){ // 0不可以移除，-1未找到，都返回FALSE
+//         return FALSE;
+//     }else{
+//         applyRLVExcepts(FALSE, llList2Key(ownerList, oIndex));
+//         ownerList=llDeleteSubList(ownerList, oIndex, oIndex);
+//         return TRUE;
+//     }
+// }
 
 /*
 信任列表
@@ -215,29 +229,39 @@ list trustList=[];
 // integer findTrust(key user){
 //     return llListFindList(trustList, [user]);
 // }
-integer addTrust(key user){
-    integer oIndex=llListFindList(ownerList, [user]);
-    if(~oIndex){
-        return FALSE; // 已添加owner时，不能添加trust
-    }
-    integer tIndex=llListFindList(trustList, [user]);
-    if(!~tIndex){ // 未找到key时，插入并返回TRUE
-        trustList+=[user];
-        removeBlack(user); // 加入信任列表时，移除黑名单
-        return TRUE;
-    }else{ // 找到key时，返回FALSE
-        return FALSE;
-    }
-}
-integer removeTrust(key user){
-    integer tIndex=llListFindList(trustList, [user]);
-    if(!~tIndex){
-        return FALSE;
+integer addTrust(key user, integer bool){
+    if(bool==TRUE){
+        integer oIndex=llListFindList(ownerList, [user]);
+        if(~oIndex){
+            return FALSE; // 已添加owner时，不能添加trust
+        }
+        integer tIndex=llListFindList(trustList, [user]);
+        if(!~tIndex){ // 未找到key时，插入并返回TRUE
+            trustList+=[user];
+            addBlack(user, FALSE); // 加入信任列表时，移除黑名单
+            return TRUE;
+        }else{ // 找到key时，返回FALSE
+            return FALSE;
+        }
     }else{
-        trustList=llDeleteSubList(trustList, tIndex, tIndex);
-        return TRUE;
+        integer tIndex=llListFindList(trustList, [user]);
+        if(!~tIndex){
+            return FALSE;
+        }else{
+            trustList=llDeleteSubList(trustList, tIndex, tIndex);
+            return TRUE;
+        }
     }
 }
+// integer removeTrust(key user){
+//     integer tIndex=llListFindList(trustList, [user]);
+//     if(!~tIndex){
+//         return FALSE;
+//     }else{
+//         trustList=llDeleteSubList(trustList, tIndex, tIndex);
+//         return TRUE;
+//     }
+// }
 
 /*
 黑名单
@@ -246,26 +270,36 @@ list blackList=[];
 // integer findBlack(key user){
 //     return llListFindList(blackList, [user]);
 // }
-integer addBlack(key user){
-    integer bIndex=llListFindList(blackList, [user]);
-    if(!~bIndex){ // 未找到key时，插入并返回TRUE
-        blackList+=[user];
-        removeOwner(user); // 加入黑名单时，移除owner权限
-        removeTrust(user); // 加入黑名单时，移除信任权限
-        return TRUE;
-    }else{ // 找到key时，返回FALSE
-        return FALSE;
-    }
-}
-integer removeBlack(key user){
-    integer bIndex=llListFindList(blackList, [user]);
-    if(!~bIndex){
-        return FALSE;
+integer addBlack(key user, integer bool){
+    if(bool==TRUE){
+        integer bIndex=llListFindList(blackList, [user]);
+        if(!~bIndex){ // 未找到key时，插入并返回TRUE
+            blackList+=[user];
+            addOwner(user, FALSE); // 加入黑名单时，移除owner权限
+            addTrust(user, FALSE); // 加入黑名单时，移除信任权限
+            return TRUE;
+        }else{ // 找到key时，返回FALSE
+            return FALSE;
+        }
     }else{
-        blackList=llDeleteSubList(blackList, bIndex, bIndex);
-        return TRUE;
+        integer bIndex=llListFindList(blackList, [user]);
+        if(!~bIndex){
+            return FALSE;
+        }else{
+            blackList=llDeleteSubList(blackList, bIndex, bIndex);
+            return TRUE;
+        }
     }
 }
+// integer removeBlack(key user){
+//     integer bIndex=llListFindList(blackList, [user]);
+//     if(!~bIndex){
+//         return FALSE;
+//     }else{
+//         blackList=llDeleteSubList(blackList, bIndex, bIndex);
+//         return TRUE;
+//     }
+// }
 
 /*
 公开模式管理
@@ -345,24 +379,31 @@ integer setAutoLockMode(integer bool){
 RLV例外
 */
 list rlvExcepts=["startim","sendim","recvim","recvchat","recvemote","tplure","accepttp"];
-applyRLVExcepts(){
-    integer i;
-    integer r;
-    for(i=0; i<llGetListLength(ownerList); i++){
-        for(r=0; r<llGetListLength(rlvExcepts); r++){
-            string curOwner=llList2String(ownerList, i);
-            if(curOwner!=llGetOwner()){ // 自己本人不需要例外，因此过滤掉
-                llOwnerSay("@"+llList2String(rlvExcepts, r)+":"+curOwner+"=add");
+applyRLVExcepts(integer bool, key user){
+    if(bool==TRUE){
+        integer i;
+        integer r;
+        for(i=0; i<llGetListLength(ownerList); i++){
+            for(r=0; r<llGetListLength(rlvExcepts); r++){
+                string curOwner=llList2String(ownerList, i);
+                if(curOwner!=llGetOwner()){ // 自己本人不需要例外，因此过滤掉
+                    llOwnerSay("@"+llList2String(rlvExcepts, r)+":"+curOwner+"=add");
+                }
             }
+        }
+    }else{
+        integer r;
+        for(r=0; r<llGetListLength(rlvExcepts); r++){
+            llOwnerSay("@"+llList2String(rlvExcepts, r)+":"+(string)user+"=rem");
         }
     }
 }
-removeRLVExcepts(key user){
-    integer r;
-    for(r=0; r<llGetListLength(rlvExcepts); r++){
-            llOwnerSay("@"+llList2String(rlvExcepts, r)+":"+(string)user+"=rem");
-        }
-}
+// removeRLVExcepts(key user){
+//     integer r;
+//     for(r=0; r<llGetListLength(rlvExcepts); r++){
+//         llOwnerSay("@"+llList2String(rlvExcepts, r)+":"+(string)user+"=rem");
+//     }
+// }
 
 /*
 获取授权状态
@@ -401,32 +442,11 @@ integer getAccess(key user){
 分别发送主人列表、信任列表、黑名单、模式列表
 */
 integer notifyAccess(){
-    list ownerNotify=[
-        "ACCESS.NOTIFY",
-        "OWNER",
-        list2Data(ownerList)
-    ];
-    list trustNotify=[
-        "ACCESS.NOTIFY",
-        "TRUST",
-        list2Data(trustList)
-    ];
-    list blackNotify=[
-        "ACCESS.NOTIFY",
-        "BLACK",
-        list2Data(blackList)
-    ];
-    list modeList=[publicMode, groupMode, hardcore, autoLock];
-    list modeNotify=[
-        "ACCESS.NOTIFY",
-        "MODE",
-        list2Data(modeList)
-    ];
-    llMessageLinked(LINK_SET, ACCESS_MSG_NUM, list2Msg(ownerNotify), "");
-    llMessageLinked(LINK_SET, ACCESS_MSG_NUM, list2Msg(trustNotify), "");
-    llMessageLinked(LINK_SET, ACCESS_MSG_NUM, list2Msg(blackNotify), "");
-    llMessageLinked(LINK_SET, ACCESS_MSG_NUM, list2Msg(modeNotify),  "");
-    applyRLVExcepts();
+    llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.NOTIFY|OWNER|"+list2Data(ownerList), "");
+    llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.NOTIFY|TRUST|"+list2Data(trustList), "");
+    llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.NOTIFY|BLACK|"+list2Data(blackList), "");
+    llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.NOTIFY|MODE|" +list2Data([publicMode, groupMode, hardcore, autoLock]),  "");
+    applyRLVExcepts(TRUE, NULL_KEY);
     return TRUE;
 }
 
@@ -436,33 +456,33 @@ integer readAccessLine=0;
 string accessHeader="access_";
 string readAccessName="";
 string curAccessName="";
-integer readAccessNotecards(string aname){
-    readAccessLine=0;
-    curAccessName=aname;
-    readAccessName=accessHeader+aname;
-    if (llGetInventoryType(readAccessName) == INVENTORY_NOTECARD) {
-        llOwnerSay("Begin reading access settings: "+aname);
-        readAccessQuery=llGetNotecardLine(readAccessName, readAccessLine); // 通过给readAccessQuery赋llGetNotecardLine的key，从而触发datasever事件
-        // 后续功能交给下方datasever处理
-        return TRUE;
-    }else{
-        notifyAccess(); // 文件不存在时，直接发送权限变更通知
-        return FALSE;
-    }
-}
+// integer readAccessNotecards(string aname){
+//     readAccessLine=0;
+//     curAccessName=aname;
+//     readAccessName=accessHeader+aname;
+//     if (llGetInventoryType(readAccessName) == INVENTORY_NOTECARD) {
+//         llOwnerSay("Begin reading access settings: "+aname);
+//         readAccessQuery=llGetNotecardLine(readAccessName, readAccessLine); // 通过给readAccessQuery赋llGetNotecardLine的key，从而触发datasever事件
+//         // 后续功能交给下方datasever处理
+//         return TRUE;
+//     }else{
+//         notifyAccess(); // 文件不存在时，直接发送权限变更通知
+//         return FALSE;
+//     }
+// }
 
-list getAccessNotecards(){
-    list accessList=[];
-    integer count = llGetInventoryNumber(INVENTORY_NOTECARD);
-    integer i;
-    for (i=0; i<count; i++){
-        string notecardName = llGetInventoryName(INVENTORY_NOTECARD, i);
-        if(llGetSubString(notecardName, 0, llStringLength(accessHeader)-1)==accessHeader){
-            accessList+=[llGetSubString(notecardName, llStringLength(accessHeader), -1)];
-        }
-    }
-    return accessList;
-}
+// list getAccessNotecards(){
+//     list accessList=[];
+//     integer count = llGetInventoryNumber(INVENTORY_NOTECARD);
+//     integer i;
+//     for (i=0; i<count; i++){
+//         string notecardName = llGetInventoryName(INVENTORY_NOTECARD, i);
+//         if(llGetSubString(notecardName, 0, llStringLength(accessHeader)-1)==accessHeader){
+//             accessList+=[llGetSubString(notecardName, llStringLength(accessHeader), -1)];
+//         }
+//     }
+//     return accessList;
+// }
 
 /*
 权限菜单控制
@@ -759,13 +779,13 @@ default{
                     添加黑名单：ACCESS.ADD.BLACK | UUID
                     */
                     if(accessMsgExt=="OWNER"){
-                        result=(string)addOwner((key)accessMsgName);
+                        result=(string)addOwner((key)accessMsgName, TRUE);
                     }
                     else if(accessMsgExt=="TRUST"){
-                        result=(string)addTrust((key)accessMsgName);
+                        result=(string)addTrust((key)accessMsgName, TRUE);
                     }
                     else if(accessMsgExt=="BLACK"){
-                        result=(string)addBlack((key)accessMsgName);
+                        result=(string)addBlack((key)accessMsgName, TRUE);
                     }
                 }
                 else if(accessMsgSub=="REM" || accessMsgSub=="REMOVE"){
@@ -781,13 +801,13 @@ default{
                     ACCESS.REMOVE.BLACK | UUID
                     */
                     if(accessMsgExt=="OWNER"){
-                        result=(string)removeOwner((key)accessMsgName);
+                        result=(string)addOwner((key)accessMsgName, FALSE);
                     }
                     else if(accessMsgExt=="TRUST"){
-                        result=(string)removeTrust((key)accessMsgName);
+                        result=(string)addTrust((key)accessMsgName, FALSE);
                     }
                     else if(accessMsgExt=="BLACK"){
-                        result=(string)removeBlack((key)accessMsgName);
+                        result=(string)addBlack((key)accessMsgName, FALSE);
                     }
                 }
                 else if(accessMsgSub=="GET"){
@@ -921,7 +941,19 @@ default{
                     ACCESS.LOAD.NOTECARD | file1 | 1
                     */
                     if(accessMsgExt==""){
-                        result=(string)readAccessNotecards(accessMsgName);
+                        // result=(string)readAccessNotecards(accessMsgName);
+                        readAccessLine=0;
+                        curAccessName=accessMsgName;
+                        readAccessName=accessHeader+accessMsgName;
+                        if (llGetInventoryType(readAccessName) == INVENTORY_NOTECARD) {
+                            llOwnerSay("Begin reading access settings: "+accessMsgName);
+                            readAccessQuery=llGetNotecardLine(readAccessName, readAccessLine); // 通过给readAccessQuery赋llGetNotecardLine的key，从而触发datasever事件
+                            // 后续功能交给下方datasever处理
+                            result="1";
+                        }else{
+                            notifyAccess(); // 文件不存在时，直接发送权限变更通知
+                            result="0";
+                        }
                     }
                     /*
                     读取Access记事卡列表
@@ -930,7 +962,17 @@ default{
                     ACCESS.EXEC | ACCESS.LOAD.LIST | access_a1, access_a2, access_a3, ...
                     */
                     if(accessMsgExt=="LIST"){
-                        result=(string)list2Data(getAccessNotecards());
+                        // result=(string)list2Data(getAccessNotecards());
+                        list accessList=[];
+                        integer count = llGetInventoryNumber(INVENTORY_NOTECARD);
+                        integer i;
+                        for (i=0; i<count; i++){
+                            string notecardName = llGetInventoryName(INVENTORY_NOTECARD, i);
+                            if(llGetSubString(notecardName, 0, llStringLength(accessHeader)-1)==accessHeader){
+                                accessList+=[llGetSubString(notecardName, llStringLength(accessHeader), -1)];
+                            }
+                        }
+                        result=list2Data(accessList);
                     }
                 }
                 else if(accessMsgSub=="MENU"){
@@ -944,7 +986,7 @@ default{
                     list accessExeResult=[
                         "ACCESS.EXEC", accessMsgStr, result
                     ];
-                    resultList+=[list2Msg(accessExeResult)];
+                    resultList+=[llDumpList2String(accessExeResult, "|")];
                 }
             }
             else if(llGetSubString(str, 0, 4) == "MENU." && includes(str, "ACTIVE")) {
@@ -982,15 +1024,15 @@ default{
                     }
                     else if(accessActiveFlag=="AddOwner"){
                         buUser=llList2Key(sensorUserList, ((integer)buIndex));
-                        menuActiveFlag=addOwner(buUser);
+                        menuActiveFlag=addOwner(buUser, TRUE);
                     }
                     else if(accessActiveFlag=="AddTrust"){
                         buUser=llList2Key(sensorUserList, ((integer)buIndex));
-                        menuActiveFlag=addTrust(buUser);
+                        menuActiveFlag=addTrust(buUser, TRUE);
                     }
                     else if(accessActiveFlag=="AddBlack"){
                         buUser=llList2Key(sensorUserList, ((integer)buIndex));
-                        menuActiveFlag=addBlack(buUser);
+                        menuActiveFlag=addBlack(buUser, TRUE);
                     }
                     else if(accessActiveFlag=="RemoveOwner"){
                         //key u=llList2Key(ownerList, (integer)buIndex); // Owner从1开始，第0个是root，因此不减1
@@ -1002,17 +1044,17 @@ default{
                             // string name=userName(buUser,1);
                             string name=llGetUsername(buUser);
                             if(name==buName){
-                                menuActiveFlag=removeOwner(buUser);
+                                menuActiveFlag=addOwner(buUser, FALSE);
                             }
                         }
                     }
                     else if(accessActiveFlag=="RemoveTrust"){
                         buUser=llList2Key(trustList, ((integer)buIndex)-1);
-                        menuActiveFlag=removeTrust(buUser);
+                        menuActiveFlag=addTrust(buUser, FALSE);
                     }
                     else if(accessActiveFlag=="RemoveBlack"){
                         buUser=llList2Key(blackList, ((integer)buIndex)-1);
-                        menuActiveFlag=removeBlack(buUser);
+                        menuActiveFlag=addBlack(buUser, FALSE);
                     }
                     showAccessMenu(accessParentMenuName, user);
                     if(menuActiveFlag!=-999){
@@ -1038,14 +1080,15 @@ default{
             接收到RLV清空的通知时，重写RLV例外，防止例外失效
             */
             else if (llGetSubString(str, 0, 3) == "RLV." && includes(str, "EXEC") && (includes(str, "CLEAR") || includes(str, "APPLY.ALL"))) {
-                applyRLVExcepts();
+                applyRLVExcepts(TRUE, NULL_KEY);
             }
         }
         if(llGetListLength(resultList)>0){
-            llMessageLinked(LINK_SET, ACCESS_MSG_NUM, strJoin(resultList, "&&"), user); // 处理完成后的回调
+            llMessageLinked(LINK_SET, ACCESS_MSG_NUM, llDumpList2String(resultList, "&&"), user); // 处理完成后的回调
             notifyAccess();
         }
-        // llOwnerSay("Access Memory Used: "+(string)llGetUsedMemory()+" Free: "+(string)llGetFreeMemory());
+        // llSleep(0.01);
+        // llOwnerSay("Access Memory Used: "+(string)llGetUsedMemory()+"/"+(string)(65536-llGetUsedMemory())+" Free: "+(string)llGetFreeMemory());
     }
 
     sensor(integer detected) {
@@ -1064,7 +1107,7 @@ default{
         if (query_id == readAccessQuery) { // 通过readAccessNotecards触发读取记事卡事件，按行读取配置并应用。
             if (data == EOF) {
                 llOwnerSay("Finished reading access config: "+curAccessName);
-                llMessageLinked(LINK_SET, ACCESS_MSG_NUM, list2Msg(["ACCESS.LOAD.NOTECARD",curAccessName,TRUE]), NULL_KEY); // 成功读取记事卡后回调
+                llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.LOAD.NOTECARD|"+curAccessName+"|1", NULL_KEY); // 成功读取记事卡后回调
                 notifyAccess();
                 readAccessQuery=NULL_KEY;
             } else {
@@ -1092,19 +1135,19 @@ default{
                     else if(accName=="owner"){
                         integer i;
                         for(i=0; i<llGetListLength(accData); i++){
-                            addOwner(llList2Key(accData, i));
+                            addOwner(llList2Key(accData, i), TRUE);
                         }
                     }
                     else if(accName=="trust"){
                         integer i;
                         for(i=0; i<llGetListLength(accData); i++){
-                            addTrust(llList2Key(accData, i));
+                            addTrust(llList2Key(accData, i), TRUE);
                         }
                     }
                     else if(accName=="black"){
                         integer i;
                         for(i=0; i<llGetListLength(accData); i++){
-                            addBlack(llList2Key(accData, i));
+                            addBlack(llList2Key(accData, i), TRUE);
                         }
                     }
                     else if(accName=="public"){
