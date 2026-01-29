@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better menu management system, use link_message to operate menus.
 
 ***更新记录***
+- 1.1.17 20260130
+    - 优化菜单处理的性能。
+
 - 1.1.16 20260128
     - 优化内存占用。
 
@@ -496,9 +499,9 @@ integer showMenu(string mname, string mtext, string mlist, string mparent, integ
                 getMenuButtonStr(llList2String(menuItems,3)), getMenuButtonStr(llList2String(menuItems,4)), getMenuButtonStr(llList2String(menuItems,5)), // 第二行
                 getMenuButtonStr(llList2String(menuItems,0)), getMenuButtonStr(llList2String(menuItems,1)), getMenuButtonStr(llList2String(menuItems,2))  // 第一行
             ];
-            for(i=0; i<llGetListLength(menuItems); i++){ // 截断菜单按钮长度，防止超长
-                llListReplaceList(menuItems, [llGetSubString(llList2String(menuItems, i), 0, 23)], i, i);
-            }
+            // for(i=0; i<llGetListLength(menuItems); i++){ // 截断菜单按钮长度，防止超长
+            //     llListReplaceList(menuItems, [llGetSubString(llList2String(menuItems, i), 0, 23)], i, i);
+            // }
         }
         // 简易菜单，只处理按钮的语言
         else if(mtype==2){
