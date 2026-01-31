@@ -12,59 +12,6 @@
 	- 在菜单系统、权限系统等功能中，分隔数据使用分号【;】，但RLV指令中存在使用分号的情况，因此将分号改为逗号【,】，与RLV批量执行的分隔符保持一致。
 	- 虽然RLV系统能自动处理分割符两边的空格，但仍然不建议在拼接时加空格。
 
-### 注册RLV类别
-#### RLV.REG.CLASS
-#### RLV.REGIST.CLASS
-- 将RLV类别注册到RLV系统中，以便在RLV菜单中展示分类。
-- RLV类别名唯一，如果在列表中已存在同名的类别名，将不会产生任何效果。
-- 执行后，如果添加成功，则回调结果为TRUE。如果类别名已存在，则回调结果为FALSE。
-```lsl
-RLV.REGIST.CLASS | 类别名1, 类别名2, 类别名3, ...
-RLV.REG.CLASS | 类别名1, 类别名2, 类别名3, ...
-// 示例：
-RLV.REGIST.CLASS | RLVClass1, RLVClass2, RLVClass3
-RLV.REG.CLASS | RLVClass1, RLVClass2, RLVClass3
-// 回调：
-RLV.EXEC | RLV.REGIST.CLASS | 1
-RLV.EXEC | RLV.REG.CLASS | 0
-```
-
-### 移除RLV类别
-#### RLV.REM.CLASS
-#### RLV.REMOVE.CLASS
-- 移除已注册的RLV类别。及时移除不需要的类别是节约有限内存的好习惯。
-- 执行后，如果RLV类别已注册，则回调结果为TRUE。如果没有注册此RLV类别，则回调结果为FALSE。
-```lsl
-RLV.REM | 类别名
-RLV.REMOVE | 类别名
-// 示例：
-RLV.REM | Vision
-RLV.REMOVE | Vision
-// 回调：
-RLV.EXEC | RLV.REM | 1
-RLV.EXEC | RLV.REMOVE | 0
-```
-
-### 获取RLV类别Index
-#### RLV.GET.CLASS
-- 获取RLV类别的索引。如果不存在此RLV类别，则返回-1。
-```lsl
-RLV.GET.CLASS | 类别名
-// 示例：
-RLV.GET.CLASS | ClassName
-// 回调：
-RLV.EXEC | RLV.GET.CLASS | 2
-```
-
-### 清空RLV类别
-#### RLV.CLEAR.CLASS
-- 清空所有RLV类别。
-```lsl
-RLV.CLEAR.CLASS
-// 回调：
-RLV.EXEC | RLV.CLEAR.CLASS | 1
-```
-
 ### 注册RLV组
 #### RLV.REG
 #### RLV.REGIST
@@ -127,7 +74,7 @@ RLV.EXEC | RLV.APPLY | 0
 #### RLV.APPLYALL
 - 立即应用已注册的所有RLV组。
 - RLV限制开关为当前组内的设置。
-- 执行后，毁掉结果恒为1。
+- 执行后，回调结果恒为1。
 ```lsl
 RLV.APPLYALL
 // 回调：
@@ -161,19 +108,19 @@ RLV.EXEC | RLV.CLEAR | 1
 
 ### 获取RLV组中的RLV指令
 #### RLV.GET
-- 获取已注册的RLV组中所有的RLV限制。
+- 获取已注册的RLV组中所有的RLV数据。
 ```lsl
 RLV.GET | RLV组名
 // 示例：
 RLV.GET | RLVName
 // 回调：
-RLV.EXEC | RLV.GET | RLV1, RLV2, RLV3
+RLV.EXEC | RLV.GET | RLVName; RLV1, RLV2, RLV3; RLVClass; RLVEnabled
 ```
 
 ### 直接执行RLV指令
 #### RLV.RUN
 - 直接执行@开头的RLV指令，可以不加@，用逗号分隔多条指令，如@detach=n,fly=n,unsit=n。
-- 不带参数时，一键执行当前存在的所有限制。
+- 不带参数时，一键执行当前记录的所有限制。
 ```lsl
 RLV.RUN
 RLV.RUN | RLV1, RLV2, RLV3, ...
@@ -186,7 +133,6 @@ RLV.EXEC | RLV.RUN | 1
 - 直接执行@开头的RLV指令，可以不加@，用逗号分隔多条指令，如@detach=n,fly=n,unsit=n。
 - 临时RLV限制仅当前会话有效，重新登录后即失效。
 ```lsl
-RLV.RUN.TEMP
 RLV.RUN.TEMP | RLV1, RLV2, RLV3, ...
 // 回调：
 RLV.EXEC | RLV.RUN.TEMP | 1
@@ -194,14 +140,15 @@ RLV.EXEC | RLV.RUN.TEMP | 1
 
 ### 获取RLV状态
 #### RLV.GET.STATUS
-- 获取RLV组或RLV的生效状态。
-- 可传递多个RLV组或RLV指令。
+- 获取RLV的生效状态。
+- 参数为空时，获取当前已记录的RLV生效状态。
+- 可传递多个RLV组或RLV指令，只有这些RLV指令全部生效，回调结果才为TRUE。
 ```lsl
-RLV.GET.STATUS | RLVName1, RLVName2, RLVName3
+RLV.GET.STATUS
 RLV.GET.STATUS | @RLV1, @RLV2, @RLV3
 // 回调：
-RLV.EXEC | RLV.GET.STATUS | 1, 1, 0 // RLV组中所有限制都为n或add时，返回1，否则返回0；多个组名批量返回
-RLV.EXEC | RLV.GET.STATUS | 0, 0, 1 // 返回RLV指令的状态，多条指令批量返回
+RLV.EXEC | RLV.GET.STATUS | rlv1=n, rlv2=add, ...
+RLV.EXEC | RLV.GET.STATUS | 1 // 只有这些RLV指令全部生效，回调结果才为TRUE。
 ```
 
 ### 锁定/解锁
@@ -236,24 +183,6 @@ RLV.EXEC | RLV.GET.LOCK | 1;UUID
 RLV.GET.RENAMER
 // 回调：
 RLV.EXEC | RLV.GET.RENAMER | 名字; 频道; 1
-```
-
-### 重命名器
-#### RLV.RENAMER
-- 开启/关闭/设定重命名器。
-- 参数为SET时，将更改为指定名字。改名后，重命名器立即生效。
-- 参数为-1（切换当前状态）、0（不生效）、1（生效）。
-- 执行后，回调结果为重命名器执行后的名字和状态（0、1）。
-```lsl
-RLV.RENAMER | SET | 名字
-RLV.RENAMER | -1
-RLV.RENAMER | 0
-RLV.RENAMER | 1
-// 回调：
-RLV.EXEC | RLV.RENAMER | 名字; 频道; 1
-RLV.EXEC | RLV.RENAMER | 名字; 频道; 0
-RLV.EXEC | RLV.RENAMER | 名字; 频道; 0
-RLV.EXEC | RLV.RENAMER | 名字; 频道; 1
 ```
 
 ### 捕获玩家
