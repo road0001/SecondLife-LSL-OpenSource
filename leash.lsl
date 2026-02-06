@@ -4,6 +4,10 @@ Author: JMRY
 Description: A better leash control system, use link_message to operate leashes.
 
 ***更新记录***
+- 1.1.4 20260203
+    - 优化记事卡读取的回调逻辑，在没有记事卡时直接回调。
+    - 修复Leash Handle脱掉时，粒子追踪失效的bug。
+
 - 1.1.3 20260128
     - 优化内存占用。
 
@@ -804,12 +808,10 @@ default{
             Leash Holder监听
             */
             if(leashParticleEnabled==TRUE){
-                if(llGetOwnerKey(id) == leashTarget){
-                    if(msg==(string)leashTarget+"handle ok"){ // Ready时，粒子向holder发射
-                        startParticles(id);
-                    }else if(msg==(string)leashTarget+"handle detached"){ // 脱下时，粒子向角色发射
-                        startParticles(leashTarget);
-                    }
+                if(msg==(string)leashTarget+"handle ok"){ // Ready时，粒子向holder发射
+                    startParticles(id);
+                }else if(msg==(string)leashTarget+"handle detached"){ // 脱下时，粒子向角色发射
+                    startParticles(leashTarget);
                 }else{
                     startParticles(leashTarget);
                 }
@@ -961,6 +963,7 @@ default{
                             // 后续功能交给下方datasever处理
                             result=(string)TRUE;
                         }else{
+                            llMessageLinked(LINK_SET, LEASH_MSG_NUM, "LEASH.LOAD.NOTECARD|"+msgName+"|0", NULL_KEY);
                             result=(string)FALSE;
                         }
                     }

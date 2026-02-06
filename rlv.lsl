@@ -4,6 +4,12 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 2.0.2 20260203
+    - 优化记事卡读取的回调逻辑，在没有记事卡时直接回调。
+
+- 2.0.1 20260202
+    - 优化互斥组禁用的逻辑。
+
 - 2.0 20260131
     -重构RLV脚本。
 
@@ -376,8 +382,8 @@ integer applyRLVCmd(string name, integer bool){
                 // 互斥组禁用（检测RLV首个_开头的互斥组标记，并将同组其他RLV禁用）
                 if(llGetSubString(curRlv, 0, 0)=="_"){
                     integer i;
-                    for(i=1; i<llGetListLength(rlvCmdList); i+=rlvCmdLength){
-                        if(includes(llList2String(rlvCmdList, i), curRlv)){
+                    for(i=1; i<llGetListLength(rlvCmdList); i+=rlvCmdLength){ // name, >rlvs<, class, enabled
+                        if(includes(llList2String(rlvCmdList, i), curRlv) && llList2Integer(rlvCmdList, i+2)==TRUE){
                             applyRLVCmd(llList2String(rlvCmdList, i-1), FALSE);
                         }
                     }
@@ -698,6 +704,7 @@ default{
                             // 后续功能交给下方datasever处理
                             result=(string)TRUE;
                         }else{
+                            llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.LOAD.NOTECARD|"+msgName+"|0", NULL_KEY); // RLV成功读取记事卡后回调
                             result=(string)FALSE;
                         }
                     }

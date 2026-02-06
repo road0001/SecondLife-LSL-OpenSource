@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better RLV Renamer management system, use link_message to operate Renamer restraints.
 
 ***更新记录***
+- 1.0.8 20260202
+    - 加入说话模式切换（正常、低语）功能。
+
 - 1.0.7 20260130
     - 修复在Rez模式下，输出异常指令的bug。
 
@@ -271,6 +274,7 @@ float renamerConfusionProb=0.00;
 integer renamerHive=FALSE;
 string renamerVoice="";
 float renamerVolume=1.0;
+integer renamerType=0; // 0: Say; 1: Whisper; 2: Shour; 3: RegionSay
 integer renamerSay(string name, string msg, integer type) {
     string omsg=msg;
     // Renamer voice
@@ -478,7 +482,8 @@ showRenamerConfusionMenu(string parent, key user){
         "["+(string)(renamerConfusion=="Middle")+"]Middle", 
         "["+(string)(renamerConfusion=="Strict")+"]Strict", 
         "["+(string)(renamerConfusion=="Muffle")+"]Muffle",
-        "["+(string)(renamerConfusionOOC==TRUE)+"]OOC"
+        "["+(string)(renamerConfusionOOC==TRUE)+"]OOC",
+        "["+(string)(renamerType==TRUE)+"]Whisper"
     ];
     if(allowHive==TRUE){
         menuItems+=[
@@ -536,7 +541,7 @@ default{
         }
         if(channel==renamerChannel){
             if(llGetOwnerKey(user) == llGetOwner()){
-                renamerSay(renamerName, message, FALSE);
+                renamerSay(renamerName, message, renamerType);
             }else{
                 string oname = llGetObjectName();
                 llSetObjectName(objectName);
@@ -816,13 +821,19 @@ default{
                 else if(menuName==renamerConfusionMenuName && menuButton!=""){
                     if(menuButton=="OOC"){
                         renamerConfusionOOC=!renamerConfusionOOC;
-                    }else if(menuButton=="Hive"){
+                    }
+                    else if(menuButton=="Whisper"){
+                        renamerType=!renamerType;
+                    }
+                    else if(menuButton=="Hive"){
                         renamerHive=!renamerHive;
-                    }else if(menuButton=="HiveChannel"){
+                    }
+                    else if(menuButton=="HiveChannel"){
                         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.INPUT|RenamerChannelInput|Input Hive channel (Current: %1%):%%;"+(string)renamerChannel, user);
                         // 后续交由RenamerVoiceInput处理
                         return;
-                    }else{
+                    }
+                    else{
                         renamerConfusion=menuButton;
                     }
                     showRenamerConfusionMenu(curRenamerSubMenu, user);

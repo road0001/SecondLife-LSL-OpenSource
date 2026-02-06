@@ -4,6 +4,9 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.0.16 20260203
+    - 加入操作锁。
+
 - 1.0.15 20260121
     - 加入配置脚本触发功能（仅示例）。
     - 优化内存占用。
@@ -492,6 +495,8 @@ initMain(){
     // llOwnerSay("Initialize Complete, Enjoy!");
 }
 
+key curUser=NULL_KEY;
+integer timerFlag=0;
 integer initRetryTimer=30;
 integer cmdChannel=1;
 integer listenHandle;
@@ -530,6 +535,10 @@ default{
     timer(){
         if(rlvInited==FALSE){ // 如果未成功初始化数据，则每5秒重新读取一次，直到读取成功
             initMain();
+        }else if(timerFlag==1){
+            curUser=NULL_KEY;
+            timerFlag=0;
+            llSetTimerEvent(0);
         }else{
             llSetTimerEvent(0);
         }
@@ -537,8 +546,14 @@ default{
     touch_start(integer num_detected)
     {
         key user=llDetectedKey(0);
-        showMenu(user);
-        
+        if(curUser==NULL_KEY || curUser==user){
+            curUser=user;
+            showMenu(curUser);
+            timerFlag=1;
+            llSetTimerEvent(60);
+        }else{
+            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Sorry, the menu of %1% is using by %2%.%%;"+llGetObjectName()+";"+userInfo(curUser)+"|0|"+(string)user, user);
+        }
         
         //string json="[9,\"<1,1,1>\",false,{\"A\":8,\"Z\":9}]";
         //llJsonSetValue(json, ["test1"], "testv1");
@@ -603,6 +618,11 @@ default{
                 if(menuText == "Lock"){
                     setLock(-1, user, TRUE);
                 }
+            }
+            else if(menuCmdStr=="MENU.CLOSE"){
+                curUser=NULL_KEY;
+                timerFlag=0;
+                llSetTimerEvent(0);
             }
         }
         else if(num==ACCESS_MSG_NUM){

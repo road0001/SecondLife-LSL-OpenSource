@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better animation control system, use link_message to operate animations.
 
 ***更新记录***
+- 1.1.1 20260203
+    - 优化记事卡读取的回调逻辑，在没有记事卡时直接回调。
+
 - 1.1 2026130
     - 优化播放、停止动画的申请权限逻辑。
 
@@ -268,6 +271,7 @@ integer readNotecards(string name){
         // 后续功能交给下方datasever处理
         return TRUE;
     }else{
+        llMessageLinked(LINK_SET, ANIM_MSG_NUM, "ANIM.LOAD.NOTECARD|"+name+"|0", NULL_KEY);
         return FALSE;
     }
 }

@@ -4,6 +4,12 @@ Author: JMRY
 Description: A better access permission control system, use link_message to operate permissions.
 
 ***更新记录***
+- 1.0.17 20260204
+    - 优化人物扫描逻辑。
+
+- 1.0.16 20260203
+    - 优化记事卡读取的回调逻辑，在没有记事卡时直接回调。
+
 - 1.0.15 20260128
     - 优化内存占用。
 
@@ -654,6 +660,7 @@ showAccessSubMenu(string button, key user){
 
 string accessActiveMenuName="AccessActiveMenu";
 string accessActiveFlag="";
+key accessCurUser=NULL_KEY;
 showAccessActiveMenu(string button, key user){
     integer userPerm=getAccess(user);
     if(userPerm<0){
@@ -951,6 +958,7 @@ default{
                             // 后续功能交给下方datasever处理
                             result="1";
                         }else{
+                            llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.LOAD.NOTECARD|"+accessMsgName+"|0", NULL_KEY);
                             notifyAccess(); // 文件不存在时，直接发送权限变更通知
                             result="0";
                         }
@@ -1002,15 +1010,22 @@ default{
                 string menuButton=llList2String(menuCmdList, 2);
 
                 if(menuButton==accessMenuText){
-                    llSensor("", NULL_KEY, AGENT, 96.0, PI);
+                    // llSensor("", NULL_KEY, AGENT, 96.0, PI);
                     showAccessMenu(menuName, user);
                 }
                 else if(menuName==accessMenuName && menuButton!=""){
-                    llSensor("", NULL_KEY, AGENT, 96.0, PI);
+                    // llSensor("", NULL_KEY, AGENT, 96.0, PI);
                     showAccessSubMenu(menuButton, user);
                 }
                 else if(menuName==accessSubMenuName && menuButton!=""){
-                    showAccessActiveMenu(menuButton, user);
+                    // 设置主人、信任、黑名单时，先扫描再打开菜单
+                    if(menuButton=="SetRoot" || menuButton=="AddOwner" || menuButton=="AddTrust" || menuButton=="AddBlack"){
+                        accessActiveFlag=menuButton;
+                        accessCurUser=user;
+                        llSensor("", NULL_KEY, AGENT, 96.0, PI);
+                    }else{
+                        showAccessActiveMenu(menuButton, user);
+                    }
                 }
                 else if(menuName==accessActiveMenuName && menuButton!=""){
                     integer menuActiveFlag=-999;
@@ -1021,18 +1036,22 @@ default{
                     if(accessActiveFlag=="SetRoot"){
                         buUser=llList2Key(sensorUserList, ((integer)buIndex));
                         menuActiveFlag=setRootOwner(buUser);
+                        sensorUserList=[];
                     }
                     else if(accessActiveFlag=="AddOwner"){
                         buUser=llList2Key(sensorUserList, ((integer)buIndex));
                         menuActiveFlag=addOwner(buUser, TRUE);
+                        sensorUserList=[];
                     }
                     else if(accessActiveFlag=="AddTrust"){
                         buUser=llList2Key(sensorUserList, ((integer)buIndex));
                         menuActiveFlag=addTrust(buUser, TRUE);
+                        sensorUserList=[];
                     }
                     else if(accessActiveFlag=="AddBlack"){
                         buUser=llList2Key(sensorUserList, ((integer)buIndex));
                         menuActiveFlag=addBlack(buUser, TRUE);
+                        sensorUserList=[];
                     }
                     else if(accessActiveFlag=="RemoveOwner"){
                         //key u=llList2Key(ownerList, (integer)buIndex); // Owner从1开始，第0个是root，因此不减1
@@ -1101,6 +1120,7 @@ default{
             key uuid = llDetectedKey(i);
             sensorUserList+=uuid;
         }
+        showAccessActiveMenu(accessActiveFlag, accessCurUser);
     }
 
     dataserver(key query_id, string data){
