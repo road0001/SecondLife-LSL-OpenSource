@@ -4,6 +4,10 @@ Author: JMRY
 Description: A better config apply system, use link_message to operate configs.
 
 ***更新记录***
+- 1.0.1 20260211
+    - 加入在写入RLV配置前清空RLV组的功能。
+    - 优化写入配置的时间间隔。
+
 - 1.0 20260120
     - 初步完成配置功能。
 ***更新记录***
@@ -130,6 +134,7 @@ integer LAN_MSG_NUM=1003;
 integer TIMER_MSG_NUM=1004;
 integer LEASH_MSG_NUM=1005;
 integer ANIM_MSG_NUM=1006;
+float awaitTime=0.1;
 
 default{
     state_entry(){
@@ -149,6 +154,7 @@ default{
                 // list configList=llParseString2List(llList2String(CONFIG, i+1),["\n"],[""]);
 
                 if(configName=="RLV_CONFIG"){
+                    llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.CLEAR", NULL_KEY);
                     string curRLVClass="";
                     for(c=0; c<llGetListLength(configData); c++){
                         string data=llList2String(configData, c);
@@ -167,8 +173,9 @@ default{
                                 llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.REG|"+rlvName+"|"+rlvData+"|"+curRLVClass+"|"+(string)rlvDefaultEnabled, NULL_KEY);
                             }
                         }
+                        // llSleep(awaitTime);
                     }
-                    llSleep(1);
+                    llSleep(awaitTime);
                     llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.APPLYALL", NULL_KEY);
                     llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.LOAD.NOTECARD|CONFIG|1", NULL_KEY); // RLV成功读取记事卡后回调
                 }
@@ -211,8 +218,10 @@ default{
                                 llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.SET.MODE|AUTOLOCK|"+llList2String(accData, 0), NULL_KEY);
                             }
                         }
+                        // llSleep(awaitTime);
                     }
-                    llSleep(1);
+                    llSleep(awaitTime);
+                    llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.GET.NOTIFY", NULL_KEY); // 成功读取记事卡后回调
                     llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.LOAD.NOTECARD|CONFIG|1", NULL_KEY); // 成功读取记事卡后回调
                 }
                 else if(configName=="LEASH_CONFIG"){
@@ -222,8 +231,9 @@ default{
                             list leashStrSp=llParseStringKeepNulls(data, ["="], []);
                             llMessageLinked(LINK_SET, LEASH_MSG_NUM, "LEASH.SET|"+llList2String(leashStrSp,0)+"|"+llList2String(leashStrSp,1), NULL_KEY);
                         }
+                        // llSleep(awaitTime);
                     }
-                    llSleep(1);
+                    llSleep(awaitTime);
                     llMessageLinked(LINK_SET, LEASH_MSG_NUM, "LEASH.LOAD.NOTECARD|CONFIG|1", NULL_KEY); // 成功读取记事卡后回调
                 }
                 else if(configName=="ANIM_CONFIG"){
@@ -247,16 +257,18 @@ default{
                                 llMessageLinked(LINK_SET, ANIM_MSG_NUM, "ANIM.SET|"+animName+"|"+animParams+"|"+curAnimClass+"|"+(string)animAutoPlay, NULL_KEY);
                             }
                         }
+                        // llSleep(awaitTime);
                     }
-                    llSleep(1);
+                    llSleep(awaitTime);
                     if(curPlayingAnimName!=""){
                         llMessageLinked(LINK_SET, ANIM_MSG_NUM, "ANIM.PLAY|"+curPlayingAnimName, NULL_KEY);
                     }
                     llMessageLinked(LINK_SET, ANIM_MSG_NUM, "ANIM.LOAD.NOTECARD|CONFIG|1", NULL_KEY); // 成功读取记事卡后回调
                 }
+                llOwnerSay("Config "+configName+" load completed.");
             }
         }
-        // llSleep(0.1);
+        // llSleep(awaitTime);
         // llOwnerSay("Config Memory Used: "+(string)llGetUsedMemory()+"/"+(string)(65536-llGetUsedMemory())+" Free: "+(string)llGetFreeMemory());
     }
 }

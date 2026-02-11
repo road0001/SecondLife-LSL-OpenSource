@@ -1,9 +1,21 @@
+initConfig(){
+    animConfigList=[]; // name, animName;interval;floatHeight;Ext1;Ext2;..., class, auto
+}
+
 /*
 Name: Animation
 Author: JMRY
 Description: A better animation control system, use link_message to operate animations.
 
 ***更新记录***
+- 1.1.3 20260211
+    - 优化动画播放逻辑，当动画停止时，重新穿戴不再播放动画。
+    - 优化数据结构。
+    - 优化初始化逻辑。
+
+- 1.1.2 20260210
+    - 修复脚本重置后，无法播放动画的bug。
+
 - 1.1.1 20260203
     - 优化记事卡读取的回调逻辑，在没有记事卡时直接回调。
 
@@ -84,28 +96,7 @@ string list2Data(list d){
 //     return strJoin(d, ",");
 // }
 
-list animClassList=[];
-integer addAnimClass(string name){
-    integer rIndex=llListFindList(animClassList, [name]);
-    if(!~rIndex){ // name不存在时，添加
-        animClassList+=[name];
-        return TRUE;
-    }else{
-        return FALSE; // class已存在时，不能重复添加
-    }
-}
-
-integer removeAnimClass(string name){
-    integer rIndex=llListFindList(animClassList, [name]);
-    if(~rIndex){
-        animClassList=llDeleteSubList(animClassList, rIndex, rIndex);
-        return TRUE;
-    }else{
-        return FALSE;
-    }
-}
-
-list animConfigList=[];
+list animConfigList=[]; // name, animName;interval;floatHeight;Ext1;Ext2;..., class, auto
 integer animConfigLength=4; // name,params,class,auto
 integer setAnimConfig(string name, string params, string class, integer auto){ // params: animName;interval;floatHeight;Ext1;Ext2;......
     integer rIndex=llListFindList(animConfigList, [name]);
@@ -113,9 +104,6 @@ integer setAnimConfig(string name, string params, string class, integer auto){ /
         animConfigList=llListReplaceList(animConfigList, [params, class, auto], rIndex+1, rIndex+animConfigLength-1);
     }else{
         animConfigList+=[name, params, class, auto];
-    }
-	if(class!=""){
-        addAnimClass(class);
     }
     return TRUE;
 }
@@ -133,13 +121,13 @@ integer playAnimationByName(string name){
 string curPlayingAnimParams="";
 integer playAnimationByParams(string params, string name){
     if(params){
-		curPlayingAnimName=name;
+        curPlayingAnimName=name;
         curPlayingAnimParams=params;
         list animParams=strSplit(params, ";");
         // animName;interval;floatHeight;Ext1;Ext2;...
         playAnimInterval=(float)llList2String(animParams, 1);
         if(playAnimInterval<=0.0){ // 重播间隔小于等于0时，说明参数解析错误，因此将其修正。
-            playAnimInterval=10.0;
+            playAnimInterval=0.0;
         }
         playAnimFloatHeight=(float)llList2String(animParams, 2);
         if(playAnimFloatHeight<=0.0){
@@ -260,18 +248,17 @@ key readNotecardQuery=NULL_KEY;
 integer readNotecardLine=0;
 integer readNotecards(string name){
     /*Clear Current Data*/
-    animClassList=[];
-    animConfigList=[];
     readNotecardLine=0;
     curNotecardName=name;
     readNotecardName=notecardHeader+name;
     if (llGetInventoryType(readNotecardName) == INVENTORY_NOTECARD) {
         llOwnerSay("Begin reading animation settings: "+name);
+        animConfigList=[];
         readNotecardQuery=llGetNotecardLine(readNotecardName, readNotecardLine); // 通过给readNotecardQuery赋llGetNotecardLine的key，从而触发datasever事件
         // 后续功能交给下方datasever处理
         return TRUE;
     }else{
-        llMessageLinked(LINK_SET, ANIM_MSG_NUM, "ANIM.LOAD.NOTECARD|"+name+"|0", NULL_KEY);
+        llMessageLinked(LINK_SET, ANIM_MSG_NUM, "ANIM.LOAD.NOTECARD|"+name+"|"+(string)llGetListLength(animConfigList), NULL_KEY);
         return FALSE;
     }
 }
@@ -293,13 +280,27 @@ string animMenuText="Animation";
 string animMenuName="AnimationMenu";
 string animParentMenuName="";
 showAnimMenu(string parent, key user){
-    animParentMenuName=parent;
-    list menuList=[];
-    if(allowStopAnim==TRUE){
-        menuList+=["[STOP]"];
+    list animClassList=[];
+    string curClass="";
+    integer i;
+    for(i=0; i<llGetListLength(animConfigList); i+=animConfigLength){
+        string class=llList2String(animConfigList, i+2);
+        if(class!="" && curClass != class){
+            animClassList+=[class];
+            curClass=class;
+        }
     }
-    menuList+=animClassList;
-    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+animMenuName+"|Animation Menu\nCurrent Playing: %1%%%;"+curPlayingAnimName+"|"+list2Data(menuList)+"|"+parent, user);
+    if(llGetListLength(animClassList)<=1){
+        showAnimSubMenu(parent, curClass, user);
+    }else{
+        animParentMenuName=parent;
+        list menuList=[];
+        if(allowStopAnim==TRUE){
+            menuList+=["[STOP]"];
+        }
+        menuList+=animClassList;
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+animMenuName+"|Animation Menu\nCurrent Playing: %1%%%;"+curPlayingAnimName+"|"+list2Data(menuList)+"|"+parent, user);
+    }
     // llMessageLinked(LINK_SET, MENU_MSG_NUM, list2Msg([
     //     "MENU.REG.OPEN",
     //     animMenuName,
@@ -337,7 +338,16 @@ integer allowStopAnim=TRUE;
 string curAnimClass="";
 default{
     state_entry(){
-        // animPlayer=llGetOwner();
+        initConfig();
+        animPlayer=llGetOwner();
+        integer i;
+        for(i=0; i<llGetListLength(animConfigList); i+=animConfigLength){
+            if(llList2Integer(animConfigList, i+3)==TRUE){
+                if(llGetAttached()){
+                    playAnimationByName(llList2String(animConfigList,i));
+                }
+            }
+        }
     }
     timer(){
         playAnimation(curPlayingAnimFileName, FALSE);
@@ -357,7 +367,9 @@ default{
     attach(key user){
         animPlayer=user;
         if(user!=NULL_KEY){
-            playAnimation(curPlayingAnimFileName, FALSE);
+            if(playAnimationFlag>=TRUE){
+                playAnimation(curPlayingAnimFileName, playAnimationFlag);
+            }
             // llRequestPermissions(animPlayer,PERMISSION_TRIGGER_ANIMATION);
         }else if(allowAutoAdjustHeight==TRUE && playAnimFloatHeight!=0){
             llOwnerSay("@adjustheight:0=force");
@@ -455,12 +467,6 @@ default{
                             playAnimationByName(msgName);
                         }
                     }
-                    else if(headerExt=="CLASS"){
-                        /*
-                        添加Class：ANIM.SET.CLASS | ClassName
-                        */
-                        result=(string)addAnimClass(msgName);
-                    }
                     else if(headerExt=="AUTOHEIGHT"){
                         /*
                         添加Class：ANIM.SET.AUTOHEIGHT | 1
@@ -485,14 +491,6 @@ default{
                         ANIM.EXEC | ANIM.GET | AnimName1; AnimParams1; AnimClass1; AnimAutoPlay1; AnimName2; ...
                         */
                         result=llDumpList2String(animConfigList, "|");
-                    }
-                    else if(headerExt=="CLASS"){
-                        /*
-                        获取动画列表：ANIM.GET.CLASS
-                        返回：
-                        ANIM.EXEC | ANIM.GET.CLASS | ClassName1; ClassName2; ...
-                        */
-                        result=list2Data(animClassList);
                     }
                     else if(headerExt=="PLAYING"){
                         /*
@@ -560,7 +558,7 @@ default{
                         /*
                         直接播放动画文件：ANIM.PLAY.FILE | AnimFileName1
                         */
-						curPlayingAnimParams="";
+                        curPlayingAnimParams="";
                         result=(string)playAnimation(msgName, (integer)msgSub);
                     }
                 }
@@ -571,16 +569,12 @@ default{
                     result=(string)stopAllAnimation();
                 }
 
-				else if(headerSub=="MENU"){
+                else if(headerSub=="MENU"){
                     /*
                     显示菜单
                     ANIM.MENU | 上级菜单名
                     */
-                    if(llGetListLength(animClassList)<=1){
-                        showAnimSubMenu(msgName, llList2String(animClassList, 0), user);
-                    }else{
-                        showAnimMenu(msgName, user);
-                    }
+                    showAnimMenu(msgName, user);
                 }
 
                 if(result!=""){
@@ -591,11 +585,7 @@ default{
             else if(headerMain=="MENU" && headerSub=="ACTIVE"){
                 // 动画菜单入口
                 if(msgSub==animMenuText){
-                    if(llGetListLength(animClassList)<=1){
-                        showAnimSubMenu(msgName, llList2String(animClassList, 0), user);
-                    }else{
-                        showAnimMenu(msgName, user);
-                    }
+                    showAnimMenu(msgName, user);
                 }
                 // 动画主菜单（Class菜单）
                 else if(msgName==animMenuName && msgSub!=""){ // MENU.ACTIVE | Class | Class1
@@ -639,7 +629,6 @@ default{
                 if(data!="" && llGetSubString(data,0,0)!="#"){
                     if(llGetSubString(data,0,0)=="[" && llGetSubString(data,-1,-1)=="]"){
                         curAnimClass=llGetSubString(data,1,-2);
-                        addAnimClass(curAnimClass);
                     }else{
                         list animStrSp=llParseStringKeepNulls(data, ["="], []);
                         string animName=llList2String(animStrSp,0);

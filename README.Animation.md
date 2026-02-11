@@ -10,18 +10,6 @@
 - 为了方便阅读，下面的动画指令和回调中的分隔符【|】、【;】、【&&】两边都添加了空格，实际执行时并不会添加此空格。
 	- 虽然动画系统能自动处理分割符两边的空格，但仍然不建议在拼接时加空格。
 
-### 添加动画类别
-#### ANIM.SET.CLASS
-- 添加动画类别。
-- 动画类别已存在时，回调的值为0。
-```lsl
-ANIM.SET.CLASS | ClassName1
-ANIM.SET.CLASS | ClassName1
-// 回调：
-ANIM.EXEC | ANIM.SET.CLASS | 1
-ANIM.EXEC | ANIM.SET.CLASS | 0
-```
-
 ### 添加动画
 #### ANIM.SET
 - 添加动画。
@@ -53,15 +41,6 @@ ANIM.EXEC | ANIM.SET.AUTOHEIGHT | 1
 ANIM.SET.ALLOWSTOP | 1
 // 回调：
 ANIM.EXEC | ANIM.SET.ALLOWSTOP | 1
-```
-
-### 获取动画类别列表
-#### ANIM.GET.CLASS
-- 获取当前拥有的动画类别列表。
-```lsl
-ANIM.GET.CLASS
-// 回调：
-ANIM.EXEC | ANIM.GET.CLASS | ClassName1; ClassName2; ...
 ```
 
 ### 获取动画列表

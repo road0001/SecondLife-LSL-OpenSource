@@ -4,6 +4,10 @@ Author: JMRY
 Description: A better RLV Renamer management system, use link_message to operate Renamer restraints.
 
 ***更新记录***
+- 1.0.9 20260207
+    - 优化文本提示。
+    - 优化全名的显示逻辑。
+
 - 1.0.8 20260202
     - 加入说话模式切换（正常、低语）功能。
 
@@ -54,7 +58,7 @@ TODO:
 返回：带链接的 显示名称(用户名)
 */
 string userInfo(key user){
-    return "secondlife:///app/agent/"+(string)user+"/about";
+    return "secondlife:///app/agent/"+(string)user+"/inspect";
 }
 string replace(string src, string target, string replacement) {
     return llReplaceSubString(src, target, replacement, 0);
@@ -262,6 +266,7 @@ integer renamerEnabled(integer bool, key user){
 }
 
 string RENAMER_DISPLAY_NAME="RENAMER_DISPLAY_NAME";
+string RENAMER_DISPLAY_LINK="RENAMER_DISPLAY_LINK";
 string RENAMER_FULL_NAME="RENAMER_FULL_NAME";
 string RENAMER_USER_NAME="RENAMER_USER_NAME";
 string RENAMER_OBJECT_NAME="RENAMER_OBJECT_NAME";
@@ -349,6 +354,7 @@ integer renamerSay(string name, string msg, integer type) {
     }
 
     string oname = llGetObjectName();
+
     if(name==RENAMER_DISPLAY_NAME){
         if(VICTIM_UUID!=NULL_KEY){
             name=llGetDisplayName(VICTIM_UUID);
@@ -356,7 +362,7 @@ integer renamerSay(string name, string msg, integer type) {
             name=llGetDisplayName(llGetOwner());
         }
     }
-    if(name==RENAMER_FULL_NAME){
+    else if(name==RENAMER_FULL_NAME){
         if(VICTIM_UUID!=NULL_KEY){
             name=userInfo(VICTIM_UUID);
         }else{
@@ -511,7 +517,7 @@ key currentUser=NULL_KEY;
 default{
     state_entry(){
         renamerChannel=(integer)(99999999 - llFrand(10000000));
-        renamerName=llKey2Name(llGetOwner());
+        renamerName=RENAMER_FULL_NAME;
     }
     changed(integer change){
         if(change & CHANGED_OWNER){
@@ -783,7 +789,7 @@ default{
                         showRenamerMenu(curRenamerSubMenu, user);
                     }
                     else if(menuButton=="SetName"){
-                        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.INPUT|RenamerInput|Input Renamer name (Current: %1%):%%;"+renamerName, user);
+                        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.INPUT|RenamerInput|Input Renamer name (Current: %1%):\nDisplay Name: %2%\nFull Name: %3%\nUser Name: %4%\nObject Name: %5%%%;"+renamerName+";"+RENAMER_DISPLAY_NAME+";"+RENAMER_FULL_NAME+";"+RENAMER_USER_NAME+";"+RENAMER_OBJECT_NAME, user);
                         // 后续交由RenamerInput处理
                     }
                     else if(menuButton==renamerConfusionMenuText){

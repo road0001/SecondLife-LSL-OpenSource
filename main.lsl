@@ -4,6 +4,14 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.0.18 20260211
+    - 优化内存占用。
+    - 优化操作锁逻辑，操作锁关闭时，新的操作者会覆盖原来的操作响应。
+    - 修复逃跑时，不能重置状态的bug。
+
+- 1.0.17 20260208
+    - 修复向频道1发送消息时，提示不可操作的bug。
+
 - 1.0.16 20260203
     - 加入操作锁。
 
@@ -81,62 +89,18 @@ integer includes(string src, string target){
     }
 }
 
-string trim(string k){
-    return llStringTrim(k, STRING_TRIM);
-}
-
 list strSplit(string m, string sp){
     list pl=llParseStringKeepNulls(m,[sp],[""]);
     list temp=[];
     integer i;
     for(i=0; i<llGetListLength(pl); i++){
-        temp+=[trim(llList2String(pl, i))];
+        temp+=[llStringTrim(llList2String(pl, i), STRING_TRIM)];
     }
     return temp;
 }
-string strJoin(list m, string sp){
-    return llDumpList2String(m, sp);
-}
-
-string bundleSplit="&&";
-list bundle2List(string b){
-    return strSplit(b, bundleSplit);
-}
-string list2Bundle(list b){
-    return strJoin(b, bundleSplit);
-}
-
-string messageSplit="|";
-list msg2List(string m){
-    return strSplit(m, messageSplit);
-}
-string list2Msg(list m){
-    return strJoin(m, messageSplit);
-}
-
-string dataSplit=";";
-list data2List(string d){
-    return strSplit(d, dataSplit);
-}
-string list2Data(list d){
-    return strJoin(d, dataSplit);
-}
 
 integer hasLanguage=FALSE;
-initLanguage(){
-    hasLanguage=FALSE;
-    llMessageLinked(LINK_SET, LAN_MSG_NUM, "LANGUAGE.INIT", llGetOwner()); // 得到语言系统初始化确认时，将hasLanguage置为TRUE。
-}
-
 string lanLinkHeader="LAN_";
-list clearLanguage(){
-    return llLinksetDataDeleteFound(lanLinkHeader, "");
-}
-
-integer setLanguage(string k, string v){
-    return llLinksetDataWrite(lanLinkHeader+k, v);
-}
-
 string getLanguage(string k){
     if(!hasLanguage){
         return k;
@@ -168,8 +132,8 @@ string getLanguageKey(string v){
 
 string getLanguageVar(string k){ // 拼接字符串方法，用于首尾拼接变量等内容。格式：Text text %1 %2.%%var1;var2
     list ksp=llParseStringKeepNulls(k, ["%%;"], [""]); // ["Text text %1 %2.", "var1;var2"]
-    string text=getLanguage(trim(llList2String(ksp, 0)));
-    list var=data2List(llList2String(ksp, 1)); // ["var1", "var2"]
+    string text=getLanguage(llStringTrim(llList2String(ksp, 0), STRING_TRIM));
+    list var=strSplit(llList2String(ksp, 1), ";"); // ["var1", "var2"]
     integer i;
     for(i=0; i<llGetListLength(var); i++){
         integer vi=i+1;
@@ -183,7 +147,7 @@ string defaultBoolStrList="◇|◆";
 string boolStrList=defaultBoolStrList;
 string getLanguageBool(string k){ // 拼接字符串方法之开关，根据传入字符串来判断开关并显示。格式：[0/1]BUTTON_NAME，返回：◇ 按钮名 / ◆ 按钮名
     //return getLanguageVar(k, LVPOS_BEFORE, llList2String(boolStrList,bool));
-    list boolList=msg2List(boolStrList);
+    list boolList=strSplit(boolStrList, "|");
     integer bool=FALSE;
     if(includes(k, "[1]")){
         bool=TRUE;
@@ -219,11 +183,11 @@ integer allowOperate(key user){
         return -1; // 为了让Escape功能有效，因此返回-1而不是FALSE
     }else if(
         user!=llGetOwner() /*非自己触摸*/ && 
-        !checkOwner(user) /*非主人*/ && 
-        !checkTrust(user) /*非信任*/ && 
-        !checkPublic(user) /*非公开*/ && 
-        !checkGroup(user) /*群组模式下，非同群组*/ || 
-        checkBlack(user) /*在黑名单中，优先级高*/
+        !checkRelationship(user, "owner") /*非主人*/ && 
+        !checkRelationship(user, "trust") /*非信任*/ && 
+        !checkRelationship(user, "public") /*非公开*/ && 
+        !checkRelationship(user, "group") /*群组模式下，非同群组*/ || 
+        checkRelationship(user, "black") /*在黑名单中，优先级高*/
     ){
         if(isLocked){
             llRegionSayTo(user, 0, getLanguageVar("This %1% is locked by %2%, you don't have permission to operate it!%%;"+llGetObjectName()+";"+userInfo(lockUser)));
@@ -238,9 +202,9 @@ integer isLocked=FALSE;
 key lockUser=NULL_KEY;
 integer lockTime=0;
 integer setLock(integer lock, key user, integer isShowMenu){
-    if(!allowOperate(user)){
-        return isLocked;
-    }
+    // if(!allowOperate(user)){
+    //     return isLocked;
+    // }
     
     if(lock<0){
         if(!isLocked){
@@ -278,45 +242,35 @@ integer setLock(integer lock, key user, integer isShowMenu){
     return isLocked;
 }
 
-integer checkOwner(key user){
-    integer index=llListFindList(owner, [(string)user]); // 从link_message接收的list被直接转化为了string的list而没转成key，因此要将key转成string再判断。
+integer checkRelationship(key user, string type){
+    integer index=-1;
+    if(type=="owner"){
+        index=llListFindList(owner, [(string)user]); // 从link_message接收的list被直接转化为了string的list而没转成key，因此要将key转成string再判断。
+    }
+    else if(type=="trust"){
+        index=llListFindList(trust, [(string)user]);
+    }
+    else if(type=="black"){
+        index=llListFindList(black, [(string)user]);
+    }
+    else if(type=="public"){
+        if(checkRelationship(user, "black")){
+            return FALSE;
+        }else if(public==TRUE){
+            return TRUE;
+        }else{
+            return FALSE;
+        }
+    }
+    else if(type=="group"){
+        if(group==TRUE){
+            return llSameGroup(user);
+        }else{
+            return FALSE;
+        }
+    }
     if(~index){
         return TRUE;
-    }else{
-        return FALSE;
-    }
-}
-
-integer checkTrust(key user){
-    integer index=llListFindList(trust, [(string)user]);
-    if(~index){
-        return TRUE;
-    }else{
-        return FALSE;
-    }
-}
-
-integer checkBlack(key user){
-    integer index=llListFindList(black, [(string)user]);
-    if(~index){
-        return TRUE;
-    }else{
-        return FALSE;
-    }
-}
-
-integer checkPublic(key user){
-    if(checkBlack(user)){
-        return FALSE;
-    }else if(public==TRUE){
-        return TRUE;
-    }else{
-        return FALSE;
-    }
-}
-integer checkGroup(key user){
-    if(group==TRUE){
-        return llSameGroup(user);
     }else{
         return FALSE;
     }
@@ -390,11 +344,24 @@ string getTimeDistStr(integer baseTime, integer curTime){
     return totalStr;
 }
 
+integer menuOperateLock=FALSE;
+key curMenuUser=NULL_KEY;
 showMenu(key user){
     integer isAllow=allowOperate(user);
     if(!isAllow){
         return;
     }
+    if(menuOperateLock==TRUE){
+        if(curMenuUser==NULL_KEY || curMenuUser==user || user==llGetOwner()){
+            curMenuUser=user;
+            timerFlag=1;
+            llSetTimerEvent(60);
+        }else{
+            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Sorry, the menu of %1% is using by %2%.%%;"+llGetObjectName()+";"+userInfo(curMenuUser)+"|0|"+(string)user, user);
+            return;
+        }
+    }
+    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.CLEAR", user);
     integer curTime=llGetUnixTime();
     string lockTimeDist=getTimeDistStr(lockTime, curTime);
     if(lockTimeDist!=""){
@@ -404,7 +371,7 @@ showMenu(key user){
     string menuText="Locked: %1% %2%\nOwner: %3%\nPublic: %b4%\nGroup: %b5%\nHardcore: %b6%%%;"+
         userInfo(lockUser)+";"+
         lockTimeDist+";"+
-        strJoin(getOwnerNameList(), ", ")+";"+
+        llDumpList2String(getOwnerNameList(), ", ")+";"+
         (string)public+";"+
         (string)group+";"+
         (string)hardcore;
@@ -427,12 +394,13 @@ showMenu(key user){
         menuText,
         llDumpList2String(mainMenu,";")
     ];
-    llMessageLinked(LINK_SET, 1000, llDumpList2String(menuLink,"|"), user);
+    llMessageLinked(LINK_SET, MENU_MSG_NUM, llDumpList2String(menuLink,"|"), user);
+    return;
     // if( 
     //     (checkOwner(user) || checkTrust(user) || checkPublic(user) || checkGroup(user)) && 
     //     !checkBlack(user)
     // ){
-    //     string menuText="This is main menu.\nLocked: %b1%\nOwner: %2%\nPublic: %b3%%%;"+(string)isLocked+";"+strJoin(getOwnerNameList(), ", ")+";"+(string)public;
+    //     string menuText="This is main menu.\nLocked: %b1%\nOwner: %2%\nPublic: %b3%%%;"+(string)isLocked+";"+llDumpList2String(getOwnerNameList(), ", ")+";"+(string)public;
     //     list mainMenu=["["+(string)isLocked+"]Lock","RLV","Access"];
     //     list menuLink=[
     //         "MENU.REG.OPEN.RESET",
@@ -490,13 +458,13 @@ initMain(){
         llMessageLinked(LINK_SET, llList2Integer(initMessageLinkChain, i), llList2String(initMessageLinkChain, i+1), NULL_KEY);
         llSleep(llList2Float(initMessageLinkChain, i+2));
     }
-    initLanguage();
+    hasLanguage=FALSE;
+    llMessageLinked(LINK_SET, LAN_MSG_NUM, "LANGUAGE.INIT", llGetOwner()); // 得到语言系统初始化确认时，将hasLanguage置为TRUE。
     // llSleep(0);
     // llOwnerSay("Initialize Complete, Enjoy!");
 }
 
-key curUser=NULL_KEY;
-integer timerFlag=0;
+integer timerFlag=0; // 0: None; 1: Menu timeout flag
 integer initRetryTimer=30;
 integer cmdChannel=1;
 integer listenHandle;
@@ -536,24 +504,15 @@ default{
         if(rlvInited==FALSE){ // 如果未成功初始化数据，则每5秒重新读取一次，直到读取成功
             initMain();
         }else if(timerFlag==1){
-            curUser=NULL_KEY;
+            curMenuUser=NULL_KEY;
             timerFlag=0;
             llSetTimerEvent(0);
         }else{
             llSetTimerEvent(0);
         }
     }
-    touch_start(integer num_detected)
-    {
-        key user=llDetectedKey(0);
-        if(curUser==NULL_KEY || curUser==user){
-            curUser=user;
-            showMenu(curUser);
-            timerFlag=1;
-            llSetTimerEvent(60);
-        }else{
-            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Sorry, the menu of %1% is using by %2%.%%;"+llGetObjectName()+";"+userInfo(curUser)+"|0|"+(string)user, user);
-        }
+    touch_start(integer num_detected){
+        showMenu(llDetectedKey(0));
         
         //string json="[9,\"<1,1,1>\",false,{\"A\":8,\"Z\":9}]";
         //llJsonSetValue(json, ["test1"], "testv1");
@@ -563,12 +522,12 @@ default{
     }
     listen(integer channel, string name, key id, string message){
         if(channel==cmdChannel){
-            key user=llGetOwnerKey(id); // 支持使用物品发出命令。user为说话者的uuid，因此需要获取它的所有者uuid。
-            if(!allowOperate(user)){
-                return;
-            }
             string prefix=llGetSubString(llGetUsername(llGetOwner()), 0, 1);
             if(llGetSubString(message, 0, 1) == prefix){
+                key user=llGetOwnerKey(id); // 支持使用物品发出命令。user为说话者的uuid，因此需要获取它的所有者uuid。
+                if(!allowOperate(user)){
+                    return;
+                }
                 // /1 xxmenu, /1 xxleash
                 string msgBody=llToLower(llGetSubString(message, 2, -1));
                 list msgList=llParseStringKeepNulls(msgBody,[" "],[""]);
@@ -598,7 +557,7 @@ default{
     link_message(integer sender_num, integer num, string str, key user){
         if(num==MAIN_MSG_NUM){
             // 主系统功能监听
-            list mainCmdList=msg2List(str);
+            list mainCmdList=strSplit(str, "|");
             string mainCmdStr=llList2String(mainCmdList, 0);
             string mainName=llList2String(mainCmdList, 1);
             string mainText=llList2String(mainCmdList, 2);
@@ -608,7 +567,7 @@ default{
         }
         else if(num==MENU_MSG_NUM){
             // 主菜单功能监听
-            list menuCmdList=msg2List(str);
+            list menuCmdList=strSplit(str, "|");
             string menuCmdStr=llList2String(menuCmdList, 0);
             string menuName=llList2String(menuCmdList, 1);
             string menuText=llList2String(menuCmdList, 2);
@@ -620,17 +579,17 @@ default{
                 }
             }
             else if(menuCmdStr=="MENU.CLOSE"){
-                curUser=NULL_KEY;
+                curMenuUser=NULL_KEY;
                 timerFlag=0;
                 llSetTimerEvent(0);
             }
         }
         else if(num==ACCESS_MSG_NUM){
             // 权限功能监听
-            list accessCmdList=msg2List(str);
+            list accessCmdList=strSplit(str, "|");
             string accessCmdStr=llList2String(accessCmdList, 0);
             string accessName=llList2String(accessCmdList, 1);
-            list accessData=data2List(llList2String(accessCmdList, 2));
+            list accessData=strSplit(llList2String(accessCmdList, 2), ";");
 
             if(accessCmdStr=="ACCESS.NOTIFY"){
                 if(accessName=="OWNER"){ // ACCESS.NOTIFY | OWNER | UUID1; UUID2; UUID3; ...
@@ -659,11 +618,11 @@ default{
             }
         }
         else if(num==RLV_MSG_NUM){
-            list rlvCmdList=msg2List(str);
+            list rlvCmdList=strSplit(str, "|");
             string rlvCmdStr=llList2String(rlvCmdList, 0);
             string rlvCmdName=llList2String(rlvCmdList, 1);
             string rlvCmdText=llList2String(rlvCmdList, 2);
-            list rlvCmdData=data2List(llList2String(rlvCmdList, 2));
+            list rlvCmdData=strSplit(llList2String(rlvCmdList, 2), ";");
 
             if(rlvCmdStr=="RLV.EXEC"){
                 if(rlvCmdName=="RLV.GET.LOCK" || rlvCmdName=="RLV.LOCK"){

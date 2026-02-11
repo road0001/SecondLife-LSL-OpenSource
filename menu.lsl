@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better menu management system, use link_message to operate menus.
 
 ***更新记录***
+- 1.1.19 20260211
+    - 优化清空菜单的逻辑。
+
 - 1.1.18 20260203
     - 优化菜单关闭和超时的逻辑。
 
@@ -559,7 +562,7 @@ showMenuHandle(string message, key user){
         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.BACK", user);
     }else if(showMenuType>0 && message == llList2String(pageBu,3)){ // 关闭
         showMenu("", "", "", "", TRUE, NULL_KEY);
-        menuRegistList=[];; // 关闭菜单时，清空菜单
+        menuRegistList=[]; // 关闭菜单时，清空菜单
         llListenRemove(menuListenHandle);
         llSetTimerEvent(0);
         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.CLOSE", user);
@@ -699,6 +702,8 @@ default{
                 }
                 else if(menuCmdSub=="CLEAR"){
                     menuRegistList=[];
+                    llListenRemove(menuListenHandle);
+                    llSetTimerEvent(0);
                     result="1";
                 }
                 else if(menuCmdSub=="OUT" || menuCmdSub=="OUTPUT"){

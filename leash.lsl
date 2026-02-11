@@ -1,9 +1,67 @@
+initConfig(){
+    particleEnabled    = TRUE;
+    particleFlags      = -1;
+    particleSrcPattern = PSYS_SRC_PATTERN_DROP;
+    particleMode       = "Ribbon"; // Ribbon, Chain, Leather, Rope, None
+    particleMaxAge     = 3.5;
+    particleColor      = <1.0,1.0,1.0>;
+    particleColorEnd   = <1.0,1.0,1.0>;
+    particleAlpha      = 1.0;
+    particleAlphaEnd   = 1.0;
+    particleScale      = <0.04,0.04,1.0>;
+    particleScaleEnd   = <0.04,0.04,1.0>;
+    particleBurstRate  = 0.0;
+    particleGravity    = <0.0,0.0,-1.0>;
+    particleCount      = 1;
+    particleFullBright = TRUE;
+    particleGlow       = 0.2;
+    particleGlowEnd    = 0.2;
+    particleTextureList= [
+        "Ribbon",  "cdb7025a-9283-17d9-8d20-cee010f36e90", // Ribbon
+        "Chain",   "4cde01ac-4279-2742-71e1-47ff81cc3529", // Chain
+        // "Leather", "8f4c3616-46a4-1ed6-37dc-9705b754b7f1", // Leather
+        // "Rope",    "9a342cda-d62a-ae1f-fc32-a77a24a85d73", // Rope
+        "None",    "8dcd4a48-2d37-4909-9f78-f7a9eb4ef903"  // None, TEXTURE_TRANSPARENT
+    ];
+    particleColorList  = [
+        "White",      <1.0, 1.0, 1.0>, 
+        "Black",      <0.0, 0.0, 0.0>, 
+        "Gray",       <0.5, 0.5, 0.5>, 
+        "Red",        <1.0, 0.0, 0.0>, 
+        "Green",      <0.0, 1.0, 0.0>, 
+        "Blue",       <0.0, 0.0, 1.0>, 
+        "Yellow",     <1.0, 1.0, 0.0>, 
+        "Pink",       <1.0, 0.5, 0.6>, 
+        "Brown",      <0.2, 0.1, 0.0>, 
+        "Purple",     <0.6, 0.2, 0.7>, 
+        "Barbie",     <0.9, 0.0, 0.3>, 
+        "Orange",     <0.9, 0.6, 0.0>, 
+        "Toad",       <0.2, 0.2, 0.0>, 
+        "Khaki",      <0.6, 0.5, 0.3>, 
+        "Pool",       <0.1, 0.8, 0.9>, 
+        "Blood",      <0.5, 0.0, 0.0>, 
+        "Anthracite", <0.1, 0.1, 0.1>, 
+        "Midnight",   <0.0, 0.1, 0.2>
+    ];
+
+    leashPointName     = "leashpoint";
+    leashLength        = 3;
+    leashTurnMode      = TRUE;
+    leashStrictMode    = FALSE;
+    leashAwait         = 0.2;
+    leashMaxRange      = 60;
+    leashPosOffset     = <0.0,0.0,0.0>;
+}
+
 /*
 Name: Leash
 Author: JMRY
 Description: A better leash control system, use link_message to operate leashes.
 
 ***更新记录***
+- 1.1.5 20260211
+    - 优化代码结构。
+
 - 1.1.4 20260203
     - 优化记事卡读取的回调逻辑，在没有记事卡时直接回调。
     - 修复Leash Handle脱掉时，粒子追踪失效的bug。
@@ -185,33 +243,8 @@ integer particleCount      = 1;
 integer particleFullBright = TRUE;
 float   particleGlow       = 0.2;
 float   particleGlowEnd    = 0.2;
-list    particleTextureList= [
-    "Ribbon",  "cdb7025a-9283-17d9-8d20-cee010f36e90", // Ribbon
-    "Chain",   "4cde01ac-4279-2742-71e1-47ff81cc3529", // Chain
-    // "Leather", "8f4c3616-46a4-1ed6-37dc-9705b754b7f1", // Leather
-    // "Rope",    "9a342cda-d62a-ae1f-fc32-a77a24a85d73", // Rope
-    "None",    "8dcd4a48-2d37-4909-9f78-f7a9eb4ef903"  // None, TEXTURE_TRANSPARENT
-];
-list    particleColorList  = [
-    "White",      <1.0, 1.0, 1.0>, 
-    "Black",      <0.0, 0.0, 0.0>, 
-    "Gray",       <0.5, 0.5, 0.5>, 
-    "Red",        <1.0, 0.0, 0.0>, 
-    "Green",      <0.0, 1.0, 0.0>, 
-    "Blue",       <0.0, 0.0, 1.0>, 
-    "Yellow",     <1.0, 1.0, 0.0>, 
-    "Pink",       <1.0, 0.5, 0.6>, 
-    "Brown",      <0.2, 0.1, 0.0>, 
-    "Purple",     <0.6, 0.2, 0.7>, 
-    "Barbie",     <0.9, 0.0, 0.3>, 
-    "Orange",     <0.9, 0.6, 0.0>, 
-    "Toad",       <0.2, 0.2, 0.0>, 
-    "Khaki",      <0.6, 0.5, 0.3>, 
-    "Pool",       <0.1, 0.8, 0.9>, 
-    "Blood",      <0.5, 0.0, 0.0>, 
-    "Anthracite", <0.1, 0.1, 0.1>, 
-    "Midnight",   <0.0, 0.1, 0.2>
-];
+list    particleTextureList= [];
+list    particleColorList  = [];
 
 string  leashPointName     = "leashpoint";
 float   leashLength        = 3;
@@ -774,6 +807,7 @@ integer timerCount=0;
 integer maxSensor=18;
 default{
     state_entry(){
+        initConfig();
         llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.GET.NOTIFY", NULL_KEY);
     }
     changed(integer change){

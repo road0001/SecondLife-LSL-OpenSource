@@ -1,9 +1,25 @@
+initConfig(){
+    ownerList=[]; // 第0个元素始终为root，从1开始为owner
+    trustList=[];
+    blackList=[];
+    publicMode=TRUE;
+    groupMode=FALSE;
+    hardcore=FALSE;
+    autoLock=FALSE;
+}
 /*
 Name: Access
 Author: JMRY
 Description: A better access permission control system, use link_message to operate permissions.
 
 ***更新记录***
+- 1.0.19 20260211
+    - 优化代码结构。
+    - 修复重置无效的bug。
+
+- 1.0.18 20260207
+    - 优化文本提示。
+
 - 1.0.17 20260204
     - 优化人物扫描逻辑。
 
@@ -359,7 +375,10 @@ integer clearAll(){
         return FALSE;
     }else{
         llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.EXEC|ACCESS.RESET|1", NULL_KEY);
-        llResetScript();
+        // llResetScript();
+        ownerList=[llGetOwner()];
+        setAutoLockMode(FALSE);
+        notifyAccess();
         return TRUE;
     }
 }
@@ -726,9 +745,11 @@ list sensorUserList=[];
 integer maxSensor=18;
 default{
     state_entry(){
+        initConfig();
         if(llGetListLength(ownerList)==0){
             setRootOwner(llGetOwner()); // 初始化时，设置玩家为root
         }
+        setAutoLockMode(autoLock);
         notifyAccess();
         // if(curAccessName!="" && readAccessName!=""){
         //     readAccessNotecards(readAccessName); // 读取记事卡应用权限
@@ -1081,7 +1102,7 @@ default{
                         if(buUser!=NULL_KEY){
                             buUserName=" "+userInfo(buUser);
                         }
-                        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|%1%%2% success!%%;"+accessActiveFlag+";"+buUserName, user);
+                        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|%1% %2% success!%%;"+accessActiveFlag+";"+buUserName, user);
                         notifyAccess();
                     }
                 }

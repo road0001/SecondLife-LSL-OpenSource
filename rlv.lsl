@@ -1,9 +1,78 @@
+initConfig(){
+    rlvCmdList=[
+        "Echo","_blind,rext_echoview","Vision",0,
+        "LightBlind","_blind,setsphere,setsphere_distmin:10?force,setsphere_distmax:15?force,setsphere_valuemin:0?force","Vision",0,
+        "HeavyBlind","_blind,camdistmax:5,setsphere,setsphere_distmin:5?force,setsphere_distmax:5?force,setsphere_valuemin:0?force,setcam_unlock,shownames_sec,shownametags,shownearby,showhovertextall,showworldmap,showminimap,showloc","Vision",0,
+        "Camera","camdistmax:5,setcam_unlock","Vision",0,
+        "Name","shownames_sec,shownametags","Vision",0,
+        "Near","shownearby","Vision",0,
+        "TextWorld","showhovertextworld","Vision",0,
+        "TextHUD","showhovertexthud","Vision",0,
+        "TextAll","showhovertextall","Vision",0,
+
+        "Far","fartouch?n?y","Touch",0,
+        "World","touchworld","Touch",0,
+        "Me","touchme","Touch",0,
+        "Attach","touchattach","Touch",0,
+        "SelfAttach","touchattachself","Touch",0,
+        "OtherAttach","touchattachother","Touch",0,
+        "HUD","touchhud","Touch",0,
+        "All","touchall","Touch",0,
+        "Interact","interact","Touch",0,
+
+        "Inventory","showinv","Inventory",0,
+        "Note","viewnote","Inventory",0,
+        "Script","viewscript","Inventory",0,
+        "Texture","viewtexture","Inventory",0,
+        "Edit","edit,editworld,editattach","Inventory",0,
+        "Rez","rez","Inventory",0,
+        "Share","share_sec","Inventory",0,
+
+        "Run","alwaysrun?n?y,temprun","Move",0,
+        "Fly","fly","Move",0,
+        "Sit","sit","Move",0,
+        "Jump","jump","Move",0,
+        "Slow","rext_speed:0","Move",0,
+        "MoveTurn","rext_move,rext_turn","Move",0,
+
+        "SendChat","sendchat,chatshout,chatnormal,chatwhisper","Chat",0,
+        "RecvChat","recvchat","Chat",0,
+        "SendGesture","sendgesture","Chat",0,
+        "RecvGesture","recvemote_sec","Chat",0,
+        "StartIM","startim","Chat",0,
+        "SendIM","sendim_sec","Chat",0,
+        "RecvIM","recvim_sec","Chat",0,
+
+        "TPLocal","tplocal,sittp,standtp","Location",0,
+        "TPLM","tplm","Location",0,
+        "TPLocation","tploc","Location",0,
+        "TPLure","tplure_sec","Location",0,
+        "TPRequest","tprequest_sec","Location",0,
+        "WorldMap","showworldmap","Location",0,
+        "MiniMap","showminimap","Location",0,
+        "Location","showloc","Location",0,
+
+        "Add","addattach,addoutfit,unsharedwear,sharedwear","Attach",0,
+        "Remove","remattach,remoutfit,unsharedunwear,sharedunwear","Attach",0
+    ]; // name, rlvs, class, enabled
+}
+
 /*
 Name: RLV
 Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 2.0.4 20260211
+    - 加入内置RLV限制。
+    - 优化代码结构。
+    - 修复清空RLV组时，仍然会触发@clear清空指令的bug。
+    - 修复RLV返回锁定状态错误的bug。
+
+- 2.0.3 20260207
+    - 优化只有一个Class时，菜单注册的逻辑。
+    - 优化应用全部RLV限制的逻辑，修复互斥锁导致的无法全关的bug。
+
 - 2.0.2 20260203
     - 优化记事卡读取的回调逻辑，在没有记事卡时直接回调。
 
@@ -295,7 +364,7 @@ string getRLVValue(string rlv, integer bool){
 
 list rlvCmdList=[]; // name, rlvs, class, enabled
 integer rlvCmdLength=4;
-integer rlvClassCount=0;
+// integer rlvClassCount=0;
 integer setRLVCmd(string name, string k, string class, integer enabled){
     integer rIndex;
     integer notFound=TRUE;
@@ -309,14 +378,14 @@ integer setRLVCmd(string name, string k, string class, integer enabled){
     if(notFound==TRUE){
         rlvCmdList+=[name, k, class, enabled];
     }
-    rlvClassCount=0;
-    string curClass="";
-    for(rIndex=0; rIndex<llGetListLength(rlvCmdList); rIndex+=rlvCmdLength){
-        if(curClass != llList2String(rlvCmdList, 2)){
-            curClass=llList2String(rlvCmdList, 2);
-            rlvClassCount++;
-        }
-    }
+    // rlvClassCount=0;
+    // string curClass="";
+    // for(rIndex=0; rIndex<llGetListLength(rlvCmdList); rIndex+=rlvCmdLength){
+    //     if(curClass != llList2String(rlvCmdList, rIndex+2)){
+    //         curClass=llList2String(rlvCmdList, rIndex+2);
+    //         rlvClassCount++;
+    //     }
+    // }
     return TRUE;
 }
 
@@ -468,7 +537,11 @@ showRLVMenu(string parent, key user){
             curClass=class;
         }
     }
-    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+rlvMenuName+"|"+"RLV Menu"+"|"+list2Data(rlvClass)+"|"+parent, user);
+    if(llGetListLength(rlvClass)<=1){
+        showRLVSubMenu(parent, curClass, user);
+    }else{
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+rlvMenuName+"|"+"RLV Menu"+"|"+list2Data(rlvClass)+"|"+parent, user);
+    }
 }
 
 string rlvSubMenuName="RLVSubMenu";
@@ -508,6 +581,10 @@ integer RENAMER_MSG_NUM=10011;
 integer RLVEXT_MSG_NUM=10012;
 default{
     state_entry(){
+        initConfig();
+        if(llGetAttached()){
+            applyAllRLVCmd();
+        }
     }
     changed(integer change){
         if(change & CHANGED_OWNER){
@@ -518,6 +595,7 @@ default{
             if (avatar != NULL_KEY){
                 RLV_MODE=1;
                 VICTIM_UUID=avatar;
+                applyAllRLVCmd();
             }else{
                 executeRLV("sit:"+(string)llGetKey()+"=rem", TRUE);
                 VICTIM_UUID=NULL_KEY;
@@ -573,7 +651,7 @@ default{
         integer attached=llGetAttached();
         if(attached!=0){
             RLV_MODE=0;
-            executeRLV("ALL", FALSE);
+            // executeRLV("ALL", FALSE);
         }else{
             RLV_MODE=1;
         }
@@ -658,7 +736,7 @@ default{
                     */
                     if(headerExt==""){
                         rlvCmdList=[];
-                        result="1";
+                        result="";
                     }
                 }
                 else if(headerSub=="LOCK"){
@@ -704,7 +782,7 @@ default{
                             // 后续功能交给下方datasever处理
                             result=(string)TRUE;
                         }else{
-                            llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.LOAD.NOTECARD|"+msgName+"|0", NULL_KEY); // RLV成功读取记事卡后回调
+                            llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.LOAD.NOTECARD|"+msgName+"|"+(string)llGetListLength(rlvCmdList), NULL_KEY); // RLV成功读取记事卡后回调
                             result=(string)FALSE;
                         }
                     }
@@ -745,7 +823,7 @@ default{
                     RLV.EXEC | RLV.GET.LOCK | 1; UUID
                     */
                     else if(headerExt=="LOCK"){
-                        result=list2Data([getLock(), lockUser]);
+                        result=list2Data([isLocked, lockUser]);
                     }
                     /*
                     获取捕获状态
@@ -837,11 +915,12 @@ default{
                 无返回
                 */
                 else if(headerSub=="MENU"){
-                    if(rlvClassCount<=1){
-                        showRLVSubMenu(msgName, llList2String(rlvCmdList, 2), user);
-                    }else{
-                        showRLVMenu(msgName, user);
-                    }
+                    showRLVMenu(msgName, user);
+                    // if(rlvClassCount<=1){
+                    //     showRLVSubMenu(msgName, llList2String(rlvCmdList, 2), user);
+                    // }else{
+                    //     showRLVMenu(msgName, user);
+                    // }
                 }
                 if(result!=""){
                     list rlvExeResult=[
@@ -852,11 +931,12 @@ default{
             }
             else if(llGetSubString(str, 0, 4) == "MENU." && includes(str, "ACTIVE")) {
                 if(msgSub==rlvMenuText){
-                    if(rlvClassCount<=1){
-                        showRLVSubMenu(msgName, llList2String(rlvCmdList, 2), user);
-                    }else{
-                        showRLVMenu(msgName, user);
-                    }
+                    showRLVMenu(msgName, user);
+                    // if(rlvClassCount<=1){
+                    //     showRLVSubMenu(msgName, llList2String(rlvCmdList, 2), user);
+                    // }else{
+                    //     showRLVMenu(msgName, user);
+                    // }
                 }
                 else if(msgName==rlvMenuName && msgSub!=""){ // MENU.ACTIVE | Class | Class1
                     showRLVSubMenu(rlvMenuName, msgSub, user);
@@ -865,13 +945,17 @@ default{
                     integer applyResult;
                     if(msgSub=="[ALL]"){
                         integer i;
-                        integer allEnabled=-1;
-                        for(i=0; i<llGetListLength(rlvCmdList); i+=rlvCmdLength){
+                        integer allEnabled=FALSE;
+                        for(i=0; i<llGetListLength(rlvCmdList); i+=rlvCmdLength){ // 第一次循环，确定开关状态。只要有一个开着，那就是开，否则就是关。主要是解决互斥锁导致的ALL只能开不能关的bug
                             if(llList2String(rlvCmdList, i+2) == curRlvSubMenu){
-                                if(!~allEnabled){
-                                    allEnabled=!llList2Integer(rlvCmdList, i+3);
+                                if(allEnabled==FALSE){
+                                    allEnabled=llList2Integer(rlvCmdList, i+3);
                                 }
-                                applyResult=applyRLVCmd(llList2String(rlvCmdList, i), allEnabled);
+                            }
+                        }
+                        for(i=0; i<llGetListLength(rlvCmdList); i+=rlvCmdLength){ // 第二次循环，执行全部开关限制
+                            if(llList2String(rlvCmdList, i+2) == curRlvSubMenu){
+                                applyResult=applyRLVCmd(llList2String(rlvCmdList, i), !allEnabled);
                             }
                         }
                     }else{
