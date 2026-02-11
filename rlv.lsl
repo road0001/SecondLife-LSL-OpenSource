@@ -63,6 +63,9 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 2.0.5 20260212
+    - 优化初始化和应用全部RLV限制的逻辑。
+
 - 2.0.4 20260211
     - 加入内置RLV限制。
     - 优化代码结构。
@@ -582,9 +585,10 @@ integer RLVEXT_MSG_NUM=10012;
 default{
     state_entry(){
         initConfig();
-        if(llGetAttached()){
-            applyAllRLVCmd();
-        }
+        // llSleep(1);
+        // if(llGetAttached()){
+        //     applyAllRLVCmd();
+        // }
     }
     changed(integer change){
         if(change & CHANGED_OWNER){
@@ -783,6 +787,9 @@ default{
                             result=(string)TRUE;
                         }else{
                             llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.LOAD.NOTECARD|"+msgName+"|"+(string)llGetListLength(rlvCmdList), NULL_KEY); // RLV成功读取记事卡后回调
+                            if(llGetAttached()){
+                                applyAllRLVCmd();
+                            }
                             result=(string)FALSE;
                         }
                     }
@@ -984,7 +991,9 @@ default{
                 llOwnerSay("Finished reading RLV restraints: "+curRLVName);
                 llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.LOAD.NOTECARD|"+curRLVName+"|1", NULL_KEY); // RLV成功读取记事卡后回调
                 readRLVQuery=NULL_KEY;
-                applyAllRLVCmd();
+                if(llGetAttached()){
+                    applyAllRLVCmd();
+                }
             } else {
                 /*
                 [RLVClass1]

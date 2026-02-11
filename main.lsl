@@ -4,6 +4,9 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.0.19 20260212
+    - 优化初始化逻辑，加入启动监听的功能。
+
 - 1.0.18 20260211
     - 优化内存占用。
     - 优化操作锁逻辑，操作锁关闭时，新的操作者会覆盖原来的操作响应。
@@ -460,6 +463,8 @@ initMain(){
     }
     hasLanguage=FALSE;
     llMessageLinked(LINK_SET, LAN_MSG_NUM, "LANGUAGE.INIT", llGetOwner()); // 得到语言系统初始化确认时，将hasLanguage置为TRUE。
+    llSitTarget(<0.0, 0.0, 0.1>, ZERO_ROTATION);
+    listenHandle=llListen(cmdChannel, "", NULL_KEY, "");
     // llSleep(0);
     // llOwnerSay("Initialize Complete, Enjoy!");
 }
