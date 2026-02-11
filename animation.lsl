@@ -8,6 +8,9 @@ Author: JMRY
 Description: A better animation control system, use link_message to operate animations.
 
 ***更新记录***
+- 1.1.4 20260212
+    - 修复已停止动画的情况下，重新穿戴仍然会播放动画的bug。
+
 - 1.1.3 20260211
     - 优化动画播放逻辑，当动画停止时，重新穿戴不再播放动画。
     - 优化数据结构。
@@ -167,16 +170,26 @@ integer playAnimation(string name, integer stop){
     return playAnimationFlag;
 }
 
-integer stopAnimation(){
+integer stopAnimation(integer bool){
     if(animPlayer==NULL_KEY) return FALSE;
     playAnimationFlag=FALSE;
+    if(bool==TRUE){
+        curPlayingAnimName="";
+        curPlayingAnimParams="";
+        curPlayingAnimFileName="";
+    }
     llRequestPermissions(animPlayer,PERMISSION_TRIGGER_ANIMATION);
     return playAnimationFlag;
 }
 
-integer stopAllAnimation(){
+integer stopAllAnimation(integer bool){
     if(animPlayer==NULL_KEY) return FALSE;
     playAnimationFlag=-1;
+    if(bool==TRUE){
+        curPlayingAnimName="";
+        curPlayingAnimParams="";
+        curPlayingAnimFileName="";
+    }
     llRequestPermissions(animPlayer,PERMISSION_TRIGGER_ANIMATION);
     return playAnimationFlag;
 }
@@ -562,11 +575,17 @@ default{
                         result=(string)playAnimation(msgName, (integer)msgSub);
                     }
                 }
+                /*
+                停止播放动画：ANIM.STOP | 1
+                */
                 else if(headerSub=="STOP"){
-                    result=(string)stopAnimation();
+                    result=(string)stopAnimation((integer)msgName);
                 }
+                /*
+                停止播放所有动画：ANIM.STOPALL | 1
+                */
                 else if(headerSub=="STOPALL"){
-                    result=(string)stopAllAnimation();
+                    result=(string)stopAllAnimation((integer)msgName);
                 }
 
                 else if(headerSub=="MENU"){
@@ -590,7 +609,7 @@ default{
                 // 动画主菜单（Class菜单）
                 else if(msgName==animMenuName && msgSub!=""){ // MENU.ACTIVE | Class | Class1
                     if(msgSub=="[STOP]"){
-                        stopAnimation();
+                        stopAnimation(TRUE);
                         showAnimMenu(animParentMenuName, user);
                     }else{
                         showAnimSubMenu(animMenuName, msgSub, user);
@@ -599,7 +618,7 @@ default{
                 // 动画子菜单（Sub菜单）
                 else if(msgName==animSubMenuName && msgSub!=""){ // MENU.ACTIVE | Class1 | [1]Anim1
                     if(msgSub=="[STOP]"){
-                        stopAnimation();
+                        stopAnimation(TRUE);
                     }else{
                         playAnimationByName(msgSub);
                     }

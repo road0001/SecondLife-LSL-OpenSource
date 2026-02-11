@@ -65,6 +65,7 @@ Description: A better RLV management system, use link_message to operate RLV res
 ***更新记录***
 - 2.0.5 20260212
     - 优化初始化和应用全部RLV限制的逻辑。
+    - 修复RLV执行顺序先后导致的失效bug。
 
 - 2.0.4 20260211
     - 加入内置RLV限制。
@@ -655,7 +656,7 @@ default{
         integer attached=llGetAttached();
         if(attached!=0){
             RLV_MODE=0;
-            // executeRLV("ALL", FALSE);
+            executeRLV("ALL", FALSE);
         }else{
             RLV_MODE=1;
         }
