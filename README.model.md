@@ -63,3 +63,9 @@ Renamer系统支持改名、混淆、触发各种效果等，自带Renamer管理
 [牵绳管理文档](README.Animation.md)
 
 ******animation.lsl******
+
+## 配置系统
+支持向各脚本写入配置。
+[配置管理文档](README.Config.md)
+
+******config.lsl******
