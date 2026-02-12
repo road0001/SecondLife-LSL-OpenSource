@@ -7,6 +7,7 @@ initConfig(){
     hardcore=FALSE;
     autoLock=FALSE;
 }
+/*CONFIG END*/
 /*
 Name: Access
 Author: JMRY

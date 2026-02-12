@@ -1,3 +1,4 @@
+/*CONFIG END*/
 /*
 Name: Timer
 Author: JMRY

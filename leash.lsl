@@ -52,7 +52,7 @@ initConfig(){
     leashMaxRange      = 60;
     leashPosOffset     = <0.0,0.0,0.0>;
 }
-
+/*CONFIG END*/
 /*
 Name: Leash
 Author: JMRY

@@ -1,3 +1,4 @@
+/*CONFIG END*/
 /*
 Name: Renamer
 Author: JMRY

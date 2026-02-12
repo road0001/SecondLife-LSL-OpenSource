@@ -56,13 +56,16 @@ initConfig(){
         "Remove","remattach,remoutfit,unsharedunwear,sharedunwear","Attach",0
     ]; // name, rlvs, class, enabled
 }
-
+/*CONFIG END*/
 /*
 Name: RLV
 Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 2.0.6 20260213
+    - 优化RLV捕获功能的逻辑。
+
 - 2.0.5 20260212
     - 优化初始化和应用全部RLV限制的逻辑。
     - 修复RLV执行顺序先后导致的失效bug。
@@ -756,16 +759,20 @@ default{
                 }
                 /*
                 捕获玩家
-                RLV.CAPTURE | UUID
+                RLV.CAPTURE | UUID | 1
                 */
                 else if(headerSub=="CAPTURE"){
                     // result=(string)captureVictim((key)msgName);
                     if(RLV_MODE<=0){
                         result=(string)FALSE;
+                    }else{
+                        VICTIM_UUID=(key)msgName;
+                        if((integer)msgSub==TRUE){
+                            executeRLV("sit:"+(string)llGetKey()+"=force", TRUE);
+                        }
+                        applyAllRLVCmd()
+                        result=(string)TRUE;
                     }
-                    VICTIM_UUID=(key)msgName;
-                    executeRLV("sit:"+(string)llGetKey()+"=force", TRUE);
-                    result=(string)TRUE;
                 }
                 else if(headerSub=="LOAD"){
                     /*

@@ -1,7 +1,7 @@
 initConfig(){
     animConfigList=[]; // name, animName;interval;floatHeight;Ext1;Ext2;..., class, auto
 }
-
+/*CONFIG END*/
 /*
 Name: Animation
 Author: JMRY
