@@ -1,5 +1,15 @@
 initConfig(){
     animConfigList=[]; // name, animName;interval;floatHeight;Ext1;Ext2;..., class, auto
+    integer count = llGetInventoryNumber(INVENTORY_ANIMATION);
+    integer i;
+    for (i=0; i<count; i++){
+        string animName = llGetInventoryName(INVENTORY_ANIMATION, i);
+        integer auto=FALSE;
+        if(i==0){
+            auto=TRUE;
+        }
+        animConfigList+=[animName, animName+";0;0", "Animation", auto];
+    }
 }
 /*CONFIG END*/
 /*
@@ -8,6 +18,9 @@ Author: JMRY
 Description: A better animation control system, use link_message to operate animations.
 
 ***更新记录***
+- 1.1.5 20260213
+    - 加入自动读取库存中动画的功能。
+
 - 1.1.4 20260212
     - 修复已停止动画的情况下，重新穿戴仍然会播放动画的bug。
 

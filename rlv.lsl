@@ -65,6 +65,7 @@ Description: A better RLV management system, use link_message to operate RLV res
 ***更新记录***
 - 2.0.6 20260213
     - 优化RLV捕获功能的逻辑。
+    - 修复编译时报错的bug。
 
 - 2.0.5 20260212
     - 优化初始化和应用全部RLV限制的逻辑。
@@ -770,7 +771,7 @@ default{
                         if((integer)msgSub==TRUE){
                             executeRLV("sit:"+(string)llGetKey()+"=force", TRUE);
                         }
-                        applyAllRLVCmd()
+                        applyAllRLVCmd();
                         result=(string)TRUE;
                     }
                 }

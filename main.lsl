@@ -4,6 +4,9 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.0.20 20260213
+    - 加入倒计时且锁定时，禁止访问菜单功能。
+
 - 1.0.19 20260212
     - 优化初始化逻辑，加入启动监听的功能。
 
@@ -178,6 +181,13 @@ integer applyLanguage(){
 
 integer allowOperate(key user){
     if(
+        isLocked==TRUE /*锁定状态*/ &&
+        timeoutRunning==TRUE /*倒计时状态*/ &&
+        user==llGetOwner() /*自己触摸*/
+    ){
+        llRegionSayTo(user, 0, getLanguageVar("You're locked by %1% and timer is running, not allow to operate it!%%;"+userInfo(lockUser)));
+        return FALSE;
+    }else if(
         isLocked==TRUE /*锁定状态*/ && 
         lockUser!=llGetOwner() /*非自锁*/ && 
         user==llGetOwner() /*自己触摸*/
@@ -469,6 +479,7 @@ initMain(){
     // llOwnerSay("Initialize Complete, Enjoy!");
 }
 
+integer timeoutRunning=FALSE;
 integer timerFlag=0; // 0: None; 1: Menu timeout flag
 integer initRetryTimer=30;
 integer cmdChannel=1;
@@ -660,9 +671,16 @@ default{
         else if(num==TIMER_MSG_NUM){
             // 计时器功能监听
             if (includes(str, "TIMER.TIMEOUT")) { // 接收计时器系统回调
+                timeoutRunning=FALSE;
                 if(isLocked){
                     setLock(FALSE, NULL_KEY, FALSE); // 计时结束时，解锁
                 }
+            }
+            else if (includes(str, "TIMER.RUNNING")) { // 接收计时器系统回调
+                timeoutRunning=TRUE;
+            }
+            else if (includes(str, "TIMER.SETRUNNING")) { // 接收计时器系统回调
+                timeoutRunning=FALSE;
             }
         }
         // llOwnerSay("LINK_MESSAGE: "+str);
