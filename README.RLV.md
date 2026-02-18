@@ -18,39 +18,27 @@
 - 将一组RLV限制注册到RLV系统中，以便在RLV菜单中展示并一键应用所有限制。
 - RLV组名称唯一，如果在列表中已存在同名的RLV组，则会覆盖此RLV组中的所有限制。
 - 如果传入字段中包含RLV类别，则会自动创建同名RLV类别。如果没有此字段，则此RLV组将无法显示在菜单中（多用于临时调用或隐藏式调用）。
-- RLV限制可自定义生效/不生效/扩展值，格式：【RLV指令 ? 生效值 ? 不生效值 ? 扩展值1 ? 扩展值2 ...】。
-- 执行后，回调结果为TRUE。
+- RLV限制可自定义生效/不生效/扩展值，格式：【RLV指令 ? 生效值 ? 不生效值】。
+- RLV限制开关分别为-1（切换当前状态）、0（不生效）、1（生效）。
+- RLV限制中，以【_】、【+】开头的字符串为互斥组名，仅在应用RLV组时有效，实际不执行RLV功能。
+  - 以【_】开头的互斥组名为普通型互斥组，应用时会关闭其他含此互斥组名的RLV组。
+  - 以【+】开头的互斥组名为覆盖型互斥组，应用时不关闭其他含此互斥组名的RLV组，但会将其标记为关闭，仅作为覆盖使用。
+- 执行后，回调结果为RLV组中所有限制的应用状态（0、1）。
 ```lsl
 RLV.REG | RLV组名 | RLV限制1 ? 生效值 ? 失效值 ? 扩展值, RLV限制2, RLV限制3, ...
 RLV.REGIST | RLV组名 | RLV限制1, RLV限制2, RLV限制3, ... | RLV类别名
 RLV.REGIST | RLV组名 | RLV限制1, RLV限制2, RLV限制3, ... | RLV类别名 | RLV立即生效开关
+RLV.REGIST | RLV组名 | _互斥组名, RLV限制1, RLV限制2, RLV限制3, ... | RLV类别名 | RLV立即生效开关
+RLV.REGIST | RLV组名 | +互斥组名, RLV限制1, RLV限制2, RLV限制3, ... | RLV类别名 | RLV立即生效开关
 // 示例（为了便于阅读，在分隔符中间加了空格，实际使用时不应加此空格）：
 RLV.REG | RLVName | RLV1 ? n ? y, RLV2 ? add ?rem, RLV3 ? force ? rem ? ext, ...
 RLV.REGIST | RLVName | RLV1, RLV2, RLV3, ... | Class 1
 RLV.REGIST | RLVName | RLV1, RLV2, RLV3, ... | Class 1 | 1
+RLV.REGIST | RLVName | _Reject1, RLV1, RLV2, RLV3, ... | Class 1 | 1
+RLV.REGIST | RLVName | +Reject2, RLV1, RLV2, RLV3, ... | Class 1 | 1
 // 回调：
-RLV.EXEC | RLV.REG | 1
-RLV.EXEC | RLV.REGIST | 1
-```
-
-### 注册RLV组并应用
-#### RLV.REG.APPLY
-#### RLV.REGIST.APPLY
-- 注册RLV组的同时立即应用。
-- 格式与上面相同。
-- RLV限制开关分别为-1（切换当前状态）、0（不生效）、1（生效）。
-- 执行后，回调结果为RLV组中所有限制的应用状态（0、1）。
-```lsl
-RLV.REG.APPLY | RLV组名 | RLV限制1, RLV限制2, RLV限制3, ... | RLV限制开关
-RLV.REGIST.APPLY | RLV组名 | RLV限制1, RLV限制2, RLV限制3, ... | RLV限制开关 | RLV类别名
-RLV.REGIST.APPLY | RLV组名 | RLV限制1, RLV限制2, RLV限制3, ... | RLV限制开关 | RLV类别名 | RLV立即生效开关
-// 示例：
-RLV.REG.APPLY | RLVName | RLV1, RLV2, RLV3, ... | -1
-RLV.REGIST.APPLY | RLVName | RLV1, RLV2, RLV3, ... | 1 | Class 1
-RLV.REGIST.APPLY | RLVName | RLV1, RLV2, RLV3, ... | 1 | Class 1 | 1
-// 回调：
-RLV.EXEC | RLV.REG.APPLY | 0
-RLV.EXEC | RLV.REGIST.APPLY | 1
+RLV.EXEC | RLV.REG | RLVName | 1
+RLV.EXEC | RLV.REGIST | RLVName | 1
 ```
 
 ### 应用已注册的RLV组
@@ -65,20 +53,20 @@ RLV.APPLY | RLVName | -1
 RLV.APPLY | RLVName | 1
 RLV.APPLY | RLVName | 0
 // 回调：
-RLV.EXEC | RLV.APPLY | 0
-RLV.EXEC | RLV.APPLY | 1
-RLV.EXEC | RLV.APPLY | 0
+RLV.EXEC | RLV.APPLY | RLVName | 0
+RLV.EXEC | RLV.APPLY | RLVName | 1
+RLV.EXEC | RLV.APPLY | RLVName | 0
 ```
 
 ### 应用所有的的RLV组
-#### RLV.APPLYALL
+#### RLV.APPLY.ALL
 - 立即应用已注册的所有RLV组。
 - RLV限制开关为当前组内的设置。
 - 执行后，回调结果恒为1。
 ```lsl
-RLV.APPLYALL
+RLV.APPLY.ALL
 // 回调：
-RLV.EXEC | RLV.APPLYALL | 1
+RLV.EXEC | RLV.APPLY.ALL | 1
 ```
 
 ### 移除已注册的RLV组
@@ -93,8 +81,8 @@ RLV.REMOVE | RLV组名
 RLV.REM | RLVName
 RLV.REMOVE | RLVName
 // 回调：
-RLV.EXEC | RLV.REM | 1
-RLV.EXEC | RLV.REMOVE | 0
+RLV.EXEC | RLV.REM | RLVName | 1
+RLV.EXEC | RLV.REMOVE | RLVName | 0
 ```
 
 ### 清空RLV组
@@ -176,15 +164,6 @@ RLV.GET.LOCK
 RLV.EXEC | RLV.GET.LOCK | 1;UUID
 ```
 
-### 获取重命名器状态
-#### RLV.GET.RENAMER
-- 获取当前重命名器的状态（名字、频道、开关）。
-```lsl
-RLV.GET.RENAMER
-// 回调：
-RLV.EXEC | RLV.GET.RENAMER | 名字; 频道; 1
-```
-
 ### 捕获玩家
 #### RLV.CAPTURE
 - 仅当物品放在地上时生效。
@@ -195,7 +174,7 @@ RLV.EXEC | RLV.GET.RENAMER | 名字; 频道; 1
 ```lsl
 RLV.CAPTURE | UUID
 // 回调：
-RLV.EXEC | RLV.CAPTURE | 1
+RLV.EXEC | RLV.CAPTURE | UUID | 1
 ```
 
 ### 获取捕获状态
@@ -270,12 +249,13 @@ RLV.MENU | 上级菜单名
 ## RLV回调
 - 当执行RLV指令时，将回调执行结果。根据不同情况，结果的格式也有所不同。
 - 当应用RLV组、应用全部RLV组、清空RLV限制时，会有相应回调。
+  - RLV.APPLY的回调仅限主动调用时触发。
 ```lsl
 RLV.EXEC | RLV.REG.CLASS | 1
-RLV.EXEC | RLV.APPLY | 0
 RLV.EXEC | RLV.LOAD | 0
 RLV.EXEC | RLV.CLEAR | 1
-RLV.EXEC | RLV.APPLY | 1
+RLV.EXEC | RLV.APPLY | RLVName | 0
+RLV.EXEC | RLV.APPLY | RLVName | 1
 RLV.EXEC | RLV.APPLY.ALL | 1
 ```
 
@@ -297,7 +277,7 @@ RLV.EXEC | RLV.APPLY.ALL | 1
 #### @rext_echoview=\<y/n\>
 - 当指令开关为n时，启动Echo视野，否则关闭Echo视野。
 - Echo视野启用时，显示黑雾遮罩，通过输入/1 echo（或自定义内容）来在短时间内暂时获得一定范围的视野。
-- 命令参数分别为：Echo命令;Echo持续时长;普通状态最小视野范围;普通状态最大视野范围;Echo最小视野范围;Echo最大视野范围;遮罩变化速率。
+- 命令参数分别为：Echo命令; Echo持续时长; 普通状态最小视野范围; 普通状态最大视野范围; Echo最小视野范围; Echo最大视野范围; 遮罩变化速率。
   - 不需要更改某项参数时，请将它留空，即var1;;var3。:及之后的参数均可省略，省略则使用上述的参数默认值。
 
 ### 限制行走速度：

@@ -63,6 +63,11 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 2.0.7 20260218
+    - 优化RLV互斥组逻辑，加入+覆盖型互斥组。
+    - 优化应用RLV组回调逻辑，现在只有主动调用才回调。
+    - 优雅脚本指令和回调结构。
+
 - 2.0.6 20260213
     - 优化RLV捕获功能的逻辑。
     - 修复编译时报错的bug。
@@ -313,7 +318,7 @@ integer executeRLV(string rlv, integer bool){
         }
         return bool;
     }
-    if(llGetSubString(rlv, 0, 0)=="_"){ // _开头的为互斥组标记，不执行
+    if(llGetSubString(rlv, 0, 0)=="_" || llGetSubString(rlv, 0, 0)=="+"){ // _、+开头的为互斥组标记，不执行
         return FALSE;
     }
     if(bool==TRUE){ // bool为TRUE时，记忆RLV指令，以便恢复状态。否则不进行任何记录
@@ -438,30 +443,48 @@ integer applyRLVCmd(string name, integer bool){
             }
         }
         integer r;
-        for(r=0; r<llGetListLength(curRlvList); r++){
+        for(r=0; r<llGetListLength(curRlvList); r++){ // 遍历rlv组中的每条限制
             list curRlvSp=llParseStringKeepNulls(llList2String(curRlvList, r),["?"],[""]);
             string curRlv=llList2String(curRlvSp, 0);
             string curRlvEnable =llList2String(curRlvSp, 1);
             string curRlvDisable=llList2String(curRlvSp, 2);
-            if(curRlvEnable==""){
+            if(curRlvEnable==""){ // rlv生效初始值
                 curRlvEnable="n";
             }
-            if(curRlvDisable==""){
+            if(curRlvDisable==""){ // rlv失效反补值
                 if(curRlvEnable=="n"){
                     curRlvDisable="y";
-                }else if(curRlvEnable=="add" || curRlvEnable=="force"){
+                }
+                else if(curRlvEnable=="add" || curRlvEnable=="force"){
                     curRlvDisable="rem";
-                }else{
+                }
+                else if(curRlvEnable=="y"){
+                    curRlvDisable="n";
+                }
+                else if(curRlvEnable=="rem"){
+                    curRlvDisable="add";
+                }
+                else{
                     curRlvDisable="y";
                 }
             }
             if(bool==TRUE){
                 // 互斥组禁用（检测RLV首个_开头的互斥组标记，并将同组其他RLV禁用）
+                integer rejectGroupType=0;
                 if(llGetSubString(curRlv, 0, 0)=="_"){
+                    rejectGroupType=1;
+                }else if(llGetSubString(curRlv, 0, 0)=="+"){
+                    rejectGroupType=2;
+                }
+                if(rejectGroupType>0){
                     integer i;
                     for(i=1; i<llGetListLength(rlvCmdList); i+=rlvCmdLength){ // name, >rlvs<, class, enabled
                         if(includes(llList2String(rlvCmdList, i), curRlv) && llList2Integer(rlvCmdList, i+2)==TRUE){
-                            applyRLVCmd(llList2String(rlvCmdList, i-1), FALSE);
+                            if(rejectGroupType==1){ // _模式，将其关闭
+                                applyRLVCmd(llList2String(rlvCmdList, i-1), FALSE);
+                            }else if(rejectGroupType==2){ //+模式，只改状态不关闭
+                                rlvCmdList=llListReplaceList(rlvCmdList,[FALSE],i+2,i+2);
+                            }
                         }
                     }
                 }
@@ -471,7 +494,7 @@ integer applyRLVCmd(string name, integer bool){
             }
         }
         rlvCmdList=llListReplaceList(rlvCmdList,[bool],curIndex+3,curIndex+3);
-        llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.EXEC|RLV.APPLY|"+name+"|"+(string)bool, NULL_KEY);
+        // llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.EXEC|RLV.APPLY|"+name+"|"+(string)bool, NULL_KEY);
         return bool;
     }
     return FALSE;
@@ -707,7 +730,7 @@ default{
                 RLV.EXEC | RLV.REG.APPLY | 1 // 1=成功，0=失败，或其他结果字符串
                 */
                 if(headerSub=="REG" || headerSub=="REGIST"){
-                    result=(string)setRLVCmd(msgName, msgSub, msgExt, (integer)msgExt2);
+                    result=msgName+"|"+(string)setRLVCmd(msgName, msgSub, msgExt, (integer)msgExt2);
                     if((integer)msgExt2==TRUE){
                         applyRLVCmd(msgName, (integer)msgExt2);
                     }
@@ -717,16 +740,16 @@ default{
                 RLV.APPLY | RLVName | -1
                 RLV.APPLY | RLVName | 1
                 RLV.APPLY | RLVName | 0
-                */
-                else if(headerSub=="APPLY"){
-                    result=(string)applyRLVCmd(msgName, (integer)msgSub);
-                }
-                /*
                 应用全部的RLV组
                 RLV.APPLY.ALL
                 */
-                else if(headerSub=="APPLYALL"){
-                    result=(string)applyAllRLVCmd();
+                else if(headerSub=="APPLY"){
+                    if(headerExt==""){
+                        result="msgName|"+(string)applyRLVCmd(msgName, (integer)msgSub); // applyRLVCmd的回调仅限主动调用时触发，防止数量过多排队。
+                    }
+                    else if(headerExt=="ALL"){
+                        applyAllRLVCmd();
+                    }
                 }
                 /*
                 移除RLV组
@@ -736,7 +759,7 @@ default{
                 */
                 else if(headerSub=="REM" || headerSub=="REMOVE"){
                     applyRLVCmd(msgName, FALSE);
-                    result=(string)removeRLVCmd(msgName);
+                    result=msgName+"|"+(string)removeRLVCmd(msgName);
                 }
                 else if(headerSub=="CLEAR"){
                     /*
@@ -765,14 +788,14 @@ default{
                 else if(headerSub=="CAPTURE"){
                     // result=(string)captureVictim((key)msgName);
                     if(RLV_MODE<=0){
-                        result=(string)FALSE;
+                        result=msgName+"|"+(string)FALSE;
                     }else{
                         VICTIM_UUID=(key)msgName;
                         if((integer)msgSub==TRUE){
                             executeRLV("sit:"+(string)llGetKey()+"=force", TRUE);
                         }
                         applyAllRLVCmd();
-                        result=(string)TRUE;
+                        result=msgName+"|"+(string)TRUE;
                     }
                 }
                 else if(headerSub=="LOAD"){

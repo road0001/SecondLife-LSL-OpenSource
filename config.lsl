@@ -176,7 +176,7 @@ default{
                         // llSleep(awaitTime);
                     }
                     llSleep(awaitTime);
-                    llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.APPLYALL", NULL_KEY);
+                    llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.APPLY.ALL", NULL_KEY);
                     llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.LOAD.NOTECARD|CONFIG|1", NULL_KEY); // RLV成功读取记事卡后回调
                 }
                 else if(configName=="ACCESS_CONFIG"){
