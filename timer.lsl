@@ -5,6 +5,9 @@ Author: JMRY
 Description: A better timer control system, use link_message to operate timers.
 
 ***更新记录***
+- 1.0.5 20260219
+    - 加入计时器和RLV锁联动功能。
+
 - 1.0.4 20260127
     - 修复初始化时显示错误计时的bug。
 
@@ -168,6 +171,7 @@ integer addTimer(integer second){
     return timerLength;
 }
 
+integer lockRLVConnect=TRUE;
 integer timerRunning=FALSE;
 string timerStatus="";
 integer timerStamp=0;
@@ -277,6 +281,7 @@ showTimerMenu(string parent, key user){
 }
 
 integer MENU_MSG_NUM=1000;
+integer RLV_MSG_NUM=1001;
 integer LAN_MSG_NUM=1003;
 integer TIMER_MSG_NUM=1004;
 default{
@@ -298,7 +303,7 @@ default{
         timerRunningEvent();
     }
     link_message(integer sender_num, integer num, string msg, key user){
-        if(num!=TIMER_MSG_NUM && num!=MENU_MSG_NUM && num!=LAN_MSG_NUM){
+        if(num!=TIMER_MSG_NUM && num!=MENU_MSG_NUM && num!=LAN_MSG_NUM && num!=RLV_MSG_NUM){
             return;
         }
 
@@ -359,6 +364,14 @@ default{
                             result=(string)timerTextAlpha;
                         }
                     }
+                    else if(timerMsgExt=="CONNECT"){
+                        /*
+                        获取计时器与锁联动状态：TIMER.SET.CONNECT | 1
+                        返回：TIMER.EXEC | TIMER.SET.CONNECT | 1
+                        */
+                        lockRLVConnect=(integer)timerMsgName;
+                        result=(string)lockRLVConnect;
+                    }
                     else{
                         /*
                         设置时长：TIMER.SET | SECONDS
@@ -382,6 +395,13 @@ default{
                         类型：0=现实时间；1=在线时间
                         */
                         result=list2Data([timerTextBool, timerTextColor, timerTextAlpha]);
+                    }
+                    else if(timerMsgExt=="CONNECT"){
+                        /*
+                        获取计时器与锁联动状态：TIMER.GET.CONNECT
+                        返回：TIMER.EXEC | TIMER.GET.CONNECT | 1
+                        */
+                        result=(string)lockRLVConnect;
                     }
                     else{
                         /*
@@ -488,6 +508,14 @@ default{
                         addTimer(timerNumber * timerIncrease);
                     }
                     showTimerMenu(timerParentMenuName, user);
+                }
+            }
+            else if(num==RLV_MSG_NUM && lockRLVConnect==TRUE){
+                if(str=="RLV.LOCK|1" && timerLength>0){
+                    setTimerRunning(2);
+                }
+                else if(str=="RLV.LOCK|0"){
+                    setTimerRunning(FALSE);
                 }
             }
             else if(num==LAN_MSG_NUM){

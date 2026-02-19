@@ -75,6 +75,20 @@ TIMER.SET.TEXT.ALPHA | 1.0
 TIMER.EXEC | TIMER.SET.TEXT.ALPHA | 1.0
 ```
 
+### 设置计时器与RLV锁联动
+#### TIMER.SET.CONNECT
+- 设置计时器与RLV锁联动。
+- 类型为数字，0=关闭联动，1=开启联动。
+```lsl
+TIMER.SET.CONNECT | 1
+// 示例：
+TIMER.SET.CONNECT|1
+TIMER.SET.CONNECT|0
+// 回调：
+TIMER.EXEC | TIMER.SET.CONNECT | 1
+TIMER.EXEC | TIMER.SET.CONNECT | 0
+```
+
 ### 增加计时器时长
 #### TIMER.ADD
 - 为计时器增加时长。
@@ -117,6 +131,17 @@ TIMER.EXEC | TIMER.GET | STOPPED; 0; 60; 120
 TIMER.GET.TEXT
 // 回调：
 TIMER.EXEC | TIMER.GET.TEXT | 1; <1.0, 1.0, 1.0>, 1.0
+```
+
+### 获取计时器与RLV锁联动状态
+#### TIMER.GET.CONNECT
+- 获取计时器与RLV锁联动状态
+```lsl
+TIMER.GET.CONNECT
+// 示例：
+TIMER.GET.CONNECT
+// 回调：
+TIMER.EXEC | TIMER.GET.CONNECT | 1
 ```
 
 ### 暂停计时器
