@@ -63,6 +63,12 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 2.0.8 20260219
+    - 加入应用所有RLV限制时，可指定Class功能。
+    - 加入应用所有RLV限制时，可指定开关功能。
+    - 加入应用RLV组限制时，不更改状态的功能（用于临时开关RLV限制）。
+    - 加入获取RLV类别和类别中RLV限制与开关的接口。
+
 - 2.0.7 20260218
     - 优化RLV互斥组逻辑，加入+覆盖型互斥组。
     - 优化应用RLV组回调逻辑，现在只有主动调用才回调。
@@ -429,7 +435,7 @@ list getRLVCmd(string name, integer includesIndex){
     return [];
 }
 
-integer applyRLVCmd(string name, integer bool){
+integer applyRLVCmd(string name, integer bool, integer isChange){
     list curRlvCmd=getRLVCmd(name, TRUE); // [name, rlvs, class, enabled, index]
     if(llGetListLength(curRlvCmd)>0){
         list curRlvList=data2RlvList(llList2String(curRlvCmd, 1));
@@ -476,12 +482,12 @@ integer applyRLVCmd(string name, integer bool){
                 }else if(llGetSubString(curRlv, 0, 0)=="+"){
                     rejectGroupType=2;
                 }
-                if(rejectGroupType>0){
+                if(isChange==TRUE && rejectGroupType>0){
                     integer i;
                     for(i=1; i<llGetListLength(rlvCmdList); i+=rlvCmdLength){ // name, >rlvs<, class, enabled
                         if(includes(llList2String(rlvCmdList, i), curRlv) && llList2Integer(rlvCmdList, i+2)==TRUE){
                             if(rejectGroupType==1){ // _模式，将其关闭
-                                applyRLVCmd(llList2String(rlvCmdList, i-1), FALSE);
+                                applyRLVCmd(llList2String(rlvCmdList, i-1), FALSE, TRUE);
                             }else if(rejectGroupType==2){ //+模式，只改状态不关闭
                                 rlvCmdList=llListReplaceList(rlvCmdList,[FALSE],i+2,i+2);
                             }
@@ -493,23 +499,26 @@ integer applyRLVCmd(string name, integer bool){
                 executeRLV(curRlv+"="+curRlvDisable, TRUE);
             }
         }
-        rlvCmdList=llListReplaceList(rlvCmdList,[bool],curIndex+3,curIndex+3);
+        if(isChange==TRUE){
+            rlvCmdList=llListReplaceList(rlvCmdList,[bool],curIndex+3,curIndex+3);
+        }
         // llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.EXEC|RLV.APPLY|"+name+"|"+(string)bool, NULL_KEY);
         return bool;
     }
     return FALSE;
 }
 
-integer applyAllRLVCmd(){
+integer applyAllEnabledRLVCmd(string class, integer bool){
     integer i;
     for(i=0; i<llGetListLength(rlvCmdList); i+=rlvCmdLength){
         string curRlvCmdName=llList2String(rlvCmdList, i);
+        string curRlvCmdClass=llList2String(rlvCmdList, i+2);
         integer curRlvEnabled=llList2Integer(rlvCmdList, i+3);
-        if(curRlvEnabled==TRUE){
-            applyRLVCmd(curRlvCmdName, curRlvEnabled);
+        if(curRlvEnabled==TRUE && (class=="" || class==curRlvCmdClass)){
+            applyRLVCmd(curRlvCmdName, bool, FALSE); // 应用所有已启用的RLV时，不更改状态
         }
     }
-    llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.EXEC|RLV.APPLY.ALL|1", NULL_KEY);
+    llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.EXEC|RLV.APPLY.ALL|"+(string)bool, NULL_KEY);
     return TRUE;
 }
 
@@ -538,7 +547,7 @@ integer setLock(integer bool, key user){
         executeRLV(lockStr+"=n", TRUE);
         lockUser=user;
         if(lockRLVConnect==TRUE){ // 锁和RLV联动时，锁定即应用之前的限制
-            applyAllRLVCmd();
+            applyAllEnabledRLVCmd("",TRUE);
         }
     }
     isLocked=bool;
@@ -615,7 +624,7 @@ default{
         initConfig();
         // llSleep(1);
         // if(llGetAttached()){
-        //     applyAllRLVCmd();
+        //     applyAllEnabledRLVCmd("",TRUE);
         // }
     }
     changed(integer change){
@@ -627,7 +636,7 @@ default{
             if (avatar != NULL_KEY){
                 RLV_MODE=1;
                 VICTIM_UUID=avatar;
-                applyAllRLVCmd();
+                applyAllEnabledRLVCmd("",TRUE);
             }else{
                 executeRLV("sit:"+(string)llGetKey()+"=rem", TRUE);
                 VICTIM_UUID=NULL_KEY;
@@ -732,23 +741,37 @@ default{
                 if(headerSub=="REG" || headerSub=="REGIST"){
                     result=msgName+"|"+(string)setRLVCmd(msgName, msgSub, msgExt, (integer)msgExt2);
                     if((integer)msgExt2==TRUE){
-                        applyRLVCmd(msgName, (integer)msgExt2);
+                        applyRLVCmd(msgName, (integer)msgExt2, TRUE);
                     }
                 }
                 /*
                 应用已注册的RLV组
+                RLV组名 | 开关 | 是否更改状态
                 RLV.APPLY | RLVName | -1
                 RLV.APPLY | RLVName | 1
                 RLV.APPLY | RLVName | 0
+                RLV.APPLY | RLVName | 1 | 0
                 应用全部的RLV组
                 RLV.APPLY.ALL
+                RLV.APPLY.ALL | | 1
+                RLV.APPLY.ALL | Class
+                RLV.APPLY.ALL | Class | 1
                 */
                 else if(headerSub=="APPLY"){
                     if(headerExt==""){
-                        result="msgName|"+(string)applyRLVCmd(msgName, (integer)msgSub); // applyRLVCmd的回调仅限主动调用时触发，防止数量过多排队。
+                        if(msgSub==""){ // 开关为空时，默认为切换
+                            msgSub="-1";
+                        }
+                        if(msgExt==""){ // 更改状态为空时，默认更改
+                            msgExt="1";
+                        }
+                        result="msgName|"+(string)applyRLVCmd(msgName, (integer)msgSub, (integer)msgExt); // applyRLVCmd的回调仅限主动调用时触发，防止数量过多排队。
                     }
                     else if(headerExt=="ALL"){
-                        applyAllRLVCmd();
+                        if(msgSub==""){ // 开关为空时，默认为生效
+                            msgSub="1";
+                        }
+                        applyAllEnabledRLVCmd(msgName,(integer)msgSub);
                     }
                 }
                 /*
@@ -758,7 +781,7 @@ default{
                 RLV.REMOVE | RLVName
                 */
                 else if(headerSub=="REM" || headerSub=="REMOVE"){
-                    applyRLVCmd(msgName, FALSE);
+                    applyRLVCmd(msgName, FALSE, FALSE); // 移除前，解锁，但无须更改状态
                     result=msgName+"|"+(string)removeRLVCmd(msgName);
                 }
                 else if(headerSub=="CLEAR"){
@@ -794,7 +817,7 @@ default{
                         if((integer)msgSub==TRUE){
                             executeRLV("sit:"+(string)llGetKey()+"=force", TRUE);
                         }
-                        applyAllRLVCmd();
+                        applyAllEnabledRLVCmd("",TRUE);
                         result=msgName+"|"+(string)TRUE;
                     }
                 }
@@ -820,7 +843,7 @@ default{
                         }else{
                             llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.LOAD.NOTECARD|"+msgName+"|"+(string)llGetListLength(rlvCmdList), NULL_KEY); // RLV成功读取记事卡后回调
                             if(llGetAttached()){
-                                applyAllRLVCmd();
+                                applyAllEnabledRLVCmd("",TRUE);
                             }
                             result=(string)FALSE;
                         }
@@ -854,6 +877,30 @@ default{
                     */
                     if(headerExt==""){
                         result=list2Data(getRLVCmd(msgName, FALSE));
+                    }
+                    /*
+                    获取RLV类别，或指定RLV类别中的RLV组
+                    RLV.GET.CLASS
+                    RLV.GET.CLASS | Class
+                    返回：
+                    RLV.EXEC | RLV.GET.CLASS | | Class1; Class2; ...
+                    RLV.EXEC | RLV.GET.CLASS | Class | RLVName1; RLVEnabled1; RLVName2; RLVEnabled2; ...
+                    */
+                    if(headerExt=="CLASS"){
+                        integer r;
+                        list curRlvClass=[];
+                        string curClass="EMPTY_CLASS":
+                        for(r=0; r<llGetListLength(rlvCmdList); r++){
+                            if(llList2String(rlvCmdList, r+2) == msgName && msgName!=""){
+                                curRlvClass+=[llList2String(rlvCmdList, r), llList2String(rlvCmdList, r+3)];
+                            }else if(msgName==""){
+                                if(curClass!=llList2String(rlvCmdList, r+2)){
+                                    curClass=llList2String(rlvCmdList, r+2);
+                                    curRlvClass+=[curClass];
+                                }
+                            }
+                        }
+                        result=msgName+"|"+list2Data(curRlvClass);
                     }
                     /*
                     获取锁定状态
@@ -994,11 +1041,11 @@ default{
                         }
                         for(i=0; i<llGetListLength(rlvCmdList); i+=rlvCmdLength){ // 第二次循环，执行全部开关限制
                             if(llList2String(rlvCmdList, i+2) == curRlvSubMenu){
-                                applyResult=applyRLVCmd(llList2String(rlvCmdList, i), !allEnabled);
+                                applyResult=applyRLVCmd(llList2String(rlvCmdList, i), !allEnabled, TRUE);
                             }
                         }
                     }else{
-                        applyResult=applyRLVCmd(msgSub, -1);
+                        applyResult=applyRLVCmd(msgSub, -1, TRUE);
                     }
                     string onOff="OFF";
                     if(applyResult>=1){
@@ -1024,7 +1071,7 @@ default{
                 llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.LOAD.NOTECARD|"+curRLVName+"|1", NULL_KEY); // RLV成功读取记事卡后回调
                 readRLVQuery=NULL_KEY;
                 if(llGetAttached()){
-                    applyAllRLVCmd();
+                    applyAllEnabledRLVCmd("",TRUE);
                 }
             } else {
                 /*
