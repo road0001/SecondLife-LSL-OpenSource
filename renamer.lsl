@@ -1,3 +1,17 @@
+initConfig(){
+    renamerBool=FALSE;
+    renamerChannel=(integer)(99999999 - llFrand(10000000));
+    renamerName=RENAMER_FULL_NAME;
+    confusionReplaceEn=["f", "h", "m", "n"];
+    confusionReplaceCn=["咕", "呜", "唔", "姆"];
+    renamerConfusion="None"; // None, Loose, Middle, Strict, Muffle
+    renamerConfusionOOC=TRUE;
+    allowHive=FALSE;
+    renamerHive=FALSE;
+    renamerVoice="";
+    renamerVolume=1.0;
+    renamerType=0; // 0: Say; 1: Whisper; 2: Shour; 3: RegionSay
+}
 /*CONFIG END*/
 /*
 Name: Renamer
@@ -5,6 +19,11 @@ Author: JMRY
 Description: A better RLV Renamer management system, use link_message to operate Renamer restraints.
 
 ***更新记录***
+- 1.1 20260224
+    - 加入读取记事卡功能。
+    - 加入自定义配置功能。
+    - 加入自定义配置混淆功能。
+
 - 1.0.9 20260207
     - 优化文本提示。
     - 优化全名的显示逻辑。
@@ -46,8 +65,8 @@ Description: A better RLV Renamer management system, use link_message to operate
 
 /*
 TODO:
-- 混淆模式
-- Renamer触发声音
+- ~混淆模式~
+- ~Renamer触发声音~
 - 内存和性能优化
 */
 
@@ -272,9 +291,12 @@ string RENAMER_FULL_NAME="RENAMER_FULL_NAME";
 string RENAMER_USER_NAME="RENAMER_USER_NAME";
 string RENAMER_OBJECT_NAME="RENAMER_OBJECT_NAME";
 
+list confusionReplaceEn=[];
+list confusionReplaceCn=[];
+
 string objectName=":";
 string renamerName="";
-string renamerConfusion="None";
+string renamerConfusion="";
 integer renamerConfusionOOC=TRUE;
 float renamerConfusionProb=0.00;
 integer renamerHive=FALSE;
@@ -310,8 +332,6 @@ integer renamerSay(string name, string msg, integer type) {
         renamerConfusionProb=0; // /me表情不混淆
     }
     if(renamerConfusionProb>0.0 && renamerConfusionProb<1.0){
-        string confusionReplaceEn="fhmn";
-        string confusionReplaceCn="咕呜唔姆";
         string confusionWhitelist="`~!@#$%^&*()_+-=[]\\{}|;':\",./<>?·！￥…（）—【】、；‘’：“”，。《》？";
         integer i;
         for(i=0; i<llStringLength(msg); i++){
@@ -323,16 +343,16 @@ integer renamerSay(string name, string msg, integer type) {
                     integer isReplaced=FALSE;
                     if(cur!=" "){
                         if((curi>=48 && curi<=57) || (curi>=97 && curi<=122)){ // 数字和小写字母
-                            integer pos=(integer)llFrand(llStringLength(confusionReplaceEn));
-                            cur=llGetSubString(confusionReplaceEn, pos, pos);
+                            integer pos=(integer)llFrand(llGetListLength(confusionReplaceEn));
+                            cur=llList2String(confusionReplaceEn, pos);
                             isReplaced=TRUE;
                         }else if(curi>=65 && curi<=90){ // 大写字母
-                            integer pos=(integer)llFrand(llStringLength(confusionReplaceEn));
-                            cur=llGetSubString(llToUpper(confusionReplaceEn), pos, pos);
+                            integer pos=(integer)llFrand(llGetListLength(confusionReplaceEn));
+                            cur=llToUpper(llList2String(confusionReplaceEn, pos));
                             isReplaced=TRUE;
                         }else if(curi>=128){ // 中文
-                            integer pos=(integer)llFrand(llStringLength(confusionReplaceCn));
-                            cur=llGetSubString(confusionReplaceCn, pos, pos);
+                            integer pos=(integer)llFrand(llGetListLength(confusionReplaceCn));
+                            cur=llList2String(confusionReplaceCn, pos);
                             isReplaced=TRUE;
                         }
                         if(isReplaced){
@@ -344,6 +364,9 @@ integer renamerSay(string name, string msg, integer type) {
                                 msg=llGetSubString(msg, 0, i-1) + cur;
                             }else{
                                 msg=llGetSubString(msg, 0, i-1) + cur + llGetSubString(msg, i+1, -1);
+                            }
+                            if(llStringLength(cur)>1){
+                                i+=llStringLength(cur)-1;
                             }
                         }
                     }
@@ -415,6 +438,12 @@ integer renamerSay(string name, string msg, integer type) {
     llSetObjectName(oname);
     return TRUE;
 }
+
+string renamerHeader="renamer_";
+key readRenamerQuery=NULL_KEY;
+integer readRenamerLine=0;
+string readRenamerName="";
+string curRenamerName="";
 
 /*
 RLV菜单控制
@@ -517,8 +546,9 @@ integer RENAMER_MSG_NUM=10011;
 key currentUser=NULL_KEY;
 default{
     state_entry(){
-        renamerChannel=(integer)(99999999 - llFrand(10000000));
-        renamerName=RENAMER_FULL_NAME;
+        initConfig();
+        curRenamerBool=renamerBool;
+        renamerEnabled(renamerBool, NULL_KEY);
     }
     changed(integer change){
         if(change & CHANGED_OWNER){
@@ -596,7 +626,7 @@ default{
         integer mi;
         for(mi=0; mi<msgCount; mi++){
             string str=llList2String(msgList, mi);
-            if (llGetSubString(str, 0, 8) == "RENAMER." && !includes(str, "EXEC")) {
+            if (llGetSubString(str, 0, 7) == "RENAMER." && !includes(str, "EXEC")) {
                 list renamerMsgList=strSplit(str, "|");
                 string renamerMsgStr=llList2String(renamerMsgList, 0);
                 list renamerMsgGroup=llParseStringKeepNulls(renamerMsgStr, ["."], [""]);
@@ -608,20 +638,20 @@ default{
                 string renamerMsgData=llList2String(renamerMsgList, 1);
                 list renamerMsgDataList=strSplit(renamerMsgData, ";");
                 
-                string renamerMsgEnabled=llList2String(renamerMsgDataList, 2);
-                string renamerMsgName=llList2String(renamerMsgDataList, 2);
-                string renamerMsgConfusion=llList2String(renamerMsgDataList, 3);
-                string renamerMsgVoice=llList2String(renamerMsgDataList, 4);
-                string renamerMsgHive=llList2String(renamerMsgDataList, 5);
+                string renamerMsgEnabled=llList2String(renamerMsgDataList, 0);
+                string renamerMsgName=llList2String(renamerMsgDataList, 1);
+                string renamerMsgConfusion=llList2String(renamerMsgDataList, 2);
+                string renamerMsgVoice=llList2String(renamerMsgDataList, 3);
+                string renamerMsgHive=llList2String(renamerMsgDataList, 4);
 
                 string result="";
                 if(renamerMsgSub=="SET"){
                     /*
                     重命名器
-                    RENAMER.SET | 1 | Name | Confusion | Voice | Hive
+                    RENAMER.SET | 1; Name; Confusion; Voice; Hive
                     RENAMER.SET | 0
                     返回：
-                    RENAMER.EXEC | RENAMER.SET | 1; channel; name; confusion; voice // 1=启用，0=关闭
+                    RENAMER.EXEC | RENAMER.SET | 1; name; confusion; voice // 1=启用，0=关闭
                     */
                     if(renamerMsgExt==""){
                         if(renamerMsgEnabled!=""){
@@ -639,7 +669,27 @@ default{
                         if(renamerMsgHive!=""){
                             renamerHive=(integer)renamerMsgHive;
                         }
-                        result=list2Data([renamerBool, renamerChannel, renamerName, renamerConfusion, renamerVoice, renamerHive]);
+                        renamerEnabled(renamerBool, NULL_KEY);
+                        curRenamerBool=renamerBool;
+                        result=list2Data([renamerBool, renamerName, renamerConfusion, renamerVoice, renamerHive]);
+                    }
+                    /*
+                    重命名器混淆-英文
+                    RENAMER.SET.CONFUSION | EN | Conf1; Conf2; Conf3; ...
+                    重命名器混淆-中文
+                    RENAMER.SET.CONFUSION | CN | Conf1; Conf2; Conf3; ...
+                    返回：
+                    RENAMER.EXEC | RENAMER.SET.CONFUSION | EN | Conf1; Conf2; Conf3; ...
+                    */
+                    else if(renamerMsgExt=="CONFUSION"){
+                        if(renamerMsgData=="EN"){
+                            confusionReplaceEn=strSplit(llList2String(renamerMsgList, 2), ";");
+                            result=renamerMsgData+"|"+llDumpList2String(confusionReplaceEn, ";");
+                        }
+                        else if(renamerMsgData=="CN"){
+                            confusionReplaceCn=strSplit(llList2String(renamerMsgList, 2), ";");
+                            result=renamerMsgData+"|"+llDumpList2String(confusionReplaceCn, ";");
+                        }
                     }
                     /*
                     重命名器频道
@@ -648,6 +698,7 @@ default{
                     else if(renamerMsgExt=="CHANNEL"){
                         if(renamerMsgEnabled!=""){
                             renamerChannel=(integer)renamerMsgEnabled;
+                            renamerEnabled(renamerBool, NULL_KEY);
                             result=(string)renamerChannel;
                         }
                     }
@@ -681,7 +732,23 @@ default{
                     RENAMER.EXEC | RENAMER.GET | 1; Name; channel; 1
                     */
                     if(renamerMsgExt==""){
-                        result=list2Data([renamerBool, renamerChannel, renamerName, renamerConfusion, renamerVoice, renamerHive]);
+                        result=list2Data([renamerBool, renamerName, renamerConfusion, renamerVoice, renamerHive]);
+                    }
+                    /*
+                    重命名器混淆-英文
+                    RENAMER.GET.CONFUSION | EN
+                    重命名器混淆-中文
+                    RENAMER.GET.CONFUSION | CN
+                    返回：
+                    RENAMER.EXEC | RENAMER.GET.CONFUSION | EN | Conf1; Conf2; Conf3; ...
+                    */
+                    else if(renamerMsgExt=="CONFUSION"){
+                        if(renamerMsgData=="EN"){
+                            result=renamerMsgData+"|"+llDumpList2String(confusionReplaceEn, ";");
+                        }
+                        else if(renamerMsgData=="CN"){
+                            result=renamerMsgData+"|"+llDumpList2String(confusionReplaceCn, ";");
+                        }
                     }
                     /*
                     重命名器频道
@@ -719,6 +786,50 @@ default{
                     RENAMER.EXEC | RENAMER.RUN | 1
                     */
                     result=(string)runRLV();
+                }
+                else if(renamerMsgSub=="LOAD"){
+                    /*
+                    读取RLV记事卡（将覆盖现有的RLV数据）
+                    RENAMER.LOAD | renamer1
+                    返回：
+                    RENAMER.EXEC | RENAMER.LOAD | renamer1 | 1
+                    */
+                    if(renamerMsgExt==""){
+                        // result=(string)readRLVNotecards(msgName);
+                        readRenamerLine=0;
+                        curRenamerName=renamerMsgData;
+                        readRenamerName=renamerHeader+renamerMsgData;
+                        if (llGetInventoryType(readRenamerName) == INVENTORY_NOTECARD) {
+                            llOwnerSay("Begin reading Renamer settings: "+renamerMsgData);
+                            readRenamerQuery=llGetNotecardLine(readRenamerName, readRenamerLine); // 通过给readRLVQuery赋llGetNotecardLine的key，从而触发datasever事件
+                            // 后续功能交给下方datasever处理
+                            result=(string)TRUE;
+                        }else{
+                            llMessageLinked(LINK_SET, RLV_MSG_NUM, "RENAMER.LOAD.NOTECARD|"+renamerMsgData+"|0", NULL_KEY); // RLV成功读取记事卡后回调
+                            if(llGetAttached()){
+                                renamerEnabled(renamerBool, NULL_KEY);
+                            }
+                            result=(string)FALSE;
+                        }
+                    }
+                    /*
+                    读取RLV记事卡列表
+                    RENAMER.LOAD.LIST
+                    返回：
+                    RENAMER.EXEC | RENAMER.LOAD.LIST | renamer1; renamer2; renamer3; ...
+                    */
+                    else if(renamerMsgExt=="LIST"){
+                        list renamerNotecardList=[];
+                        integer count = llGetInventoryNumber(INVENTORY_NOTECARD);
+                        integer i;
+                        for (i=0; i<count; i++){
+                            string notecardName = llGetInventoryName(INVENTORY_NOTECARD, i);
+                            if(llGetSubString(notecardName, 0, 7)==renamerHeader){
+                                renamerNotecardList+=[llGetSubString(notecardName, 8, -1)];
+                            }
+                        }
+                        result=(string)list2Data(renamerNotecardList);
+                    }
                 }
                 else if(renamerMsgSub=="MENU"){
                     /*
@@ -877,5 +988,47 @@ default{
         }
         // llSleep(0.01);
         // llOwnerSay("Renamer Memory Used: "+(string)llGetUsedMemory()+"/"+(string)(65536-llGetUsedMemory())+" Free: "+(string)llGetFreeMemory());
+    }
+
+    dataserver(key query_id, string data){
+        if (query_id == readRenamerQuery) { // 通过readRLVNotecards触发读取记事卡事件，按行读取指定RLV（readRLVQuery）并设置相关数据。
+            if (data == EOF) {
+                llOwnerSay("Finished reading Renamer settings: "+curRenamerName);
+                llMessageLinked(LINK_SET, RLV_MSG_NUM, "RENAMER.LOAD.NOTECARD|"+curRenamerName+"|1", NULL_KEY); // RLV成功读取记事卡后回调
+                readRenamerQuery=NULL_KEY;
+                if(llGetAttached()){
+                    curRenamerBool=renamerBool;
+                    renamerEnabled(renamerBool, NULL_KEY);
+                }
+            } else {
+                /*
+                configName=configValue
+                */
+                if(data!="" && llGetSubString(data,0,0)!="#"){
+                    list renamerStrSp=llParseStringKeepNulls(data, ["="], []);
+                    string renamerName=llList2String(renamerStrSp,0);
+                    string renamerData=llList2String(renamerStrSp,1);
+
+                    if(renamerName=="renamerBool"){renamerBool=(integer)renamerData;}
+                    else if(renamerName=="renamerChannel"){renamerChannel=(integer)renamerData;}
+                    else if(renamerName=="renamerName"){renamerName=renamerData;}
+                    else if(renamerName=="confusionReplaceEn"){confusionReplaceEn=strSplit(renamerData, ",");}
+                    else if(renamerName=="confusionReplaceCn"){confusionReplaceCn=strSplit(renamerData, ",");}
+                    else if(renamerName=="renamerConfusion"){renamerConfusion=renamerData;}
+                    else if(renamerName=="renamerConfusionOOC"){renamerConfusionOOC=(integer)renamerData;}
+                    else if(renamerName=="renamerConfusionProb"){renamerConfusionProb=(float)renamerData;}
+                    else if(renamerName=="allowHive"){allowHive=(integer)renamerData;}
+                    else if(renamerName=="renamerHive"){renamerHive=(integer)renamerData;}
+                    else if(renamerName=="renamerVoice"){renamerVoice=renamerData;}
+                    else if(renamerName=="renamerVolume"){renamerVolume=(float)renamerData;}
+                    else if(renamerName=="renamerType"){renamerType=(integer)renamerData;}
+                }
+
+                // increment line count
+                ++readRenamerLine;
+                //request next line of notecard.
+                readRenamerQuery=llGetNotecardLine(readRenamerName, readRenamerLine);
+            }
+        }
     }
 }

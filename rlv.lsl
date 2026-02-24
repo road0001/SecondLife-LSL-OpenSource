@@ -63,6 +63,10 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 2.0.9 20260225
+    - 优化RLV记忆逻辑，新增的RLV限制始终位于最后面。
+    - 修复当RLV值为force时，未能从记忆列表中移除的bug。
+
 - 2.0.8 20260219
     - 加入应用所有RLV限制时，可指定Class功能。
     - 加入应用所有RLV限制时，可指定开关功能。
@@ -331,15 +335,15 @@ integer executeRLV(string rlv, integer bool){
         if(rlv=="clear"){
             executeRLVList=[];
         }else{
-            integer rIndex=llListFindList(executeRLVList, [getRLVValue(rlv, TRUE)]); // executeRLVList中的值恒为n、add、force，因此传入替换后的生效值
+            integer rIndex=llListFindList(executeRLVList, [getRLVValue(rlv, TRUE)]); // executeRLVList中的值恒为n、add、force，因此传入替换后的生效值。首次查找rem反补add
+            if(!~rIndex){
+                rIndex=llListFindList(executeRLVList, [getRLVValue(rlv, 2)]); // rem反补add没找到时，再查找一遍rem反补force
+            }
+            if(~rIndex){ // RLV生效时，如果列表中有，则先删除再添加，以确保先后顺序正确
+                executeRLVList=llDeleteSubList(executeRLVList, rIndex, rIndex);
+            }
             if(includes(rlv, "=n") || includes(rlv, "=add") || includes(rlv, "=force")){
-                if(!~rIndex){ // RLV生效时，如果列表中没有，则添加
-                    executeRLVList+=[rlv];
-                }
-            }else{
-                if(~rIndex){ // RLV失效时，如果列表中有，则删除
-                    executeRLVList=llDeleteSubList(executeRLVList, rIndex, rIndex);
-                }
+                executeRLVList+=[rlv];
             }
         }
     }
@@ -376,6 +380,8 @@ integer executeRLV(string rlv, integer bool){
 string getRLVValue(string rlv, integer bool){
     if(bool==TRUE){
         return llReplaceSubString(llReplaceSubString(rlv, "=rem", "=add", 0), "=y", "=n", 0);
+    }else if(bool==2){
+        return llReplaceSubString(llReplaceSubString(rlv, "=rem", "=force", 0), "=y", "=n", 0);
     }else{
         return llReplaceSubString(llReplaceSubString(llReplaceSubString(rlv, "=add", "=rem", 0), "=n", "=y", 0), "=force", "=rem", 0);
     }
@@ -485,7 +491,7 @@ integer applyRLVCmd(string name, integer bool, integer isChange){
                 if(isChange==TRUE && rejectGroupType>0){
                     integer i;
                     for(i=1; i<llGetListLength(rlvCmdList); i+=rlvCmdLength){ // name, >rlvs<, class, enabled
-                        if(includes(llList2String(rlvCmdList, i), curRlv) && llList2Integer(rlvCmdList, i+2)==TRUE){
+                        if(includes(llList2String(rlvCmdList, i), llGetSubString(curRlv, 1, -1)) && llList2Integer(rlvCmdList, i+2)==TRUE){
                             if(rejectGroupType==1){ // _模式，将其关闭
                                 applyRLVCmd(llList2String(rlvCmdList, i-1), FALSE, TRUE);
                             }else if(rejectGroupType==2){ //+模式，只改状态不关闭
@@ -889,7 +895,7 @@ default{
                     if(headerExt=="CLASS"){
                         integer r;
                         list curRlvClass=[];
-                        string curClass="EMPTY_CLASS":
+                        string curClass="EMPTY_CLASS";
                         for(r=0; r<llGetListLength(rlvCmdList); r++){
                             if(llList2String(rlvCmdList, r+2) == msgName && msgName!=""){
                                 curRlvClass+=[llList2String(rlvCmdList, r), llList2String(rlvCmdList, r+3)];
