@@ -64,6 +64,12 @@ Renamer系统支持改名、混淆、触发各种效果等，自带Renamer管理
 
 ******animation.lsl******
 
+## 挣扎系统
+挣扎系统支持配置、展示各种挣扎效果。
+[挣扎系统文档](README.Struggle.md)
+
+******struggle.lsl******
+
 ## 配置系统
 支持向各脚本写入配置。
 [配置管理文档](README.Config.md)

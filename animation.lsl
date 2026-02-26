@@ -18,6 +18,9 @@ Author: JMRY
 Description: A better animation control system, use link_message to operate animations.
 
 ***更新记录***
+- 1.1.6 20260226
+    - 优化动画重播逻辑。
+
 - 1.1.5 20260213
     - 加入自动读取库存中动画的功能。
 
@@ -376,7 +379,7 @@ default{
         }
     }
     timer(){
-        playAnimation(curPlayingAnimFileName, FALSE);
+        playAnimation(curPlayingAnimFileName, TRUE);
     }
     changed(integer change){
         if(change & CHANGED_OWNER){

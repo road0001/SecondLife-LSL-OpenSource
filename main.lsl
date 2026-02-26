@@ -4,6 +4,9 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.0.21 20260226
+    - 加入挣扎功能。
+
 - 1.0.20 20260213
     - 加入倒计时且锁定时，禁止访问菜单功能。
 
@@ -358,6 +361,7 @@ string getTimeDistStr(integer baseTime, integer curTime){
 }
 
 integer menuOperateLock=FALSE;
+integer allowStruggle=FALSE;
 key curMenuUser=NULL_KEY;
 showMenu(key user){
     integer isAllow=allowOperate(user);
@@ -395,9 +399,16 @@ showMenu(key user){
         "Language"
     ], featureList);
     if(isAllow==-1){ // 对于被锁住的情况，允许访问Escape逃跑功能
+        if(allowStruggle==TRUE){
+            mainMenu=["Struggle"];
+        }else{
+            mainMenu=[];
+        }
         if(!hardcore){ // 硬核模式未开启时，仅显示Escape按钮，菜单名使用AccessMenu以确保功能生效
-            mainMenu=["Access"];
+            mainMenu+=["Access"];
         }else{ // 硬核模式开启时，不显示菜单。
+        }
+        if(llGetListLength(mainMenu)<1){
             return;
         }
     }
@@ -442,6 +453,7 @@ integer LAN_MSG_NUM=1003;
 integer TIMER_MSG_NUM=1004;
 integer LEASH_MSG_NUM=1005;
 integer ANIM_MSG_NUM=1006;
+integer STRUGGLE_MSG_NUM=1007;
 
 list owner=[];
 list trust=[];
@@ -460,11 +472,13 @@ initMain(){
         RLV_MSG_NUM, "RLV.RUN.TEMP|detach=n", 1, // 首次初始化时，先将道具上锁，待初始化完（Access、RLV）后，根据结果更改上锁状态
         // CONF_MSG_NUM, "CONFIG.LOAD", 1
         RLV_MSG_NUM, "RLV.LOAD|main", 0,
+        RENAMER_MSG_NUM, "RENAMER.LOAD|main", 0,
         // RLV_MSG_NUM, "RLV.GET.LOCK", 0,
         ACCESS_MSG_NUM, "ACCESS.LOAD|main", 0,
         // ACCESS_MSG_NUM, "ACCESS.GET.NOTIFY", 0,
         LEASH_MSG_NUM, "LEASH.LOAD|main", 0,
-        ANIM_MSG_NUM, "ANIM.LOAD|main", 0
+        ANIM_MSG_NUM, "ANIM.LOAD|main", 0,
+        STRUGGLE_MSG_NUM, "STRUGGLE.LOAD|main", 0
     ];
     integer i;
     for(i=0; i<llGetListLength(initMessageLinkChain); i+=3){
@@ -682,6 +696,20 @@ default{
             else if (includes(str, "TIMER.SETRUNNING")) { // 接收计时器系统回调
                 timeoutRunning=FALSE;
             }
+        }
+        else if(num==STRUGGLE_MSG_NUM){
+            if(includes(str, "STRUGGLE.READY")){
+                allowStruggle=TRUE;
+            }
+            // 挣扎功能监听
+            if (includes(str, "STRUGGLE.APPLY.SUCCESS")) { // 接收挣扎系统回调
+                if(isLocked){
+                    setLock(FALSE, NULL_KEY, FALSE); // 挣扎成功时，解锁
+                }
+            }
+        }
+        else{
+            return;
         }
         // llOwnerSay("LINK_MESSAGE: "+str);
         //llOwnerSay("OPERATER: "+(string)user);

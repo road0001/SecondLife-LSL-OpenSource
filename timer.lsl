@@ -5,6 +5,9 @@ Author: JMRY
 Description: A better timer control system, use link_message to operate timers.
 
 ***更新记录***
+- 1.0.6 20260226
+    - 优化计时器运行逻辑。
+
 - 1.0.5 20260219
     - 加入计时器和RLV锁联动功能。
 
@@ -194,8 +197,11 @@ integer setTimerRunning(integer bool){ // 0=Pause, 1=Running, 2=Reset and Runnin
     }
     if(timerRunning==TRUE){
         timerStatus="RUNNING";
+        llSetTimerEvent(1);
     }else{
         timerStatus="STOP";
+        llSetTimerEvent(0);
+        llSetText("",ZERO_VECTOR,0);
     }
     llMessageLinked(LINK_SET, TIMER_MSG_NUM, "TIMER.SETRUNNING|"+(string)timerType+"|"+(string)timerRunning+"|"+(string)timerLength, NULL_KEY); // 发送状态变化消息
     return timerRunning;
@@ -286,7 +292,7 @@ integer LAN_MSG_NUM=1003;
 integer TIMER_MSG_NUM=1004;
 default{
     state_entry(){
-        llSetTimerEvent(1);
+        // llSetTimerEvent(1);
     }
     changed(integer change){
         if(change & CHANGED_OWNER){
@@ -294,10 +300,10 @@ default{
         }
     }
     attach(key user){
-        llSetTimerEvent(1);
+        // llSetTimerEvent(1);
     }
     object_rez(key user){
-        llSetTimerEvent(1);
+        // llSetTimerEvent(1);
     }
     timer(){
         timerRunningEvent();

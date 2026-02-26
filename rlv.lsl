@@ -63,6 +63,9 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 2.0.10 20260226
+    - 修复RLV注册时，无法立刻生效的bug。
+
 - 2.0.9 20260225
     - 优化RLV记忆逻辑，新增的RLV限制始终位于最后面。
     - 修复当RLV值为force时，未能从记忆列表中移除的bug。
@@ -730,7 +733,7 @@ default{
             string msgName=llList2String(msgList, 1);
             string msgSub=llList2String(msgList, 2);
             string msgExt=llList2String(msgList, 3);
-            string msgExt2=llList2String(msgList, 3);
+            string msgExt2=llList2String(msgList, 4);
 
             if(headerMain=="RLV" && headerSub!="EXEC"){
                 string result="";
