@@ -59,6 +59,10 @@ Author: JMRY
 Description: A better leash control system, use link_message to operate leashes.
 
 ***更新记录***
+- 1.1.6 20260228
+    - 初始化时不再调用权限通知。
+    - 修复粒子效果在本体和Holder之间反复横跳的bug。
+
 - 1.1.5 20260211
     - 优化代码结构。
 
@@ -808,7 +812,6 @@ integer maxSensor=18;
 default{
     state_entry(){
         initConfig();
-        llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.GET.NOTIFY", NULL_KEY);
     }
     changed(integer change){
         if(change & CHANGED_OWNER){
@@ -845,8 +848,6 @@ default{
                 if(msg==(string)leashTarget+"handle ok"){ // Ready时，粒子向holder发射
                     startParticles(id);
                 }else if(msg==(string)leashTarget+"handle detached"){ // 脱下时，粒子向角色发射
-                    startParticles(leashTarget);
-                }else{
                     startParticles(leashTarget);
                 }
             }

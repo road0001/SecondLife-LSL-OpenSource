@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better menu management system, use link_message to operate menus.
 
 ***更新记录***
+- 1.1.20 20260228
+    - 修复菜单按钮点击无反应的bug。
+
 - 1.1.19 20260211
     - 优化清空菜单的逻辑。
 
@@ -444,7 +447,7 @@ list showMenuData=["", "", "", "", TRUE, NULL_KEY]; // showMenuName, showMenuTex
 integer showMenuPage=1;
 integer showMenu(string mname, string mtext, string mlist, string mparent, integer mtype, key user){
     showMenuData=[mname, mtext, mlist, mparent, mtype, user];
-    // llListenRemove(menuListenHandle);
+    llListenRemove(menuListenHandle);
     llSetTimerEvent(0);
     if(mname==""){
         return FALSE;
@@ -453,6 +456,8 @@ integer showMenu(string mname, string mtext, string mlist, string mparent, integ
         menuChannel=-100000 - (integer)llFrand(900000.0);
         // menuChannel=(integer)(llFrand(-1000000000.0) - 1000000000.0);
     }
+    menuListenHandle=llListen(menuChannel, "", user, "");
+
     string showMenuTextInner=getLanguageVar(mtext);
     // showMenuType>0时为菜单，小于等于0时为输入框
     if(mtype>0){
@@ -525,7 +530,6 @@ integer showMenu(string mname, string mtext, string mlist, string mparent, integ
     }else{
         llTextBox(user, showMenuTextInner, menuChannel);
     }
-    menuListenHandle=llListen(menuChannel, "", user, "");
     llSetTimerEvent(60);
     return TRUE;
 }

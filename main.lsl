@@ -1,9 +1,117 @@
+initMain(){
+    // Init Config
+    sitPos=<0.0, 0.0, 0.0>;
+    sitRot=ZERO_ROTATION;
+    lockSound="";
+    unlockSound="";
+    touchSound="";
+    // Init Config End
+
+    llOwnerSay("Begin Initialize...");
+    list initMessageLinkChain=[
+        MAIN_MSG_NUM, "MAIN.INIT", 1,
+        RLV_MSG_NUM, "RLV.RUN.TEMP|detach=n", 1, // 首次初始化时，先将道具上锁，待初始化完（Access、RLV）后，根据结果更改上锁状态
+        // CONF_MSG_NUM, "CONFIG.LOAD", 1
+        RLV_MSG_NUM, "RLV.LOAD|main", 0,
+        RENAMER_MSG_NUM, "RENAMER.LOAD|main", 0,
+        // RLV_MSG_NUM, "RLV.GET.LOCK", 0,
+        ACCESS_MSG_NUM, "ACCESS.LOAD|main", 0,
+        // ACCESS_MSG_NUM, "ACCESS.GET.NOTIFY", 0,
+        LEASH_MSG_NUM, "LEASH.LOAD|main", 0,
+        ANIM_MSG_NUM, "ANIM.LOAD|main", 0,
+        STRUGGLE_MSG_NUM, "STRUGGLE.LOAD|main", 0,
+        STRUGGLE_MSG_NUM, "STRUGGLE.GET.READY", 0
+    ];
+    integer i;
+    for(i=0; i<llGetListLength(initMessageLinkChain); i+=3){
+        llMessageLinked(LINK_SET, llList2Integer(initMessageLinkChain, i), llList2String(initMessageLinkChain, i+1), NULL_KEY);
+        llSleep(llList2Float(initMessageLinkChain, i+2));
+    }
+    hasLanguage=FALSE;
+    llMessageLinked(LINK_SET, LAN_MSG_NUM, "LANGUAGE.INIT", llGetOwner()); // 得到语言系统初始化确认时，将hasLanguage置为TRUE。
+    if(llGetAttached()){
+        llRequestPermissions(llGetOwner(), PERMISSION_ATTACH);
+    }
+    llSitTarget(sitPos, sitRot);
+    listenHandle=llListen(cmdChannel, "", NULL_KEY, "");
+    // llSleep(0);
+    // llOwnerSay("Initialize Complete, Enjoy!");
+}
+
+triggerFeature(string menuName, string menuText, key user){
+    if(menuName=="ATTACH"){
+        if(user!=NULL_KEY){
+            if(rlvInited==FALSE){ // 穿戴时，如果未成功初始化数据，则重新读取
+                initMain();
+                llSetTimerEvent(initRetryTimer);
+            }
+            // if(autoLock==TRUE){
+            //     if(lockUser!=NULL_KEY){
+            //         setLock(TRUE, lockUser, FALSE);
+            //     }else if(llGetListLength(owner)>=1){
+            //         setLock(TRUE, llList2Key(owner, 0), FALSE);
+            //     }
+            // }
+            attachFlag=TRUE;
+            llRequestPermissions(user, PERMISSION_ATTACH);
+            listenHandle=llListen(cmdChannel, "", NULL_KEY, "");
+        }else{
+            llListenRemove(listenHandle);
+        }
+    }
+    else if(menuName=="mainMenu"){
+        if(menuText == "Lock"){
+            setLock(-1, user, TRUE);
+        }
+    }
+}
+triggerListen(integer channel, string name, key id, string message){
+    if(channel==cmdChannel){
+        string prefix=llGetSubString(llGetUsername(llGetOwner()), 0, 1);
+        if(llGetSubString(message, 0, 1) == prefix){
+            key user=llGetOwnerKey(id); // 支持使用物品发出命令。user为说话者的uuid，因此需要获取它的所有者uuid。
+            if(!allowOperate(user)){
+                return;
+            }
+            // /1 xxmenu, /1 xxleash
+            string msgBody=llToLower(llGetSubString(message, 2, -1));
+            list msgList=llParseStringKeepNulls(msgBody,[" "],[""]);
+            string msgCmd1=llList2String(msgList, 0);
+            string msgCmd2=llList2String(msgList, 1);
+            string msgCmd3=llList2String(msgList, 2);
+
+            if(msgCmd1=="menu"){
+                showMenu(user);
+            }
+            else if(msgCmd1=="leash"){
+                llMessageLinked(LINK_SET, LEASH_MSG_NUM, "LEASH.TO|"+(string)user, user);
+            }
+            else if(msgCmd1=="follow"){
+                llMessageLinked(LINK_SET, LEASH_MSG_NUM, "LEASH.TO|"+(string)user+"|0", user);
+            }
+            else if(msgCmd1=="yank"){
+                llMessageLinked(LINK_SET, LEASH_MSG_NUM, "LEASH.YANK|"+(string)user, user);
+            }
+            else if(msgCmd1=="unleash" || msgCmd1=="unfollow"){
+                llMessageLinked(LINK_SET, LEASH_MSG_NUM, "LEASH.TO|", user);
+            }
+        }
+        // llOwnerSay("NAME: "+name+" MSG: "+message);
+    }
+}
+triggerLinkMessage(integer sender_num, integer num, string str, key user){
+}
+/*CONFIG END*/
 /*
 Name: Main
 Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.1 20260228
+    - 优化代码结构，防止碎片化。
+    - 优化挣扎系统判定条件，只有自己才能挣扎。
+
 - 1.0.21 20260226
     - 加入挣扎功能。
 
@@ -217,6 +325,8 @@ integer allowOperate(key user){
 integer isLocked=FALSE;
 key lockUser=NULL_KEY;
 integer lockTime=0;
+string lockSound;
+string unlockSound;
 integer setLock(integer lock, key user, integer isShowMenu){
     // if(!allowOperate(user)){
     //     return isLocked;
@@ -254,6 +364,11 @@ integer setLock(integer lock, key user, integer isShowMenu){
     }
     if(isShowMenu){
         showMenu(user); // 防止出现打开双重菜单的bug，无必要不showMenu，尤其在Access逃跑或RLV锁定变更时。
+    }
+    if(isLocked==TRUE && lockSound!=""){
+        llPlaySound(lockSound, 1);
+    }else if(unlockSound!=""){
+        llPlaySound(unlockSound, 1);
     }
     return isLocked;
 }
@@ -395,11 +510,10 @@ showMenu(key user){
     list mainMenu=applyFeatureList([
         "["+(string)isLocked+"]Lock","Leash","RLV",
         "Timer","Renamer","Animation",
-        "Access",
-        "Language"
+        "Access","Language"
     ], featureList);
     if(isAllow==-1){ // 对于被锁住的情况，允许访问Escape逃跑功能
-        if(allowStruggle==TRUE){
+        if(allowStruggle==TRUE && user==llGetOwner()){
             mainMenu=["Struggle"];
         }else{
             mainMenu=[];
@@ -463,35 +577,13 @@ integer group=0;
 integer hardcore=0;
 integer autoLock=0;
 
+vector sitPos;
+rotation sitRot;
+string touchSound;
+
 integer rlvInited=FALSE;
 integer accessInited=FALSE;
-initMain(){
-    llOwnerSay("Begin Initialize...");
-    list initMessageLinkChain=[
-        MAIN_MSG_NUM, "MAIN.INIT", 1,
-        RLV_MSG_NUM, "RLV.RUN.TEMP|detach=n", 1, // 首次初始化时，先将道具上锁，待初始化完（Access、RLV）后，根据结果更改上锁状态
-        // CONF_MSG_NUM, "CONFIG.LOAD", 1
-        RLV_MSG_NUM, "RLV.LOAD|main", 0,
-        RENAMER_MSG_NUM, "RENAMER.LOAD|main", 0,
-        // RLV_MSG_NUM, "RLV.GET.LOCK", 0,
-        ACCESS_MSG_NUM, "ACCESS.LOAD|main", 0,
-        // ACCESS_MSG_NUM, "ACCESS.GET.NOTIFY", 0,
-        LEASH_MSG_NUM, "LEASH.LOAD|main", 0,
-        ANIM_MSG_NUM, "ANIM.LOAD|main", 0,
-        STRUGGLE_MSG_NUM, "STRUGGLE.LOAD|main", 0
-    ];
-    integer i;
-    for(i=0; i<llGetListLength(initMessageLinkChain); i+=3){
-        llMessageLinked(LINK_SET, llList2Integer(initMessageLinkChain, i), llList2String(initMessageLinkChain, i+1), NULL_KEY);
-        llSleep(llList2Float(initMessageLinkChain, i+2));
-    }
-    hasLanguage=FALSE;
-    llMessageLinked(LINK_SET, LAN_MSG_NUM, "LANGUAGE.INIT", llGetOwner()); // 得到语言系统初始化确认时，将hasLanguage置为TRUE。
-    llSitTarget(<0.0, 0.0, 0.1>, ZERO_ROTATION);
-    listenHandle=llListen(cmdChannel, "", NULL_KEY, "");
-    // llSleep(0);
-    // llOwnerSay("Initialize Complete, Enjoy!");
-}
+integer attachFlag=TRUE;
 
 integer timeoutRunning=FALSE;
 integer timerFlag=0; // 0: None; 1: Menu timeout flag
@@ -512,23 +604,9 @@ default{
         }
     }
     attach(key user){
+        triggerFeature("ATTACH", "", user);
         llMessageLinked(LINK_SET, MAIN_MSG_NUM, "MAIN.ATTACH|"+(string)user, NULL_KEY);
-        if(user!=NULL_KEY){
-            if(rlvInited==FALSE){ // 穿戴时，如果未成功初始化数据，则重新读取
-                initMain();
-                llSetTimerEvent(initRetryTimer);
-            }
-            // if(autoLock==TRUE){
-            //     if(lockUser!=NULL_KEY){
-            //         setLock(TRUE, lockUser, FALSE);
-            //     }else if(llGetListLength(owner)>=1){
-            //         setLock(TRUE, llList2Key(owner, 0), FALSE);
-            //     }
-            // }
-            listenHandle=llListen(cmdChannel, "", NULL_KEY, "");
-        }else{
-            llListenRemove(listenHandle);
-        }
+        llMessageLinked(LINK_SET, STRUGGLE_MSG_NUM, "STRUGGLE.GET.READY", NULL_KEY);
     }
     timer(){
         if(rlvInited==FALSE){ // 如果未成功初始化数据，则每5秒重新读取一次，直到读取成功
@@ -543,7 +621,9 @@ default{
     }
     touch_start(integer num_detected){
         showMenu(llDetectedKey(0));
-        
+        if(touchSound!=""){
+            llPlaySound(touchSound, 1);
+        }
         //string json="[9,\"<1,1,1>\",false,{\"A\":8,\"Z\":9}]";
         //llJsonSetValue(json, ["test1"], "testv1");
         //llJsonSetValue(json, ["test2"], "testv2");
@@ -551,38 +631,7 @@ default{
         //llOwnerSay(llJsonGetValue(json,["test1"]));
     }
     listen(integer channel, string name, key id, string message){
-        if(channel==cmdChannel){
-            string prefix=llGetSubString(llGetUsername(llGetOwner()), 0, 1);
-            if(llGetSubString(message, 0, 1) == prefix){
-                key user=llGetOwnerKey(id); // 支持使用物品发出命令。user为说话者的uuid，因此需要获取它的所有者uuid。
-                if(!allowOperate(user)){
-                    return;
-                }
-                // /1 xxmenu, /1 xxleash
-                string msgBody=llToLower(llGetSubString(message, 2, -1));
-                list msgList=llParseStringKeepNulls(msgBody,[" "],[""]);
-                string msgCmd1=llList2String(msgList, 0);
-                string msgCmd2=llList2String(msgList, 1);
-                string msgCmd3=llList2String(msgList, 2);
-
-                if(msgCmd1=="menu"){
-                    showMenu(user);
-                }
-                else if(msgCmd1=="leash"){
-                    llMessageLinked(LINK_SET, LEASH_MSG_NUM, "LEASH.TO|"+(string)user, user);
-                }
-                else if(msgCmd1=="follow"){
-                    llMessageLinked(LINK_SET, LEASH_MSG_NUM, "LEASH.TO|"+(string)user+"|0", user);
-                }
-                else if(msgCmd1=="yank"){
-                    llMessageLinked(LINK_SET, LEASH_MSG_NUM, "LEASH.YANK|"+(string)user, user);
-                }
-                else if(msgCmd1=="unleash" || msgCmd1=="unfollow"){
-                    llMessageLinked(LINK_SET, LEASH_MSG_NUM, "LEASH.TO|", user);
-                }
-            }
-            // llOwnerSay("NAME: "+name+" MSG: "+message);
-        }
+        triggerListen(channel, name, id, message);
     }
     link_message(integer sender_num, integer num, string str, key user){
         if(num==MAIN_MSG_NUM){
@@ -603,10 +652,7 @@ default{
             string menuText=llList2String(menuCmdList, 2);
             if(menuCmdStr=="MENU.ACTIVE"){
                 // llOwnerSay(menuName+" -> "+menuText);
-
-                if(menuText == "Lock"){
-                    setLock(-1, user, TRUE);
-                }
+                triggerFeature(menuName, menuText, user);
             }
             else if(menuCmdStr=="MENU.CLOSE"){
                 curMenuUser=NULL_KEY;
@@ -665,6 +711,7 @@ default{
                         lockTime=0;
                         llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.RUN.TEMP|detach=y", NULL_KEY);
                     }
+                    llMessageLinked(LINK_SET, STRUGGLE_MSG_NUM, "STRUGGLE.GET.READY", NULL_KEY);
                 }
             }
             if(rlvCmdStr=="RLV.LOAD.NOTECARD"){
@@ -709,11 +756,19 @@ default{
             }
         }
         else{
-            return;
+            triggerLinkMessage(sender_num, num, str, user);
         }
         // llOwnerSay("LINK_MESSAGE: "+str);
         //llOwnerSay("OPERATER: "+(string)user);
         // llSleep(0.01);
         // llOwnerSay("Main Memory Used: "+(string)llGetUsedMemory()+"/"+(string)(65536-llGetUsedMemory())+" Free: "+(string)llGetFreeMemory());
+    }
+    
+    run_time_permissions(integer perm){
+        if (perm & PERMISSION_ATTACH){
+            if(attachFlag==FALSE){
+                llDetachFromAvatar();
+            }
+        }
     }
 }

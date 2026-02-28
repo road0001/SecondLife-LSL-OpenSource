@@ -47,9 +47,35 @@ def buildLsl(lsl):
 					writeFile(f'{buildPath}/{srcName}', lslBuild)
 					return True
 			else:
-				return False
+				writeFile(f'{buildPath}/{srcName}', lslConfig.strip())
+				return True
 		else:
 			writeFile(f'{buildPath}/{lsl}', lslContent)
+			return True
+	else:
+		return False
+
+def buildLan(lan):
+	lanContent=loadFile(lan)
+	if lanContent:
+		lanLines=lanContent.replace('\r\n','\n').strip().split('\n')
+		if buildConfigTag in lanLines[0]:
+			srcPath=lanLines[0].split('=')[1]
+			lanConfig='\n'.join(lanLines[1:]).strip()
+
+			srcLanContent=loadFile(f'{srcPath}/{lan}')
+			if srcLanContent:
+				if lanConfig.strip()=='':
+					writeFile(f'{buildPath}/{lan}', srcLanContent.strip())
+					return True
+				else:
+					writeFile(f'{buildPath}/{lan}', srcLanContent.strip()+'\n\n'+lanConfig.strip())
+					return True
+			else:
+				writeFile(f'{buildPath}/{lan}', lanConfig.strip())
+				return True
+		else:
+			writeFile(f'{buildPath}/{lan}', lanContent)
 			return True
 	else:
 		return False
@@ -65,6 +91,15 @@ def main():
 	for lsl in lslList:
 		print(f'Building {lsl}...', end='')
 		curRs=buildLsl(lsl)
+		if curRs==True:
+			print('Done!')
+		else:
+			buildRs=False
+			print('Error!')
+	lanList=glob.glob('*.txt')
+	for lan in lanList:
+		print(f'Building language {lan}...', end='')
+		curRs=buildLan(lan)
 		if curRs==True:
 			print('Done!')
 		else:

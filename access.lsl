@@ -14,6 +14,9 @@ Author: JMRY
 Description: A better access permission control system, use link_message to operate permissions.
 
 ***更新记录***
+- 1.0.20 20260228
+    - 优化菜单用语。
+
 - 1.0.19 20260211
     - 优化代码结构。
     - 修复重置无效的bug。
@@ -566,7 +569,7 @@ showAccessMenu(string parent, key user){
         if(userPerm>ACCESS_ROOT){
             hardcoreBu=" "; // 只有root才能修改硬核模式
         }
-        buttonList+=["Owner", "Trust", "Black", publicBu, groupBu, hardcoreBu];
+        buttonList+=["OwnerList", "TrustList", "BlackList", publicBu, groupBu, hardcoreBu];
     }
 
     string menuText="This is access menu, you can manage who can access %1%'s %2%.\nPublic mode: %b3%\nGroup mode: %b4%\nHardcore mode: %b5%%%;"+
@@ -591,7 +594,7 @@ showAccessSubMenu(string button, key user){
         menuText="Current Root: %1%. Click SetRoot to set new Root owner, click Restore to reset Root owner to wearer.%%;"+userInfo(llList2Key(ownerList, 0));
         buttonList+=["SetRoot", "Restore"];
     }
-    else if(button=="Owner"){
+    else if(button=="OwnerList"){
         string rootText="Click AddOwner to add owner.\n";
         string ownerText="Click RemoveOwner to remove owner.";
         if(userPerm==ACCESS_ROOT){
@@ -602,13 +605,13 @@ showAccessSubMenu(string button, key user){
         buttonList+=["RemoveOwner"];
         menuText="%1%%2%%%;"+rootText+";"+ownerText;
     }
-    else if(button=="Trust"){
+    else if(button=="TrustList"){
         if(userPerm>=ACCESS_ROOT){
             buttonList+=["AddTrust", "RemoveTrust"];
         }
         menuText="Click AddTrust to add trust user.\nClick RemoveTrust to remove trust user.";
     }
-    else if(button=="Black"){
+    else if(button=="BlackList"){
         if(userPerm>=ACCESS_ROOT){
             buttonList+=["AddBlack", "RemoveBlack"];
         }
@@ -655,13 +658,13 @@ showAccessSubMenu(string button, key user){
             }
         }
         // llRegionSayTo(user, 0, "Trust:");
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Trust:|0|"+(string)user, user);
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|TrustList:|0|"+(string)user, user);
         for(i=0; i<llGetListLength(trustList); i++){
             // llRegionSayTo(user, 0, userInfo(llList2Key(trustList, i)));
             llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|"+userInfo(llList2Key(trustList, i))+"|0|"+(string)user, user);
         }
         // llRegionSayTo(user, 0, "Black:");
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Black:|0|"+(string)user, user);
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|BlackList:|0|"+(string)user, user);
         for(i=0; i<llGetListLength(blackList); i++){
             // llRegionSayTo(user, 0, userInfo(llList2Key(blackList, i)));
             llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|"+userInfo(llList2Key(blackList, i))+"|0|"+(string)user, user);

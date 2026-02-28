@@ -4,6 +4,10 @@ Author: JMRY
 Description: A better language management system, use link_message to operate languages.
 
 ***更新记录***
+- 1.0.6 20260228
+    - 优化读取语言文本文件的逻辑。
+    - 移除库存变更时重新读取语言的功能。
+
 - 1.0.5 20251128
     - 加入指令显示菜单功能。
 
@@ -217,10 +221,10 @@ string readLanguageNotecards(string lname, key user){
     curLanName=lname;
     readLanName=lanHeader+lname;
     curLanUser=user;
+    clearLanguage();
     if (llGetInventoryType(readLanName) == INVENTORY_NOTECARD) {
         // llRegionSayTo(showMenuUser, 0, "Begin reading language "+lname+".");
         llRegionSayTo(curLanUser, 0, getLanguageVar("Begin reading language %1%.%%;"+lname));
-        clearLanguage();
         readLanQuery=llGetNotecardLine(readLanName, readLanLine); // 通过给readLanQuery赋llGetNotecardLine的key，从而触发datasever事件
         // 后续功能交给下方datasever处理
         return lname;
@@ -250,16 +254,16 @@ default{
         if(change & CHANGED_OWNER){
             llResetScript();
         }
-        if(change & CHANGED_INVENTORY){
-            hasLanguage=TRUE;
-            if(curLanName=="") return;
-            key user=llGetOwner();
-            list lanChanList=[
-                "LAN.CHANGE",
-                curLanName
-            ];
-            llMessageLinked(LINK_SET, LAN_MSG_NUM, list2Msg(lanChanList), user);
-        }
+        // if(change & CHANGED_INVENTORY){
+        //     hasLanguage=TRUE;
+        //     if(curLanName=="") return;
+        //     key user=llGetOwner();
+        //     list lanChanList=[
+        //         "LAN.CHANGE",
+        //         curLanName
+        //     ];
+        //     llMessageLinked(LINK_SET, LAN_MSG_NUM, list2Msg(lanChanList), user);
+        // }
     }
     link_message(integer sender_num, integer num, string msg, key user){
         if(num!=LAN_MSG_NUM && num!=MENU_MSG_NUM){

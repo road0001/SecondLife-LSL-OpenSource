@@ -16,6 +16,10 @@ Author: JMRY
 Description: A struggle system, use link_message to operate struggle things.
 
 ***更新记录***
+- 1.0.1 20260228
+	- 修复挣扎结束（停止、成功）后，动画仍在播放的bug。
+	- 修复挣扎停止后，仍然显示文字的bug。
+
 - 1.0 20260226
     - 初步完成挣扎功能。
 ***更新记录***
@@ -119,11 +123,13 @@ vector struggleTextColor;
 float struggleTextAlpha;
 
 
+integer struggleStatus;
 integer controlVal;
 integer struggleProcess; // 0~10
 float struggleProb;
 list struggleKeyList;
 integer beginStruggle(integer bool){
+	struggleStatus=bool;
     controlVal=0;
     struggleTimerCount=0;
     if(bool==TRUE){ // Begin struggle
@@ -238,6 +244,7 @@ integer MENU_MSG_NUM=1000;
 integer STRUGGLE_MSG_NUM=1007;
 integer LAN_MSG_NUM=1003;
 
+integer struggleLastKey=-1;
 integer struggleTimerCount=0;
 key strugglePlayer=NULL_KEY;
 default{
@@ -267,6 +274,9 @@ default{
     }
     run_time_permissions(integer perm){
         if(perm & PERMISSION_TRIGGER_ANIMATION){
+			if(struggleStatus==FALSE || struggleStatus==2){
+				playAnimFlag=FALSE;
+			}
             if(playAnimFlag==TRUE){
                 if(lastPlayAnim!=""){
                     llStopAnimation(lastPlayAnim);
@@ -287,16 +297,21 @@ default{
         if(perm & PERMISSION_TAKE_CONTROLS){
             if(controlVal==0){
                 llReleaseControls();
-                if(strugglePlayer!=NULL_KEY){
-                    llRequestPermissions(strugglePlayer,PERMISSION_TRIGGER_ANIMATION);
-                }
+				stopStruggleAnim();
+                // if(strugglePlayer!=NULL_KEY){
+                //     llRequestPermissions(strugglePlayer,PERMISSION_TRIGGER_ANIMATION);
+                // }
             }else{
                 llTakeControls(controlVal,TRUE,FALSE);
             }
         }
     }
     control(key id, integer level, integer edge){
-        if(level<=0 && edge>0){
+        if(struggleStatus==FALSE || struggleStatus==2){
+			stopStruggleAnim();
+			return;
+		}
+		if(level<=0 && edge>0){
             stopStruggleAnim();
         }
         integer i;
@@ -305,16 +320,19 @@ default{
             if(level & curKey){
                 playStruggleAnim(curKey, i);
                 if(struggleType==0){
-                    float curProb=llFrand(1);
-                    if(curProb >= struggleProb){
-                        struggleProcess++;
-                        if(struggleProcess>=10){
-                            beginStruggle(2);
-                        }else{
-                            applyStruggleText(TRUE);
-                            jump sleep;
-                        }
-                    }
+					if(curKey!=struggleLastKey){
+						struggleLastKey=curKey;
+						float curProb=llFrand(1);
+						if(curProb >= struggleProb){
+							struggleProcess++;
+							if(struggleProcess>=10){
+								beginStruggle(2);
+							}else{
+								applyStruggleText(TRUE);
+								jump sleep;
+							}
+						}
+					}
                 }
                 else if(struggleType==1){
                     integer curNeedKey=llList2Integer(struggleKeyList, struggleProcess);
@@ -335,6 +353,7 @@ default{
         llSleep(struggleInterval);
     }
     timer(){
+		applyStruggleText(TRUE);
         if(struggleTimerCount>0 && struggleDebuff>0 && struggleTimerCount%struggleDebuff==0){
             struggleProcess--;
             if(struggleProcess<0){
@@ -342,7 +361,6 @@ default{
                 beginStruggle(FALSE);
             }
         }
-        applyStruggleText(TRUE);
         struggleTimerCount++;
     }
     link_message(integer sender_num, integer num, string msg, key user){
@@ -437,6 +455,9 @@ default{
                 设置挣扎文字透明度
                 STRUGGLE.GET.ALPHA
                 */
+                if(headerExt=="READY"){
+                    llMessageLinked(LINK_THIS, STRUGGLE_MSG_NUM, "STRUGGLE.READY", NULL_KEY);
+                }
                 if(headerExt=="TYPE"){
                     result=(string)struggleType;
                 }

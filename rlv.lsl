@@ -50,7 +50,7 @@ initConfig(){
         "TPRequest","tprequest_sec","Location",0,
         "WorldMap","showworldmap","Location",0,
         "MiniMap","showminimap","Location",0,
-        "Location","showloc","Location",0,
+        "ShowLocation","showloc","Location",0,
 
         "Add","addattach,addoutfit,unsharedwear,sharedwear","Attach",0,
         "Remove","remattach,remoutfit,unsharedunwear,sharedunwear","Attach",0
@@ -63,6 +63,9 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 2.0.11 20260228
+    - 更新内置RLV限制的配置。
+
 - 2.0.10 20260226
     - 修复RLV注册时，无法立刻生效的bug。
 
@@ -774,7 +777,7 @@ default{
                         if(msgExt==""){ // 更改状态为空时，默认更改
                             msgExt="1";
                         }
-                        result="msgName|"+(string)applyRLVCmd(msgName, (integer)msgSub, (integer)msgExt); // applyRLVCmd的回调仅限主动调用时触发，防止数量过多排队。
+                        result=msgName+"|"+(string)applyRLVCmd(msgName, (integer)msgSub, (integer)msgExt); // applyRLVCmd的回调仅限主动调用时触发，防止数量过多排队。
                     }
                     else if(headerExt=="ALL"){
                         if(msgSub==""){ // 开关为空时，默认为生效
