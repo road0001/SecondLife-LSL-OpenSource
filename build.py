@@ -4,9 +4,11 @@ import glob
 import shutil
 
 buildPath='./build'
+lanPath='./Language'
 buildConfigTag='//SRC_PATH'
 buildConfigTail='_config'
 buildSrcSplit='/*CONFIG END*/'
+bulidLanHeader='lan_'
 
 def loadFile(file,tp='r'):
 	try:
@@ -56,7 +58,7 @@ def buildLsl(lsl):
 		return False
 
 def buildLan(lan):
-	lanContent=loadFile(lan)
+	lanContent=loadFile(f'{lanPath}/{lan}')
 	if lanContent:
 		lanLines=lanContent.replace('\r\n','\n').strip().split('\n')
 		if buildConfigTag in lanLines[0]:
@@ -66,16 +68,16 @@ def buildLan(lan):
 			srcLanContent=loadFile(f'{srcPath}/{lan}')
 			if srcLanContent:
 				if lanConfig.strip()=='':
-					writeFile(f'{buildPath}/{lan}', srcLanContent.strip())
+					writeFile(f'{buildPath}/{bulidLanHeader}{lan}', srcLanContent.strip())
 					return True
 				else:
-					writeFile(f'{buildPath}/{lan}', srcLanContent.strip()+'\n\n'+lanConfig.strip())
+					writeFile(f'{buildPath}/{bulidLanHeader}{lan}', srcLanContent.strip()+'\n\n'+lanConfig.strip())
 					return True
 			else:
-				writeFile(f'{buildPath}/{lan}', lanConfig.strip())
+				writeFile(f'{buildPath}/{bulidLanHeader}{lan}', lanConfig.strip())
 				return True
 		else:
-			writeFile(f'{buildPath}/{lan}', lanContent)
+			writeFile(f'{buildPath}/{bulidLanHeader}{lan}', lanContent)
 			return True
 	else:
 		return False
@@ -96,10 +98,10 @@ def main():
 		else:
 			buildRs=False
 			print('Error!')
-	lanList=glob.glob('*.txt')
+	lanList=glob.glob(f'{lanPath}/*.txt')
 	for lan in lanList:
 		print(f'Building language {lan}...', end='')
-		curRs=buildLan(lan)
+		curRs=buildLan(lan.split('\\')[1])
 		if curRs==True:
 			print('Done!')
 		else:
