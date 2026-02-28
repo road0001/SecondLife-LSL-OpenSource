@@ -101,6 +101,13 @@ triggerListen(integer channel, string name, key id, string message){
 }
 triggerLinkMessage(integer sender_num, integer num, string str, key user){
 }
+list getMenuFeature(key user){
+    return [
+        "["+(string)isLocked+"]Lock","Leash","RLV",
+        "Timer","Renamer","Animation",
+        "Access","Language"
+    ];
+}
 /*CONFIG END*/
 /*
 Name: Main
@@ -108,6 +115,9 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.1.1 20260301
+    - 加入自定义菜单功能的配置。
+
 - 1.1 20260228
     - 优化代码结构，防止碎片化。
     - 优化挣扎系统判定条件，只有自己才能挣扎。
@@ -507,11 +517,7 @@ showMenu(key user){
         (string)public+";"+
         (string)group+";"+
         (string)hardcore;
-    list mainMenu=applyFeatureList([
-        "["+(string)isLocked+"]Lock","Leash","RLV",
-        "Timer","Renamer","Animation",
-        "Access","Language"
-    ], featureList);
+    list mainMenu=applyFeatureList(getMenuFeature(user), featureList);
     if(isAllow==-1){ // 对于被锁住的情况，允许访问Escape逃跑功能
         if(allowStruggle==TRUE && user==llGetOwner()){
             mainMenu=["Struggle"];
