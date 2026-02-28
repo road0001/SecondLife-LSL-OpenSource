@@ -4,6 +4,7 @@ import glob
 import shutil
 
 buildPath='./build'
+cfgPath='./Config'
 lanPath='./Language'
 buildConfigTag='//SRC_PATH'
 buildConfigTail='_config'
@@ -57,6 +58,31 @@ def buildLsl(lsl):
 	else:
 		return False
 
+def buildCfg(cfg):
+	cfgContent=loadFile(f'{cfgPath}/{cfg}')
+	if cfgContent:
+		cfgLines=cfgContent.replace('\r\n','\n').strip().split('\n')
+		if buildConfigTag in cfgLines[0]:
+			srcPath=cfgLines[0].split('=')[1]
+			cfgConfig='\n'.join(cfgLines[1:]).strip()
+
+			srcCfgContent=loadFile(f'{srcPath}/{cfg}')
+			if srcCfgContent:
+				if cfgConfig.strip()=='':
+					writeFile(f'{buildPath}/{cfg}', srcCfgContent.strip())
+					return True
+				else:
+					writeFile(f'{buildPath}/{cfg}', srcCfgContent.strip()+'\n\n'+cfgConfig.strip())
+					return True
+			else:
+				writeFile(f'{buildPath}/{cfg}', cfgConfig.strip())
+				return True
+		else:
+			writeFile(f'{buildPath}/{cfg}', cfgContent)
+			return True
+	else:
+		return False
+
 def buildLan(lan):
 	lanContent=loadFile(f'{lanPath}/{lan}')
 	if lanContent:
@@ -87,9 +113,9 @@ def main():
 		print("Removing build path...")
 		shutil.rmtree(buildPath)
 	os.makedirs(buildPath)
-
-	lslList=glob.glob('*.lsl')
 	buildRs=True
+	
+	lslList=glob.glob('*.lsl')
 	for lsl in lslList:
 		print(f'Building {lsl}...', end='')
 		curRs=buildLsl(lsl)
@@ -98,6 +124,17 @@ def main():
 		else:
 			buildRs=False
 			print('Error!')
+	
+	cfgList=glob.glob(f'{cfgPath}/*.txt')
+	for cfg in cfgList:
+		print(f'Building config {cfg}...', end='')
+		curRs=buildCfg(cfg.split('\\')[1])
+		if curRs==True:
+			print('Done!')
+		else:
+			buildRs=False
+			print('Error!')
+
 	lanList=glob.glob(f'{lanPath}/*.txt')
 	for lan in lanList:
 		print(f'Building language {lan}...', end='')
@@ -107,6 +144,7 @@ def main():
 		else:
 			buildRs=False
 			print('Error!')
+	
 	if buildRs==True:
 		print('Build success!')
 	else:
