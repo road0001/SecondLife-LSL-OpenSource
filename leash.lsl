@@ -59,6 +59,9 @@ Author: JMRY
 Description: A better leash control system, use link_message to operate leashes.
 
 ***更新记录***
+- 1.1.7 20260301
+    - 优化初始化逻辑。
+
 - 1.1.6 20260228
     - 初始化时不再调用权限通知。
     - 修复粒子效果在本体和Holder之间反复横跳的bug。
@@ -811,7 +814,13 @@ integer timerCount=0;
 integer maxSensor=18;
 default{
     state_entry(){
+        leashToTarget(NULL_KEY, TRUE);
         initConfig();
+        if(llGetAttached()){
+            REZ_MODE=FALSE;
+        }else{
+            REZ_MODE=TRUE;
+        }
     }
     changed(integer change){
         if(change & CHANGED_OWNER){

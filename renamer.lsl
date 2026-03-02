@@ -19,6 +19,9 @@ Author: JMRY
 Description: A better RLV Renamer management system, use link_message to operate Renamer restraints.
 
 ***更新记录***
+- 1.1.1 20260301
+    - 优化初始化流程。
+
 - 1.1 20260224
     - 加入读取记事卡功能。
     - 加入自定义配置功能。
@@ -547,6 +550,11 @@ key currentUser=NULL_KEY;
 default{
     state_entry(){
         initConfig();
+        if(llGetAttached()){
+            RLV_MODE=0;
+        }else{
+            RLV_MODE=1;
+        }
         curRenamerBool=renamerBool;
         renamerEnabled(renamerBool, NULL_KEY);
     }

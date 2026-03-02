@@ -16,6 +16,9 @@ Author: JMRY
 Description: A struggle system, use link_message to operate struggle things.
 
 ***更新记录***
+- 1.0.2 20260301
+	- 优化初始化时，REZ模式的判定逻辑。
+
 - 1.0.1 20260228
 	- 修复挣扎结束（停止、成功）后，动画仍在播放的bug。
 	- 修复挣扎停止后，仍然显示文字的bug。
@@ -250,6 +253,9 @@ key strugglePlayer=NULL_KEY;
 default{
     state_entry(){
         initConfig();
+		if(llGetAttached()){
+            strugglePlayer=llGetOwner();
+        }
         strugglePlayer=llGetOwner();
         applyStruggleText(FALSE);
         llMessageLinked(LINK_THIS, STRUGGLE_MSG_NUM, "STRUGGLE.READY", NULL_KEY);

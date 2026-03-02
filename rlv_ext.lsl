@@ -5,6 +5,9 @@ Author: JMRY
 Description: A better RLV Extension management system, use link_message to operate RLV Extension restraints.
 
 ***更新记录***
+- 1.0.6 20260301
+    - 优化初始化流程。
+
 - 1.0.5 20260130
     - 加入Rez模式下的RLV扩展指令执行功能。
     - 加入速度设定（speed）扩展指令。
@@ -319,7 +322,12 @@ integer RLV_MSG_NUM=1001;
 integer RLVEXT_MSG_NUM=10012;
 default{
     state_entry(){
-        VICTIM_UUID=llGetOwner();
+        if(llGetAttached()){
+            VICTIM_UUID=llGetOwner();
+            RLV_MODE=0;
+        }else{
+            RLV_MODE=1;
+        }
         // llRequestPermissions(llGetOwner(), PERMISSION_TAKE_CONTROLS);
     }
     changed(integer change){

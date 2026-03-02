@@ -65,6 +65,9 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 2.0.12 20260301
+    - 优化初始化时，REZ模式的判定逻辑。
+
 - 2.0.11 20260228
     - 更新内置RLV限制的配置。
 
@@ -636,6 +639,11 @@ integer RLVEXT_MSG_NUM=10012;
 default{
     state_entry(){
         initConfig();
+        if(llGetAttached()){
+            RLV_MODE=0;
+        }else{
+            RLV_MODE=1;
+        }
         // llSleep(1);
         // if(llGetAttached()){
         //     applyAllEnabledRLVCmd("",TRUE);
@@ -646,9 +654,9 @@ default{
             llResetScript();
         }
         if (change & CHANGED_LINK) {
+            RLV_MODE=1;
             key avatar = llAvatarOnSitTarget();
             if (avatar != NULL_KEY){
-                RLV_MODE=1;
                 VICTIM_UUID=avatar;
                 applyAllEnabledRLVCmd("",TRUE);
             }else{

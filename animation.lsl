@@ -18,6 +18,10 @@ Author: JMRY
 Description: A better animation control system, use link_message to operate animations.
 
 ***更新记录***
+- 1.1.7 20260301
+    - 优化初始化逻辑。
+    - 优化自动播放动画的逻辑。
+
 - 1.1.6 20260226
     - 优化动画重播逻辑。
 
@@ -175,13 +179,13 @@ float playAnimInterval=10;
 float playAnimFloatHeight=0;
 integer playAnimationFlag=FALSE;
 integer playAnimation(string name, integer stop){
+    curPlayingAnimFileName=name;
     if(animPlayer==NULL_KEY) return FALSE;
     if(stop==TRUE){
         playAnimationFlag=2;
     }else{
         playAnimationFlag=TRUE;
     }
-    curPlayingAnimFileName=name;
     llRequestPermissions(animPlayer,PERMISSION_TRIGGER_ANIMATION);
     return playAnimationFlag;
 }
@@ -359,6 +363,7 @@ showAnimSubMenu(string parent, string class, key user){
     llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+animSubMenuName+"|"+animSubDesc+"|"+list2Data(animCmdList)+"|"+parent, user);
 }
 
+integer REZ_MODE=FALSE;
 key animPlayer=NULL_KEY;
 integer MENU_MSG_NUM=1000;
 integer ANIM_MSG_NUM=1006;
@@ -368,15 +373,21 @@ string curAnimClass="";
 default{
     state_entry(){
         initConfig();
-        animPlayer=llGetOwner();
+        if(llGetAttached()){
+            REZ_MODE=FALSE;
+            animPlayer=llGetOwner();
+        }else{
+            REZ_MODE=TRUE;
+            animPlayer=NULL_KEY;
+        }
         integer i;
         for(i=0; i<llGetListLength(animConfigList); i+=animConfigLength){
             if(llList2Integer(animConfigList, i+3)==TRUE){
-                if(llGetAttached()){
-                    playAnimationByName(llList2String(animConfigList,i));
-                }
+                playAnimationByName(llList2String(animConfigList,i));
+                jump autoPlayEnd;
             }
         }
+        @autoPlayEnd;
     }
     timer(){
         playAnimation(curPlayingAnimFileName, TRUE);
@@ -394,18 +405,25 @@ default{
         }
     }
     attach(key user){
+        REZ_MODE=FALSE;
         animPlayer=user;
         if(user!=NULL_KEY){
             if(playAnimationFlag>=TRUE){
                 playAnimation(curPlayingAnimFileName, playAnimationFlag);
             }
             // llRequestPermissions(animPlayer,PERMISSION_TRIGGER_ANIMATION);
-        }else if(allowAutoAdjustHeight==TRUE && playAnimFloatHeight!=0){
+        }else if(allowAutoAdjustHeight==TRUE && playAnimFloatHeight!=0 && REZ_MODE==FALSE){
             llOwnerSay("@adjustheight:0=force");
         }
     }
     object_rez(key user){
-        animPlayer=NULL_KEY;
+        if(llGetAttached()){
+            REZ_MODE=FALSE;
+            animPlayer=llGetOwner();
+        }else{
+            REZ_MODE=TRUE;
+            animPlayer=NULL_KEY;
+        }
     }
     run_time_permissions(integer perm) {
         if(perm & PERMISSION_TRIGGER_ANIMATION){
@@ -419,7 +437,7 @@ default{
                 lastPlayingAnimFileName=curPlayingAnimFileName;
                 llStartAnimation(curPlayingAnimFileName);
                 llSetTimerEvent(playAnimInterval);
-                if(allowAutoAdjustHeight==TRUE && playAnimFloatHeight!=0){
+                if(allowAutoAdjustHeight==TRUE && playAnimFloatHeight!=0 && REZ_MODE==FALSE){
                     llOwnerSay("@adjustheight:"+(string)playAnimFloatHeight+"=force");
                 };
             }else if(playAnimationFlag==FALSE){
@@ -428,7 +446,7 @@ default{
                 }
                 llStopAnimation(lastPlayingAnimFileName);
                 llSetTimerEvent(0);
-                if(allowAutoAdjustHeight==TRUE && playAnimFloatHeight!=0){
+                if(allowAutoAdjustHeight==TRUE && playAnimFloatHeight!=0 && REZ_MODE==FALSE){
                     llOwnerSay("@adjustheight:0=force");
                 };
             }else if(playAnimationFlag==-1){
@@ -438,7 +456,7 @@ default{
                 for(i=0; i<llGetListLength(allAnimList); i++){
                     llStopAnimation(llList2String(allAnimList, i));
                 }
-                if(allowAutoAdjustHeight==TRUE && playAnimFloatHeight!=0){
+                if(allowAutoAdjustHeight==TRUE && playAnimFloatHeight!=0 && REZ_MODE==FALSE){
                     llOwnerSay("@adjustheight:0=force");
                 };
                 llSleep(0.1);
