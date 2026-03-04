@@ -1,7 +1,9 @@
 initMain(){
     // Init Config
-    sitPos=<0.0, 0.0, 0.0>;
+    sitPos=<0.0, 0.0, -0.2>;
     sitRot=ZERO_ROTATION;
+    sitAutoLock=FALSE;
+    sitAutoTrap=FALSE;
     lockSound="";
     unlockSound="";
     touchSound="";
@@ -60,9 +62,6 @@ triggerFeature(string menuName, string menuText, key user){
         }
     }
     else if(menuName=="mainMenu"){
-        if(menuText == "Lock"){
-            setLock(-1, user, TRUE);
-        }
     }
 }
 triggerListen(integer channel, string name, key id, string message){
@@ -102,11 +101,26 @@ triggerListen(integer channel, string name, key id, string message){
 triggerLinkMessage(integer sender_num, integer num, string str, key user){
 }
 list getMenuFeature(key user){
-    return [
-        "["+(string)isLocked+"]Lock","Leash","RLV",
-        "Timer","Renamer","Animation",
-        "Access","Language"
-    ];
+    string leashStr="Leash";
+    if(REZ_MODE==TRUE){
+        if(VICTIM_UUID==NULL_KEY){
+            leashStr="Capture";
+        }else{
+            leashStr="Unsit";
+        }
+        return [
+            "["+(string)isLocked+"]Lock",leashStr,"RLV",
+            "Timer","Renamer","Animation",
+            "Access","Language","["+(string)sitAutoLock+"]AutoLock",
+            "["+(string)sitAutoTrap+"]AutoTrap"
+        ];
+    }else{
+        return [
+            "["+(string)isLocked+"]Lock",leashStr,"RLV",
+            "Timer","Renamer","Animation",
+            "Access","Language"
+        ];
+    }
 }
 /*CONFIG END*/
 /*
@@ -115,6 +129,9 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.1.2 20260302
+    - 加入REZ模式的菜单和捕获功能。
+
 - 1.1.1 20260301
     - 加入自定义菜单功能的配置。
 
@@ -341,7 +358,10 @@ integer setLock(integer lock, key user, integer isShowMenu){
     // if(!allowOperate(user)){
     //     return isLocked;
     // }
-    
+    if(REZ_MODE==TRUE && VICTIM_UUID==NULL_KEY){
+        llRegionSayTo(user, 0, getLanguageVar("No victims to lock!"));
+        return FALSE;
+    }
     if(lock<0){
         if(!isLocked){
             isLocked=TRUE;
@@ -502,6 +522,8 @@ showMenu(key user){
             llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Sorry, the menu of %1% is using by %2%.%%;"+llGetObjectName()+";"+userInfo(curMenuUser)+"|0|"+(string)user, user);
             return;
         }
+    }else{
+        curMenuUser=user;
     }
     llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.CLEAR", user);
     integer curTime=llGetUnixTime();
@@ -533,7 +555,7 @@ showMenu(key user){
         }
     }
     list menuLink=[
-        "MENU.REG.OPEN.RESET",
+        "MENU.REG.OPEN",
         menuName,
         menuText,
         llDumpList2String(mainMenu,";")
@@ -562,6 +584,24 @@ showMenu(key user){
     // }
 }
 
+list sensorUserList;
+showSensorMenu(string type, key user){
+    string menuText="Select user to %1%.%%;"+type;
+    list buttonList=[];
+    integer i;
+    for(i=0; i<llGetListLength(sensorUserList); i++){
+        key uk=llList2Key(sensorUserList, i);
+        if(uk){
+            buttonList+=[(string)(i+1) + ". " + llGetUsername(uk)];
+        }
+    }
+    string parent="";
+    if(type=="Capture"){
+        parent="mainMenu";
+    }
+    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN.RESET|"+type+"Menu"+"|"+menuText+"|"+llDumpList2String(buttonList,";")+"|"+parent, user);
+}
+
 integer MAIN_MSG_NUM=9000;
 integer CONF_MSG_NUM=8000;
 integer MENU_MSG_NUM=1000;
@@ -585,7 +625,12 @@ integer autoLock=0;
 
 vector sitPos;
 rotation sitRot;
+integer sitAutoLock;
+integer sitAutoTrap;
 string touchSound;
+
+integer REZ_MODE=FALSE;
+key VICTIM_UUID;
 
 integer rlvInited=FALSE;
 integer accessInited=FALSE;
@@ -596,9 +641,18 @@ integer timerFlag=0; // 0: None; 1: Menu timeout flag
 integer initRetryTimer=30;
 integer cmdChannel=1;
 integer listenHandle;
+string curSensorType; // Capture
+integer maxSensor=18;
 default{
     state_entry(){
         initMain();
+        if(llGetAttached()){
+            REZ_MODE=FALSE;
+            VICTIM_UUID=llGetOwner();
+        }else{
+            REZ_MODE=TRUE;
+            VICTIM_UUID=NULL_KEY;
+        }
         llSetTimerEvent(initRetryTimer); // 重置时，设置计时器，5秒后重新初始化，防止初始化失败
     }
     changed(integer change){
@@ -608,11 +662,47 @@ default{
         if(change & CHANGED_INVENTORY){ // 库存变更，初始化语言和RLV
             initMain();
         }
+        if (change & CHANGED_LINK) {
+            REZ_MODE=TRUE;
+            key avatar = llAvatarOnSitTarget();
+            if (avatar != NULL_KEY){
+                VICTIM_UUID=avatar;
+                if(sitAutoLock==TRUE){
+                    setLock(TRUE, llList2Key(owner, 0), FALSE);
+                }
+            }else{
+                VICTIM_UUID=NULL_KEY;
+                setLock(FALSE, NULL_KEY, FALSE);
+            }
+        }
     }
     attach(key user){
+        REZ_MODE=FALSE;
+        VICTIM_UUID=llGetOwner();
         triggerFeature("ATTACH", "", user);
         llMessageLinked(LINK_SET, MAIN_MSG_NUM, "MAIN.ATTACH|"+(string)user, NULL_KEY);
         llMessageLinked(LINK_SET, STRUGGLE_MSG_NUM, "STRUGGLE.GET.READY", NULL_KEY);
+    }
+    on_rez(integer start_param){
+        // 登录、穿戴时也会触发on_rez，并且比attach更早触发。有时候登录时不触发attach，因此将attach的部分也添加到这里。
+        integer attached=llGetAttached();
+        if(attached){
+            REZ_MODE=FALSE;
+            VICTIM_UUID=llGetOwner();
+        }else{
+            REZ_MODE=TRUE;
+            VICTIM_UUID=NULL_KEY;
+        }
+    }
+    object_rez(key user){
+        REZ_MODE=TRUE;
+        VICTIM_UUID=NULL_KEY;
+    }
+    collision_start(integer num){
+        if(REZ_MODE==TRUE && sitAutoTrap==TRUE && VICTIM_UUID == NULL_KEY){
+            key victim=llDetectedKey(0);
+            llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.CAPTURE|"+(string)victim+"|1", NULL_KEY);
+        }
     }
     timer(){
         if(rlvInited==FALSE){ // 如果未成功初始化数据，则每5秒重新读取一次，直到读取成功
@@ -658,7 +748,43 @@ default{
             string menuText=llList2String(menuCmdList, 2);
             if(menuCmdStr=="MENU.ACTIVE"){
                 // llOwnerSay(menuName+" -> "+menuText);
-                triggerFeature(menuName, menuText, user);
+                if(menuName=="mainMenu"){
+                    if(menuText == "Lock"){
+                        setLock(-1, user, TRUE);
+                    }
+                    else if(menuText=="Capture"){
+                        curSensorType=menuText;
+                        llSensor("", NULL_KEY, AGENT, 96.0, PI);
+                    }
+                    else if(menuText=="Unsit"){
+                        setLock(FALSE, NULL_KEY, FALSE);
+                        llUnSit(llAvatarOnSitTarget());
+                        llSleep(3);
+                    }
+                    else if(menuText=="AutoLock"){
+                        sitAutoLock=!sitAutoLock;
+                        showMenu(user);
+                    }
+                    else if(menuText=="AutoTrap"){
+                        sitAutoTrap=!sitAutoTrap;
+                        showMenu(user);
+                    }
+                    else{
+                        triggerFeature(menuName, menuText, user);
+                    }
+                }
+                else if(menuName=="CaptureMenu"){
+                    list buList=llParseStringKeepNulls(menuText,[". "],[""]);
+                    integer buIndex=llList2Integer(buList,0);
+                    key buUser=llList2Key(sensorUserList, ((integer)(buIndex-1)));
+                    if(buUser!=NULL_KEY){
+                        llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.CAPTURE|"+(string)buUser+"|1", user);
+                    }
+                    sensorUserList=[];
+                }
+                else{
+                    triggerFeature(menuName, menuText, user);
+                }
             }
             else if(menuCmdStr=="MENU.CLOSE"){
                 curMenuUser=NULL_KEY;
@@ -776,5 +902,18 @@ default{
                 llDetachFromAvatar();
             }
         }
+    }
+
+    sensor(integer detected) {
+        sensorUserList=[];
+        if(REZ_MODE==FALSE){
+            sensorUserList+=[llGetOwner()]; // 穿在身上时，添加自己
+        }
+        integer i;
+        for (i = 0; i < detected && i<maxSensor; i++) {
+            key uuid = llDetectedKey(i);
+            sensorUserList+=uuid;
+        }
+        showSensorMenu(curSensorType, curMenuUser);
     }
 }
