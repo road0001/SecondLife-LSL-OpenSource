@@ -19,6 +19,10 @@ Author: JMRY
 Description: A better RLV Renamer management system, use link_message to operate Renamer restraints.
 
 ***更新记录***
+- 1.1.3 20260311
+    - 优化记事卡读取速度。
+    - 修复Renamer读取记事卡回调错误的bug。
+
 - 1.1.2 20260310
     - 加入获取初始化完成的指令。
 
@@ -819,7 +823,7 @@ default{
                             // 后续功能交给下方datasever处理
                             result=(string)TRUE;
                         }else{
-                            llMessageLinked(LINK_SET, RLV_MSG_NUM, "RENAMER.LOAD.NOTECARD|"+renamerMsgData+"|0", NULL_KEY); // RLV成功读取记事卡后回调
+                            llMessageLinked(LINK_SET, RENAMER_MSG_NUM, "RENAMER.LOAD.NOTECARD|"+renamerMsgData+"|0", NULL_KEY); // RLV成功读取记事卡后回调
                             if(llGetAttached()){
                                 renamerEnabled(renamerBool, NULL_KEY);
                             }
@@ -1006,43 +1010,54 @@ default{
 
     dataserver(key query_id, string data){
         if (query_id == readRenamerQuery) { // 通过readRLVNotecards触发读取记事卡事件，按行读取指定RLV（readRLVQuery）并设置相关数据。
-            if (data == EOF) {
-                llOwnerSay("Finished reading Renamer settings: "+curRenamerName);
-                llMessageLinked(LINK_SET, RLV_MSG_NUM, "RENAMER.LOAD.NOTECARD|"+curRenamerName+"|1", NULL_KEY); // RLV成功读取记事卡后回调
-                readRenamerQuery=NULL_KEY;
-                if(llGetAttached()){
-                    curRenamerBool=renamerBool;
-                    renamerEnabled(renamerBool, NULL_KEY);
+            while(TRUE){
+                string temp=llGetNotecardLineSync(readRenamerName, readRenamerLine);
+                if(temp!=NAK){
+                    data=temp;
                 }
-            } else {
-                /*
-                configName=configValue
-                */
-                if(data!="" && llGetSubString(data,0,0)!="#"){
-                    list renamerStrSp=llParseStringKeepNulls(data, ["="], []);
-                    string renamerName=llList2String(renamerStrSp,0);
-                    string renamerData=llList2String(renamerStrSp,1);
+                if (data == EOF) {
+                    llOwnerSay("Finished reading Renamer settings: "+curRenamerName);
+                    llMessageLinked(LINK_SET, RENAMER_MSG_NUM, "RENAMER.LOAD.NOTECARD|"+curRenamerName+"|1", NULL_KEY); // RLV成功读取记事卡后回调
+                    readRenamerQuery=NULL_KEY;
+                    if(llGetAttached()){
+                        curRenamerBool=renamerBool;
+                        renamerEnabled(renamerBool, NULL_KEY);
+                    }
+                    jump end;
+                } else {
+                    /*
+                    configName=configValue
+                    */
+                    if(data!="" && llGetSubString(data,0,0)!="#"){
+                        list renamerStrSp=llParseStringKeepNulls(data, ["="], []);
+                        string renamerName=llList2String(renamerStrSp,0);
+                        string renamerData=llList2String(renamerStrSp,1);
 
-                    if(renamerName=="renamerBool"){renamerBool=(integer)renamerData;}
-                    else if(renamerName=="renamerChannel"){renamerChannel=(integer)renamerData;}
-                    else if(renamerName=="renamerName"){renamerName=renamerData;}
-                    else if(renamerName=="confusionReplaceEn"){confusionReplaceEn=strSplit(renamerData, ",");}
-                    else if(renamerName=="confusionReplaceCn"){confusionReplaceCn=strSplit(renamerData, ",");}
-                    else if(renamerName=="renamerConfusion"){renamerConfusion=renamerData;}
-                    else if(renamerName=="renamerConfusionOOC"){renamerConfusionOOC=(integer)renamerData;}
-                    else if(renamerName=="renamerConfusionProb"){renamerConfusionProb=(float)renamerData;}
-                    else if(renamerName=="allowHive"){allowHive=(integer)renamerData;}
-                    else if(renamerName=="renamerHive"){renamerHive=(integer)renamerData;}
-                    else if(renamerName=="renamerVoice"){renamerVoice=renamerData;}
-                    else if(renamerName=="renamerVolume"){renamerVolume=(float)renamerData;}
-                    else if(renamerName=="renamerType"){renamerType=(integer)renamerData;}
+                        if(renamerName=="renamerBool"){renamerBool=(integer)renamerData;}
+                        else if(renamerName=="renamerChannel"){renamerChannel=(integer)renamerData;}
+                        else if(renamerName=="renamerName"){renamerName=renamerData;}
+                        else if(renamerName=="confusionReplaceEn"){confusionReplaceEn=strSplit(renamerData, ",");}
+                        else if(renamerName=="confusionReplaceCn"){confusionReplaceCn=strSplit(renamerData, ",");}
+                        else if(renamerName=="renamerConfusion"){renamerConfusion=renamerData;}
+                        else if(renamerName=="renamerConfusionOOC"){renamerConfusionOOC=(integer)renamerData;}
+                        else if(renamerName=="renamerConfusionProb"){renamerConfusionProb=(float)renamerData;}
+                        else if(renamerName=="allowHive"){allowHive=(integer)renamerData;}
+                        else if(renamerName=="renamerHive"){renamerHive=(integer)renamerData;}
+                        else if(renamerName=="renamerVoice"){renamerVoice=renamerData;}
+                        else if(renamerName=="renamerVolume"){renamerVolume=(float)renamerData;}
+                        else if(renamerName=="renamerType"){renamerType=(integer)renamerData;}
+                    }
+
+                    // increment line count
+                    ++readRenamerLine;
+                    //request next line of notecard.
+                    if(temp==NAK){
+                        readRenamerQuery=llGetNotecardLine(readRenamerName, readRenamerLine);
+                        jump end;
+                    }
                 }
-
-                // increment line count
-                ++readRenamerLine;
-                //request next line of notecard.
-                readRenamerQuery=llGetNotecardLine(readRenamerName, readRenamerLine);
             }
+            @end;
         }
     }
 }

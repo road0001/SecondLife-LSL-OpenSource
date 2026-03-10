@@ -5,6 +5,9 @@ Author: JMRY
 Description: A better timer control system, use link_message to operate timers.
 
 ***更新记录***
+- 1.0.8 20260311
+    - 调整部分功能文本。
+
 - 1.0.7 20260310
     - 加入获取初始化完成的指令。
 
@@ -281,7 +284,7 @@ showTimerMenu(string parent, key user){
 
     list timerMenuList=[
         "["+(string)timerTextBool+"]ShowText", "BACK", "Clear",
-        tType, "["+(string)timerRunning+"]Running", "Restart",
+        tType, "["+(string)timerRunning+"]StartTimer", "Restart",
         "+5 Minute", "+30 Minute", "+1 Hour",
         "-5 Minute", "-30 Minute", "-1 Hour"
     ];
@@ -486,7 +489,7 @@ default{
                     else if(menuButton=="OnlineTime"){
                         timerType=TIMER_TYPE_REAL;
                     }
-                    else if(menuButton=="Running"){
+                    else if(menuButton=="StartTimer"){
                         setTimerRunning(-1);
                     }
                     else if(menuButton=="Restart"){

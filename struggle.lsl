@@ -16,6 +16,9 @@ Author: JMRY
 Description: A struggle system, use link_message to operate struggle things.
 
 ***更新记录***
+- 1.0.3 20260311
+    - 优化记事卡读取速度。
+
 - 1.0.2 20260301
 	- 优化初始化时，REZ模式的判定逻辑。
 
@@ -582,35 +585,46 @@ default{
     }
     dataserver(key query_id, string data){
         if (query_id == readNotecardQuery) { // 通过readRLVNotecards触发读取记事卡事件，按行读取指定RLV（readRLVQuery）并设置相关数据。
-            if (data == EOF) {
-                llOwnerSay("Finished reading Struggle settings: "+curNotecardName);
-                llMessageLinked(LINK_SET, STRUGGLE_MSG_NUM, "STRUGGLE.LOAD.NOTECARD|"+curNotecardName+"|1", NULL_KEY); // RLV成功读取记事卡后回调
-                readNotecardQuery=NULL_KEY;
-            } else {
-                /*
-                configName=configValue
-                */
-                if(data!="" && llGetSubString(data,0,0)!="#"){
-                    list notecardStrSp=llParseStringKeepNulls(data, ["="], []);
-                    string notecardName=llList2String(notecardStrSp,0);
-                    string notecardData=llList2String(notecardStrSp,1);
-
-                    if(notecardName=="struggleType"){struggleType=(integer)notecardData;}
-                    else if(notecardName=="struggleDifficulty"){struggleDifficulty=(integer)notecardData;}
-                    else if(notecardName=="struggleDebuff"){struggleDebuff=(integer)notecardData;}
-                    else if(notecardName=="struggleInterval"){struggleInterval=(float)notecardData;}
-                    else if(notecardName=="struggleKeys"){struggleKeys=strSplit(notecardData, ";");}
-                    else if(notecardName=="struggleAnims"){struggleAnims=strSplit(notecardData, ";");}
-                    else if(notecardName=="struggleText"){struggleText=notecardData;}
-                    else if(notecardName=="struggleTextColor"){struggleTextColor=(vector)notecardData;}
-                    else if(notecardName=="struggleTextAlpha"){struggleTextAlpha=(float)notecardData;}
+            while(TRUE){
+                string temp=llGetNotecardLineSync(readNotecardName, readNotecardLine);
+                if(temp!=NAK){
+                    data=temp;
                 }
+                if (data == EOF) {
+                    llOwnerSay("Finished reading Struggle settings: "+curNotecardName);
+                    llMessageLinked(LINK_SET, STRUGGLE_MSG_NUM, "STRUGGLE.LOAD.NOTECARD|"+curNotecardName+"|1", NULL_KEY); // RLV成功读取记事卡后回调
+                    readNotecardQuery=NULL_KEY;
+                    jump end;
+                } else {
+                    /*
+                    configName=configValue
+                    */
+                    if(data!="" && llGetSubString(data,0,0)!="#"){
+                        list notecardStrSp=llParseStringKeepNulls(data, ["="], []);
+                        string notecardName=llList2String(notecardStrSp,0);
+                        string notecardData=llList2String(notecardStrSp,1);
 
-                // increment line count
-                ++readNotecardLine;
-                //request next line of notecard.
-                readNotecardQuery=llGetNotecardLine(readNotecardName, readNotecardLine);
+                        if(notecardName=="struggleType"){struggleType=(integer)notecardData;}
+                        else if(notecardName=="struggleDifficulty"){struggleDifficulty=(integer)notecardData;}
+                        else if(notecardName=="struggleDebuff"){struggleDebuff=(integer)notecardData;}
+                        else if(notecardName=="struggleInterval"){struggleInterval=(float)notecardData;}
+                        else if(notecardName=="struggleKeys"){struggleKeys=strSplit(notecardData, ";");}
+                        else if(notecardName=="struggleAnims"){struggleAnims=strSplit(notecardData, ";");}
+                        else if(notecardName=="struggleText"){struggleText=notecardData;}
+                        else if(notecardName=="struggleTextColor"){struggleTextColor=(vector)notecardData;}
+                        else if(notecardName=="struggleTextAlpha"){struggleTextAlpha=(float)notecardData;}
+                    }
+
+                    // increment line count
+                    ++readNotecardLine;
+                    //request next line of notecard.
+                    if(temp==NAK){
+                        readNotecardQuery=llGetNotecardLine(readNotecardName, readNotecardLine);
+                        jump end;
+                    }
+                }
             }
+            @end;
         }
     }
 }

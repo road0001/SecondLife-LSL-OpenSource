@@ -212,7 +212,7 @@ MENU.OUT.SELF | Your text here. // 使用llOwnerSay发送
 MENU.OUT.SAY | Your text here. | N // 使用llSay发送到频道N，频道可省略，默认为0
 MENU.OUT.WHISPER | Your text here. | N // 使用llWhisper发送到频道N，频道可省略，默认为0
 MENU.OUT.SHOUT | Your text here. | N // 使用llShout发送到频道N，频道可省略，默认为0
-MENU.OUT.TO | Your text here. | N | UUID // 使用llRegionSayTo发送到指定用户的频道N，频道和用户不可省略
+MENU.OUT.TO | Your text here. | N | UUID // 使用llRegionSayTo发送到指定用户的频道N，频道和用户可省略。频道默认为0，用户默认为传递此消息的用户UUID。
 MENU.OUT.REGION | Your text here. | N // 使用llRegionSay发送到全sim用户的频道N，频道可省略，默认为0
 ```
 

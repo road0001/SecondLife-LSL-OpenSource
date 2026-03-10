@@ -72,7 +72,7 @@ def buildCfg(cfg):
 					writeFile(f'{buildPath}/{cfg}', srcCfgContent.strip())
 					return True
 				else:
-					writeFile(f'{buildPath}/{cfg}', srcCfgContent.strip()+'\n\n'+cfgConfig.strip())
+					writeFile(f'{buildPath}/{cfg}', srcCfgContent.strip()+'\n'+cfgConfig.strip())
 					return True
 			else:
 				writeFile(f'{buildPath}/{cfg}', cfgConfig.strip())
@@ -97,7 +97,7 @@ def buildLan(lan):
 					writeFile(f'{buildPath}/{bulidLanHeader}{lan}', srcLanContent.strip())
 					return True
 				else:
-					writeFile(f'{buildPath}/{bulidLanHeader}{lan}', srcLanContent.strip()+'\n\n'+lanConfig.strip())
+					writeFile(f'{buildPath}/{bulidLanHeader}{lan}', srcLanContent.strip()+'\n'+lanConfig.strip())
 					return True
 			else:
 				writeFile(f'{buildPath}/{bulidLanHeader}{lan}', lanConfig.strip())

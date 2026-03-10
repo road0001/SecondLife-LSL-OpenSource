@@ -59,6 +59,10 @@ Author: JMRY
 Description: A better leash control system, use link_message to operate leashes.
 
 ***更新记录***
+- 1.1.9 20260311
+    - 优化记事卡读取速度。
+    - 修复Leash读取记事卡回调错误的bug。
+
 - 1.1.8 20260310
     - 加入获取初始化完成的指令。
 
@@ -1213,23 +1217,34 @@ default{
     }
     dataserver(key query_id, string data){
         if (query_id == readLeashQuery) { // 通过readLeashNotecards触发读取记事卡事件，按行读取配置并应用。
-            if (data == EOF) {
-                llOwnerSay("Finished reading leash config: "+curLeashName);
-                llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "LEASH.LOAD.NOTECARD|"+curLeashName+"|1", NULL_KEY); // 成功读取记事卡后回调
-                readLeashQuery=NULL_KEY;
-                curLeashName="";
-                readLeashName="";
-            } else {
-                if(data!="" && llGetSubString(data,0,0)!="#"){
-                    list leashStrSp=llParseStringKeepNulls(data, ["="], []);
-                    setConfig(llList2String(leashStrSp,0), llList2String(leashStrSp,1));
+            while(TRUE){
+                string temp=llGetNotecardLineSync(readLeashName, readLeashLine);
+                if(temp!=NAK){
+                    data=temp;
                 }
+                if (data == EOF) {
+                    llOwnerSay("Finished reading leash config: "+curLeashName);
+                    llMessageLinked(LINK_SET, LEASH_MSG_NUM, "LEASH.LOAD.NOTECARD|"+curLeashName+"|1", NULL_KEY); // 成功读取记事卡后回调
+                    readLeashQuery=NULL_KEY;
+                    curLeashName="";
+                    readLeashName="";
+                    jump end;
+                } else {
+                    if(data!="" && llGetSubString(data,0,0)!="#"){
+                        list leashStrSp=llParseStringKeepNulls(data, ["="], []);
+                        setConfig(llList2String(leashStrSp,0), llList2String(leashStrSp,1));
+                    }
 
-                // increment line count
-                ++readLeashLine;
-                //request next line of notecard.
-                readLeashQuery=llGetNotecardLine(readLeashName, readLeashLine);
+                    // increment line count
+                    ++readLeashLine;
+                    //request next line of notecard.
+                    if(temp==NAK){
+                        readLeashQuery=llGetNotecardLine(readLeashName, readLeashLine);
+                        jump end;
+                    }
+                }
             }
+            @end;
         }
     }
     sensor(integer detected) {

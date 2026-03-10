@@ -65,6 +65,9 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 2.0.16 20260311
+    - 优化记事卡读取速度。
+
 - 2.0.15 20260310
     - 加入获取初始化完成的指令。
 
@@ -1101,44 +1104,55 @@ default{
 
     dataserver(key query_id, string data){
         if (query_id == readRLVQuery) { // 通过readRLVNotecards触发读取记事卡事件，按行读取指定RLV（readRLVQuery）并设置相关数据。
-            if (data == EOF) {
-                llOwnerSay("Finished reading RLV restraints: "+curRLVName);
-                llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.LOAD.NOTECARD|"+curRLVName+"|1", NULL_KEY); // RLV成功读取记事卡后回调
-                readRLVQuery=NULL_KEY;
-                if(llGetAttached()){
-                    applyAllEnabledRLVCmd("",TRUE);
+            while(TRUE){
+                string temp=llGetNotecardLineSync(readRLVName, readRLVLine);
+                if(temp!=NAK){
+                    data=temp;
                 }
-            } else {
-                /*
-                [RLVClass1]
-                RLVName1=rlv1,rlv2,rlv3,...
-                RLVName2=rlv1,rlv2,rlv3,...
-                [RLVClass2]
-                RLVName3=rlv1,rlv2,rlv3,...
-                RLVName4=rlv1,rlv2,rlv3,...
-                */
-                if(data!="" && llGetSubString(data,0,0)!="#"){
-                    if(llGetSubString(data,0,0)=="[" && llGetSubString(data,-1,-1)=="]"){
-                        curRLVClass=llGetSubString(data,1,-2);
-                    }else{
-                        list rlvStrSp=llParseStringKeepNulls(data, ["="], []);
-                        string rlvName=llList2String(rlvStrSp,0);
-                        integer rlvDefaultEnabled=FALSE;
-                        if(llGetSubString(rlvName, 0, 0)=="*"){
-                            rlvDefaultEnabled=TRUE;
-                            rlvName=llGetSubString(rlvName, 1, -1);
-                        }
-                        string rlvData=llList2String(rlvStrSp,1);
+                if (data == EOF) {
+                    llOwnerSay("Finished reading RLV restraints: "+curRLVName);
+                    llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.LOAD.NOTECARD|"+curRLVName+"|1", NULL_KEY); // RLV成功读取记事卡后回调
+                    readRLVQuery=NULL_KEY;
+                    if(llGetAttached()){
+                        applyAllEnabledRLVCmd("",TRUE);
+                    }
+                    jump end;
+                } else {
+                    /*
+                    [RLVClass1]
+                    RLVName1=rlv1,rlv2,rlv3,...
+                    RLVName2=rlv1,rlv2,rlv3,...
+                    [RLVClass2]
+                    RLVName3=rlv1,rlv2,rlv3,...
+                    RLVName4=rlv1,rlv2,rlv3,...
+                    */
+                    if(data!="" && llGetSubString(data,0,0)!="#"){
+                        if(llGetSubString(data,0,0)=="[" && llGetSubString(data,-1,-1)=="]"){
+                            curRLVClass=llGetSubString(data,1,-2);
+                        }else{
+                            list rlvStrSp=llParseStringKeepNulls(data, ["="], []);
+                            string rlvName=llList2String(rlvStrSp,0);
+                            integer rlvDefaultEnabled=FALSE;
+                            if(llGetSubString(rlvName, 0, 0)=="*"){
+                                rlvDefaultEnabled=TRUE;
+                                rlvName=llGetSubString(rlvName, 1, -1);
+                            }
+                            string rlvData=llList2String(rlvStrSp,1);
 
-                        setRLVCmd(rlvName, rlvData, curRLVClass, rlvDefaultEnabled);
+                            setRLVCmd(rlvName, rlvData, curRLVClass, rlvDefaultEnabled);
+                        }
+                    }
+
+                    // increment line count
+                    ++readRLVLine;
+                    //request next line of notecard.
+                    if(temp==NAK){
+                        readRLVQuery=llGetNotecardLine(readRLVName, readRLVLine);
+                        jump end;
                     }
                 }
-
-                // increment line count
-                ++readRLVLine;
-                //request next line of notecard.
-                readRLVQuery=llGetNotecardLine(readRLVName, readRLVLine);
             }
+            @end;
         }
     }
 }

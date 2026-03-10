@@ -4,6 +4,10 @@ Author: JMRY
 Description: A better menu management system, use link_message to operate menus.
 
 ***更新记录***
+- 1.1.21 20260311
+    - 优化性能和内存占用。
+    - 优化输出文本内容的逻辑，当目标UUID为空时，使用llMessageLinked传递的user。
+
 - 1.1.20 20260228
     - 修复菜单按钮点击无反应的bug。
 
@@ -150,10 +154,6 @@ TODO:
 /*
 基础功能依赖函数
 */
-string replace(string src, string target, string replacement) {
-    return llReplaceSubString(src, target, replacement, 0);
-}
-
 integer includes(string src, string target){
     integer startPos = llSubStringIndex(src, target);
     if(~startPos){
@@ -167,7 +167,7 @@ string trim(string t){
     integer i;
     // list boolList=llParseStringKeepNulls(boolStrList,["|"],[""]);
     for(i=0; i<llGetListLength(boolList); i++){
-        t=replace(t,llList2String(boolList, i)+" ", "");
+        t=llReplaceSubString(t,llList2String(boolList, i)+" ", "", 0);
     }
     return llStringTrim(t, STRING_TRIM);
 }
@@ -224,12 +224,12 @@ string getLanguage(string k){
     if(!hasLanguage){
         return k;
     }
-    k=replace(replace(k,"\\n","\n"),"\n","\\n"); // 替换换行符\n。将转义的\\n替换回去再替换
+    k=llReplaceSubString(llReplaceSubString(k,"\\n","\n",0),"\n","\\n",0); // 替换换行符\n。将转义的\\n替换回去再替换
     string curVal=llLinksetDataRead(lanLinkHeader+k);
     if(curVal){
-        return replace(curVal,"\\n","\n");
+        return llReplaceSubString(curVal,"\\n","\n",0);
     }else{
-        return replace(k,"\\n","\n");
+        return llReplaceSubString(k,"\\n","\n",0);
     }
 }
 
@@ -243,7 +243,7 @@ string getLanguageKey(string v){
         string curKey=llList2String(lanKeyList, i);
         string curVal=llLinksetDataRead(curKey);
         if(curVal==v){
-            return replace(curKey, lanLinkHeader, "");;
+            return llReplaceSubString(curKey, lanLinkHeader, "", 0);
         }
     }
     return v;
@@ -256,8 +256,8 @@ string getLanguageVar(string k){ // 拼接字符串方法，用于首尾拼接�
     integer i;
     for(i=0; i<llGetListLength(var); i++){
         integer vi=i+1;
-        text=replace(text, "%"+(string)vi+"%", getLanguage(llList2String(var, i)));
-        text=replace(text, "%b"+(string)vi+"%", getLanguageBool("["+llList2String(var, i)+"]"));
+        text=llReplaceSubString(text, "%"+(string)vi+"%", getLanguage(llList2String(var, i)), 0);
+        text=llReplaceSubString(text, "%b"+(string)vi+"%", getLanguageBool("["+llList2String(var, i)+"]"), 0);
     }
     return text;
 }
@@ -278,7 +278,7 @@ string getLanguageBool(string k){ // 拼接字符串方法之开关，根据传�
         bool=-1;
     }
     if(~bool){
-        return llList2String(boolList, bool) + " " + getLanguage(replace(replace(k, "[1]", ""), "[0]", ""));
+        return llList2String(boolList, bool) + " " + getLanguage(llReplaceSubString(llReplaceSubString(k, "[1]", "", 0), "[0]", "", 0));
     }else{
         return getLanguage(k);
     }
@@ -362,7 +362,7 @@ integer executeMenu(string mname, integer reset, key user){
     if(mname==""){
         mname=llList2String(showMenuData,0);
     }
-    mname=replace(mname, parentHeader, "");
+    mname=llReplaceSubString(mname, parentHeader, "", 0);
     integer menuIndex=findMenu(mname);
     if(~menuIndex){
         if(reset>0){ // reset=FALSE用于reshow菜单
@@ -714,6 +714,9 @@ default{
                     string outputText=getLanguageVar(menuName);
                     integer outputChannel=(integer)menuText;
                     key outputUser=(key)menuButtons;
+                    if(outputUser=="" || outputUser==NULL_KEY){
+                        outputUser=user;
+                    }
                     if(menuCmdExt=="" || menuCmdExt=="OWNER" || menuCmdExt=="SELF"){
                         llOwnerSay(outputText);
                     }else if(menuCmdExt=="SAY"){

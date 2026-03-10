@@ -14,6 +14,10 @@ Author: JMRY
 Description: A better access permission control system, use link_message to operate permissions.
 
 ***更新记录***
+- 1.0.22 20260311
+    - 优化文本提示。
+    - 优化记事卡读取速度。
+
 - 1.0.21 20260310
     - 加入获取初始化完成的指令。
 
@@ -624,7 +628,7 @@ showAccessSubMenu(string button, key user){
         setPublicMode(-1);
         notifyAccess();
         // llOwnerSay("Your public mode is set to "+(string)publicMode);
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your public mode is set to %1%.%%;"+(string)publicMode, user);
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your public mode is set to %b1%.%%;"+(string)publicMode, user);
         showAccessMenu(accessParentMenuName, user);
         return;
     }
@@ -632,7 +636,7 @@ showAccessSubMenu(string button, key user){
         setGroupMode(-1);
         notifyAccess();
         // llOwnerSay("Your group mode is set to "+(string)groupMode);
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your group mode is set to %1%.%%;"+(string)groupMode, user);
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your group mode is set to %b1%.%%;"+(string)groupMode, user);
         showAccessMenu(accessParentMenuName, user);
         return;
     }
@@ -640,7 +644,7 @@ showAccessSubMenu(string button, key user){
         setHardcoreMode(-1);
         notifyAccess();
         // llOwnerSay("Your hardcore mode is set to "+(string)hardcore);
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your hardcore mode is set to %1%.%%;"+(string)hardcore, user);
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your hardcore mode is set to %b1%.%%;"+(string)hardcore, user);
         showAccessMenu(accessParentMenuName, user);
         return;
     }
@@ -651,33 +655,33 @@ showAccessSubMenu(string button, key user){
     else if(button=="AccessList"){
         integer i;
         // llRegionSayTo(user, 0, "Root:");
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Root:|0|"+(string)user, user);
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Root:", user);
         for(i=0; i<llGetListLength(ownerList); i++){
             // llRegionSayTo(user, 0, userInfo(llList2Key(ownerList, i)));
-            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|"+userInfo(llList2Key(ownerList, i))+"|0|"+(string)user, user);
+            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|"+userInfo(llList2Key(ownerList, i)), user);
             if(i==0){
                 // llRegionSayTo(user, 0, "Owners:");
-                llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Owners:|0|"+(string)user, user);
+                llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Owners:", user);
             }
         }
         // llRegionSayTo(user, 0, "Trust:");
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|TrustList:|0|"+(string)user, user);
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|TrustList:", user);
         for(i=0; i<llGetListLength(trustList); i++){
             // llRegionSayTo(user, 0, userInfo(llList2Key(trustList, i)));
-            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|"+userInfo(llList2Key(trustList, i))+"|0|"+(string)user, user);
+            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|"+userInfo(llList2Key(trustList, i)), user);
         }
         // llRegionSayTo(user, 0, "Black:");
         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|BlackList:|0|"+(string)user, user);
         for(i=0; i<llGetListLength(blackList); i++){
             // llRegionSayTo(user, 0, userInfo(llList2Key(blackList, i)));
-            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|"+userInfo(llList2Key(blackList, i))+"|0|"+(string)user, user);
+            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|"+userInfo(llList2Key(blackList, i)), user);
         }
         // llRegionSayTo(user, 0, "Public mode: "+(string)publicMode);
         // llRegionSayTo(user, 0, "Group mode: "+(string)groupMode);
         // llRegionSayTo(user, 0, "Hardcore mode: "+(string)hardcore);
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Public mode: %1%%%;"+(string)publicMode+"|0|"+(string)user, user);
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Group mode: %1%%%;"+(string)groupMode+"|0|"+(string)user, user);
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Hardcore mode: %1%%%;"+(string)hardcore+"|0|"+(string)user, user);
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Public mode: %b1%%%;"+(string)publicMode, user);
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Group mode: %b1%%%;"+(string)groupMode, user);
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Hardcore mode: %b1%%%;"+(string)hardcore, user);
         showAccessMenu(accessParentMenuName, user);
         return;
     }
@@ -1156,70 +1160,81 @@ default{
 
     dataserver(key query_id, string data){
         if (query_id == readAccessQuery) { // 通过readAccessNotecards触发读取记事卡事件，按行读取配置并应用。
-            if (data == EOF) {
-                llOwnerSay("Finished reading access config: "+curAccessName);
-                llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.LOAD.NOTECARD|"+curAccessName+"|1", NULL_KEY); // 成功读取记事卡后回调
-                notifyAccess();
-                readAccessQuery=NULL_KEY;
-            } else {
-                /*
-                root=uuid
-                owner=uuid1;uuid2;uuid3;...
-                trust=uuid1;uuid2;uuid3;...
-                black=uuid1;uuid2;uuid3;...
-                public=1
-                group=0
-                hardcore=0
-                lock=1
-                */
-                if(data!="" && llGetSubString(data,0,0)!="#"){
-                    list accStrSp=llParseStringKeepNulls(data, ["="], []);
-                    string accName=llList2String(accStrSp,0);
-                    list accData=strSplit(llList2String(accStrSp,1), ";");
+            while(TRUE){
+                string temp=llGetNotecardLineSync(readAccessName, readAccessLine);
+                if(temp!=NAK){
+                    data=temp;
+                }
+                if (data == EOF) {
+                    llOwnerSay("Finished reading access config: "+curAccessName);
+                    llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.LOAD.NOTECARD|"+curAccessName+"|1", NULL_KEY); // 成功读取记事卡后回调
+                    notifyAccess();
+                    readAccessQuery=NULL_KEY;
+                    jump end;
+                } else {
+                    /*
+                    root=uuid
+                    owner=uuid1;uuid2;uuid3;...
+                    trust=uuid1;uuid2;uuid3;...
+                    black=uuid1;uuid2;uuid3;...
+                    public=1
+                    group=0
+                    hardcore=0
+                    lock=1
+                    */
+                    if(data!="" && llGetSubString(data,0,0)!="#"){
+                        list accStrSp=llParseStringKeepNulls(data, ["="], []);
+                        string accName=llList2String(accStrSp,0);
+                        list accData=strSplit(llList2String(accStrSp,1), ";");
 
-                    if(accName=="root"){
-                        // 当库存发生变化时，会读取access文件。为了防止修改其他数据影响rootOwner，因此只有在脚本重置后，root为玩家自己时，才应用此项
-                        if(llList2Key(ownerList, 0) == NULL_KEY || llList2Key(ownerList, 0) == llGetOwner()){
-                            setRootOwner(llList2Key(accData, 0));
+                        if(accName=="root"){
+                            // 当库存发生变化时，会读取access文件。为了防止修改其他数据影响rootOwner，因此只有在脚本重置后，root为玩家自己时，才应用此项
+                            if(llList2Key(ownerList, 0) == NULL_KEY || llList2Key(ownerList, 0) == llGetOwner()){
+                                setRootOwner(llList2Key(accData, 0));
+                            }
+                        }
+                        else if(accName=="owner"){
+                            integer i;
+                            for(i=0; i<llGetListLength(accData); i++){
+                                addOwner(llList2Key(accData, i), TRUE);
+                            }
+                        }
+                        else if(accName=="trust"){
+                            integer i;
+                            for(i=0; i<llGetListLength(accData); i++){
+                                addTrust(llList2Key(accData, i), TRUE);
+                            }
+                        }
+                        else if(accName=="black"){
+                            integer i;
+                            for(i=0; i<llGetListLength(accData); i++){
+                                addBlack(llList2Key(accData, i), TRUE);
+                            }
+                        }
+                        else if(accName=="public"){
+                            setPublicMode(llList2Integer(accData, 0));
+                        }
+                        else if(accName=="group"){
+                            setGroupMode(llList2Integer(accData, 0));
+                        }
+                        else if(accName=="hardcore"){
+                            setHardcoreMode(llList2Integer(accData, 0));
+                        }
+                        else if(accName=="lock"){
+                            setAutoLockMode(llList2Integer(accData, 0));
                         }
                     }
-                    else if(accName=="owner"){
-                        integer i;
-                        for(i=0; i<llGetListLength(accData); i++){
-                            addOwner(llList2Key(accData, i), TRUE);
-                        }
-                    }
-                    else if(accName=="trust"){
-                        integer i;
-                        for(i=0; i<llGetListLength(accData); i++){
-                            addTrust(llList2Key(accData, i), TRUE);
-                        }
-                    }
-                    else if(accName=="black"){
-                        integer i;
-                        for(i=0; i<llGetListLength(accData); i++){
-                            addBlack(llList2Key(accData, i), TRUE);
-                        }
-                    }
-                    else if(accName=="public"){
-                        setPublicMode(llList2Integer(accData, 0));
-                    }
-                    else if(accName=="group"){
-                        setGroupMode(llList2Integer(accData, 0));
-                    }
-                    else if(accName=="hardcore"){
-                        setHardcoreMode(llList2Integer(accData, 0));
-                    }
-                    else if(accName=="lock"){
-                        setAutoLockMode(llList2Integer(accData, 0));
+
+                    // increment line count
+                    ++readAccessLine;
+                    //request next line of notecard.
+                    if(temp==NAK){
+                        readAccessQuery=llGetNotecardLine(readAccessName, readAccessLine);
+                        jump end;
                     }
                 }
-
-                // increment line count
-                ++readAccessLine;
-                //request next line of notecard.
-                readAccessQuery=llGetNotecardLine(readAccessName, readAccessLine);
             }
+            @end;
         }
     }
 }

@@ -19,6 +19,9 @@ Author: JMRY
 Description: A better animation control system, use link_message to operate animations.
 
 ***更新记录***
+- 1.1.9 20260311
+    - 优化记事卡读取速度。
+
 - 1.1.8 20260310
     - 加入获取初始化完成的指令。
     - 加入库存变更时，自动重载配置功能。
@@ -686,34 +689,45 @@ default{
     }
     dataserver(key query_id, string data){
         if (query_id == readNotecardQuery) { // 通过readNotecardNotecards触发读取记事卡事件，按行读取配置并应用。
-            if (data == EOF) {
-                llOwnerSay("Finished reading animation config: "+curNotecardName);
-                llMessageLinked(LINK_SET, ANIM_MSG_NUM, "ANIM.LOAD.NOTECARD|"+curNotecardName+"|1", NULL_KEY); // 成功读取记事卡后回调
-                readNotecardQuery=NULL_KEY;
-
-                if(curPlayingAnimName!=""){
-                    playAnimationByName(curPlayingAnimName);
+            while(TRUE){
+                string temp=llGetNotecardLineSync(readNotecardName, readNotecardLine);
+                if(temp!=NAK){
+                    data=temp;
                 }
-            } else {
-                if(data!="" && llGetSubString(data,0,0)!="#"){
-                    if(llGetSubString(data,0,0)=="[" && llGetSubString(data,-1,-1)=="]"){
-                        curAnimClass=llGetSubString(data,1,-2);
-                    }else{
-                        list animStrSp=llParseStringKeepNulls(data, ["="], []);
-                        string animName=llList2String(animStrSp,0);
-                        string animParams=llList2String(animStrSp, 1);
-                        integer animAutoPlay=FALSE;
-                        if(llGetSubString(animName, 0, 0)=="*"){
-                            animAutoPlay=TRUE;
-                            animName=llGetSubString(animName, 1, -1);
-                            curPlayingAnimName=animName;
+                if (data == EOF) {
+                    llOwnerSay("Finished reading animation config: "+curNotecardName);
+                    llMessageLinked(LINK_SET, ANIM_MSG_NUM, "ANIM.LOAD.NOTECARD|"+curNotecardName+"|1", NULL_KEY); // 成功读取记事卡后回调
+                    readNotecardQuery=NULL_KEY;
+
+                    if(curPlayingAnimName!=""){
+                        playAnimationByName(curPlayingAnimName);
+                    }
+                    jump end;
+                } else {
+                    if(data!="" && llGetSubString(data,0,0)!="#"){
+                        if(llGetSubString(data,0,0)=="[" && llGetSubString(data,-1,-1)=="]"){
+                            curAnimClass=llGetSubString(data,1,-2);
+                        }else{
+                            list animStrSp=llParseStringKeepNulls(data, ["="], []);
+                            string animName=llList2String(animStrSp,0);
+                            string animParams=llList2String(animStrSp, 1);
+                            integer animAutoPlay=FALSE;
+                            if(llGetSubString(animName, 0, 0)=="*"){
+                                animAutoPlay=TRUE;
+                                animName=llGetSubString(animName, 1, -1);
+                                curPlayingAnimName=animName;
+                            }
+                            setAnimConfig(animName, animParams, curAnimClass, animAutoPlay);
                         }
-                        setAnimConfig(animName, animParams, curAnimClass, animAutoPlay);
+                    }
+                    ++readNotecardLine;
+                    if(temp==NAK){
+                        readNotecardQuery=llGetNotecardLine(readNotecardName, readNotecardLine);
+                        jump end;
                     }
                 }
-                ++readNotecardLine;
-                readNotecardQuery=llGetNotecardLine(readNotecardName, readNotecardLine);
             }
+            @end;
         }
     }
 }
