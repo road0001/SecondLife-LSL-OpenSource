@@ -197,6 +197,7 @@ Description: A main controller for restraint items.
     - 加入设置菜单。
     - 加入APP菜单。
     - 优化初始化流程。
+    - 修复主菜单自定义功能失效的bug。
 
 - 1.1.3 20260310
     - 加入脚本识别功能。
@@ -840,6 +841,9 @@ default{
                     }
                     else if(menuText=="Settings"){
                         showMenu("settingMenu", user);
+                    }
+                    else{
+                        triggerFeature(menuName, menuText, user);
                     }
                 }
                 else if(menuName=="settingMenu"){
