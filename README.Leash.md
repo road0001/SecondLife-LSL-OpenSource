@@ -33,6 +33,15 @@ LEASH.EXEC | LEASH.GET | ConfigValue
 LEASH.EXEC | LEASH.GET | ConfigName1; ConfigValue1; ConfigName2; ConfigValue2; ...
 ```
 
+### 获取就绪状态
+#### LEASH.GET.READY
+- 获取就绪状态。当脚本存在且初始化完成时，回调自己的就绪状态。
+```lsl
+LEASH.GET.READY
+// 回调：
+LEASH.READY
+```
+
 ### 抓住牵绳
 #### LEASH.TO
 - 将牵绳系到对应玩家或物品上。

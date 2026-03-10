@@ -5,6 +5,9 @@ Author: JMRY
 Description: A better timer control system, use link_message to operate timers.
 
 ***更新记录***
+- 1.0.7 20260310
+    - 加入获取初始化完成的指令。
+
 - 1.0.6 20260226
     - 优化计时器运行逻辑。
 
@@ -408,6 +411,9 @@ default{
                         返回：TIMER.EXEC | TIMER.GET.CONNECT | 1
                         */
                         result=(string)lockRLVConnect;
+                    }
+                    else if(timerMsgExt=="READY"){
+                        llMessageLinked(LINK_THIS, TIMER_MSG_NUM, "TIMER.READY", NULL_KEY);
                     }
                     else{
                         /*

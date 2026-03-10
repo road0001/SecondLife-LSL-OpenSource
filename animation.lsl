@@ -10,6 +10,7 @@ initConfig(){
         }
         animConfigList+=[animName, animName+";0;0", "Animation", auto];
     }
+    autoReload=TRUE;
 }
 /*CONFIG END*/
 /*
@@ -18,6 +19,10 @@ Author: JMRY
 Description: A better animation control system, use link_message to operate animations.
 
 ***更新记录***
+- 1.1.8 20260310
+    - 加入获取初始化完成的指令。
+    - 加入库存变更时，自动重载配置功能。
+
 - 1.1.7 20260301
     - 优化初始化逻辑。
     - 优化自动播放动画的逻辑。
@@ -365,8 +370,11 @@ showAnimSubMenu(string parent, string class, key user){
 
 integer REZ_MODE=FALSE;
 key animPlayer=NULL_KEY;
+integer autoReload=FALSE;
+
 integer MENU_MSG_NUM=1000;
 integer ANIM_MSG_NUM=1006;
+
 integer allowAutoAdjustHeight=TRUE;
 integer allowStopAnim=TRUE;
 string curAnimClass="";
@@ -395,6 +403,11 @@ default{
     changed(integer change){
         if(change & CHANGED_OWNER){
             llResetScript();
+        }
+        if(change & CHANGED_INVENTORY){ // 库存变更，初始化
+            if(autoReload==TRUE){
+                initConfig();
+            }
         }
         if(change & CHANGED_LINK){
             animPlayer=llAvatarOnSitTarget();
@@ -538,6 +551,9 @@ default{
                         ANIM.EXEC | ANIM.GET | AnimName1; AnimParams1; AnimClass1; AnimAutoPlay1; AnimName2; ...
                         */
                         result=llDumpList2String(animConfigList, "|");
+                    }
+                    else if(headerExt=="READY"){
+                        llMessageLinked(LINK_THIS, ANIM_MSG_NUM, "ANIM.READY", NULL_KEY);
                     }
                     else if(headerExt=="PLAYING"){
                         /*

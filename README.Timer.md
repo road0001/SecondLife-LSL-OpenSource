@@ -123,6 +123,15 @@ TIMER.GET
 TIMER.EXEC | TIMER.GET | STOPPED; 0; 60; 120
 ```
 
+### 获取就绪状态
+#### TIMER.GET.READY
+- 获取就绪状态。当脚本存在且初始化完成时，回调自己的就绪状态。
+```lsl
+TIMER.GET.READY
+// 回调：
+TIMER.READY
+```
+
 ### 获取计时器文字显示状态
 #### TIMER.GET.TEXT
 - 设置计时器是否显示倒计时文字。

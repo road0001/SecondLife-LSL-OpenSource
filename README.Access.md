@@ -187,6 +187,15 @@ ACCESS.EXEC | ACCESS.GET.MODE | 0
 ACCESS.EXEC | ACCESS.GET.MODE | 1
 ```
 
+### 获取就绪状态
+#### ACCESS.GET.READY
+- 获取就绪状态。当脚本存在且初始化完成时，回调自己的就绪状态。
+```lsl
+ACCESS.GET.READY
+// 回调：
+ACCESS.READY
+```
+
 ### 设置公开/群组/硬核模式
 #### ACCESS.SET.PUBLIC
 #### ACCESS.SET.GROUP

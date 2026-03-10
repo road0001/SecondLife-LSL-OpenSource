@@ -65,6 +65,15 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 2.0.15 20260310
+    - 加入获取初始化完成的指令。
+
+- 2.0.14 20260309
+    - 加入.开头的RLV类别隐藏功能（仅用于脚本调用）。
+
+- 2.0.13 20260308
+    - 加入应用RLV组限制时，若改变状态，则通知的功能。
+
 - 2.0.12 20260301
     - 优化初始化时，REZ模式的判定逻辑。
 
@@ -518,6 +527,7 @@ integer applyRLVCmd(string name, integer bool, integer isChange){
         }
         if(isChange==TRUE){
             rlvCmdList=llListReplaceList(rlvCmdList,[bool],curIndex+3,curIndex+3);
+            llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.EXEC|RLV.APPLY|"+name+"|"+(string)bool, NULL_KEY);
         }
         // llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.EXEC|RLV.APPLY|"+name+"|"+(string)bool, NULL_KEY);
         return bool;
@@ -589,7 +599,7 @@ showRLVMenu(string parent, key user){
     integer i;
     for(i=0; i<llGetListLength(rlvCmdList); i+=rlvCmdLength){
         string class=llList2String(rlvCmdList, i+2);
-        if(class!="" && curClass != class){
+        if(class!="" && llGetSubString(class, 0, 1)!="." && curClass != class){
             rlvClass+=[class];
             curClass=class;
         }
@@ -899,6 +909,9 @@ default{
                     */
                     if(headerExt==""){
                         result=list2Data(getRLVCmd(msgName, FALSE));
+                    }
+                    else if(headerExt=="READY"){
+                        llMessageLinked(LINK_THIS, RLV_MSG_NUM, "RLV.READY", NULL_KEY);
                     }
                     /*
                     获取RLV类别，或指定RLV类别中的RLV组

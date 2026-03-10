@@ -19,6 +19,9 @@ Author: JMRY
 Description: A better RLV Renamer management system, use link_message to operate Renamer restraints.
 
 ***更新记录***
+- 1.1.2 20260310
+    - 加入获取初始化完成的指令。
+
 - 1.1.1 20260301
     - 优化初始化流程。
 
@@ -741,6 +744,9 @@ default{
                     */
                     if(renamerMsgExt==""){
                         result=list2Data([renamerBool, renamerName, renamerConfusion, renamerVoice, renamerHive]);
+                    }
+                    else if(renamerMsgExt=="READY"){
+                        llMessageLinked(LINK_THIS, RENAMER_MSG_NUM, "RENAMER.READY", NULL_KEY);
                     }
                     /*
                     重命名器混淆-英文

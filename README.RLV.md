@@ -105,6 +105,15 @@ RLV.GET | RLVName
 RLV.EXEC | RLV.GET | RLVName; RLV1, RLV2, RLV3; RLVClass; RLVEnabled
 ```
 
+### 获取就绪状态
+#### RLV.GET.READY
+- 获取就绪状态。当脚本存在且初始化完成时，回调自己的就绪状态。
+```lsl
+RLV.GET.READY
+// 回调：
+RLV.READY
+```
+
 ### 直接执行RLV指令
 #### RLV.RUN
 - 直接执行@开头的RLV指令，可以不加@，用逗号分隔多条指令，如@detach=n,fly=n,unsit=n。

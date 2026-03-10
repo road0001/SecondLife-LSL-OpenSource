@@ -88,6 +88,15 @@ RENAMER.GET
 RENAMER.EXEC | RENAMER.GET | 1; Name; Confusion; Voice; Hive
 ```
 
+### 获取就绪状态
+#### RENAMER.GET.READY
+- 获取就绪状态。当脚本存在且初始化完成时，回调自己的就绪状态。
+```lsl
+RENAMER.GET.READY
+// 回调：
+RENAMER.READY
+```
+
 ### 获取Renamer混淆状态
 #### RENAMER.GET.CONFUSION | EN
 #### RENAMER.GET.CONFUSION | CN

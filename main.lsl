@@ -9,28 +9,35 @@ initMain(){
     touchSound="";
     // Init Config End
 
+    RLV_READY=FALSE;
+    RENAMER_READY=FALSE;
+    ACCESS_READY=FALSE;
+    TIMER_READY=FALSE;
+    LEASH_READY=FALSE;
+    ANIM_READY=FALSE;
+    STRUGGLE_READY=FALSE;
+    hasLanguage=FALSE;
+
     llOwnerSay("Begin Initialize...");
     list initMessageLinkChain=[
         MAIN_MSG_NUM, "MAIN.INIT", 1,
         RLV_MSG_NUM, "RLV.RUN.TEMP|detach=n", 1, // 首次初始化时，先将道具上锁，待初始化完（Access、RLV）后，根据结果更改上锁状态
-        // CONF_MSG_NUM, "CONFIG.LOAD", 1
         RLV_MSG_NUM, "RLV.LOAD|main", 0,
         RENAMER_MSG_NUM, "RENAMER.LOAD|main", 0,
-        // RLV_MSG_NUM, "RLV.GET.LOCK", 0,
         ACCESS_MSG_NUM, "ACCESS.LOAD|main", 0,
-        // ACCESS_MSG_NUM, "ACCESS.GET.NOTIFY", 0,
+        LAN_MSG_NUM, "LANGUAGE.INIT", 0,
+        TIMER_MSG_NUM, "TIMER.GET.READY", 0,
         LEASH_MSG_NUM, "LEASH.LOAD|main", 0,
         ANIM_MSG_NUM, "ANIM.LOAD|main", 0,
-        STRUGGLE_MSG_NUM, "STRUGGLE.LOAD|main", 0,
-        STRUGGLE_MSG_NUM, "STRUGGLE.GET.READY", 0
+        STRUGGLE_MSG_NUM, "STRUGGLE.LOAD|main", 0
+        // STRUGGLE_MSG_NUM, "STRUGGLE.GET.READY", 0
     ];
     integer i;
     for(i=0; i<llGetListLength(initMessageLinkChain); i+=3){
         llMessageLinked(LINK_SET, llList2Integer(initMessageLinkChain, i), llList2String(initMessageLinkChain, i+1), NULL_KEY);
         llSleep(llList2Float(initMessageLinkChain, i+2));
     }
-    hasLanguage=FALSE;
-    llMessageLinked(LINK_SET, LAN_MSG_NUM, "LANGUAGE.INIT", llGetOwner()); // 得到语言系统初始化确认时，将hasLanguage置为TRUE。
+    // llMessageLinked(LINK_SET, LAN_MSG_NUM, "LANGUAGE.INIT", llGetOwner()); // 得到语言系统初始化确认时，将hasLanguage置为TRUE。
     if(llGetAttached()){
         llRequestPermissions(llGetOwner(), PERMISSION_ATTACH);
     }
@@ -43,7 +50,7 @@ initMain(){
 triggerFeature(string menuName, string menuText, key user){
     if(menuName=="ATTACH"){
         if(user!=NULL_KEY){
-            if(rlvInited==FALSE){ // 穿戴时，如果未成功初始化数据，则重新读取
+            if(RLV_READY==FALSE){ // 穿戴时，如果未成功初始化数据，则重新读取
                 initMain();
                 llSetTimerEvent(initRetryTimer);
             }
@@ -59,6 +66,18 @@ triggerFeature(string menuName, string menuText, key user){
             listenHandle=llListen(cmdChannel, "", NULL_KEY, "");
         }else{
             llListenRemove(listenHandle);
+        }
+    }
+    else if(menuName=="TOUCH"){
+        showMenu(llDetectedKey(0));
+        if(touchSound!=""){
+            llPlaySound(touchSound, 1);
+        }
+    }
+    else if(menuName=="COLLISION"){
+        if(REZ_MODE==TRUE && sitAutoTrap==TRUE && VICTIM_UUID == NULL_KEY){
+            key victim=llDetectedKey(0);
+            llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.CAPTURE|"+(string)victim+"|1", NULL_KEY);
         }
     }
     else if(menuName=="mainMenu"){
@@ -101,26 +120,40 @@ triggerListen(integer channel, string name, key id, string message){
 triggerLinkMessage(integer sender_num, integer num, string str, key user){
 }
 list getMenuFeature(key user){
-    string leashStr="Leash";
-    if(REZ_MODE==TRUE){
-        if(VICTIM_UUID==NULL_KEY){
-            leashStr="Capture";
+    list menuList=[];
+    if(RLV_READY){
+        if(REZ_MODE==TRUE){
+            string captureStr="Capture";
+            if(VICTIM_UUID!=NULL_KEY){
+                captureStr="Unsit";
+            }
+            menuList+=["["+(string)isLocked+"]Lock", captureStr, "RLV"];
         }else{
-            leashStr="Unsit";
+            menuList+=["["+(string)isLocked+"]Lock", "RLV"];
         }
-        return [
-            "["+(string)isLocked+"]Lock",leashStr,"RLV",
-            "Timer","Renamer","Animation",
-            "Access","Language","["+(string)sitAutoLock+"]AutoLock",
-            "["+(string)sitAutoTrap+"]AutoTrap"
-        ];
-    }else{
-        return [
-            "["+(string)isLocked+"]Lock",leashStr,"RLV",
-            "Timer","Renamer","Animation",
-            "Access","Language"
-        ];
     }
+    if(LEASH_READY && REZ_MODE==FALSE){
+        menuList=llListInsertList(menuList, ["Leash"], 1);
+    }
+    if(TIMER_READY){
+        menuList+=["Timer"];
+    }
+    if(RENAMER_READY){
+        menuList+=["Renamer"];
+    }
+    if(ANIM_READY){
+        menuList+=["Animation"];
+    }
+    if(ACCESS_READY){
+        menuList+=["Access"];
+    }
+    if(hasLanguage){
+        menuList+=["Language"];
+    }
+    if(REZ_MODE==TRUE && RLV_READY){
+        menuList+=["["+(string)sitAutoLock+"]AutoLock", "["+(string)sitAutoTrap+"]AutoTrap"];
+    }
+    return menuList;
 }
 /*CONFIG END*/
 /*
@@ -129,6 +162,10 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.1.3 20260310
+    - 加入脚本识别功能。
+    - 优化脚本架构。
+
 - 1.1.2 20260302
     - 加入REZ模式的菜单和捕获功能。
 
@@ -321,18 +358,27 @@ integer allowOperate(key user){
     if(
         isLocked==TRUE /*锁定状态*/ &&
         timeoutRunning==TRUE /*倒计时状态*/ &&
-        user==llGetOwner() /*自己触摸*/
+        (user==llGetOwner() /*自己触摸*/ || user==VICTIM_UUID)
     ){
         llRegionSayTo(user, 0, getLanguageVar("You're locked by %1% and timer is running, not allow to operate it!%%;"+userInfo(lockUser)));
         return FALSE;
-    }else if(
+    }
+    else if(
         isLocked==TRUE /*锁定状态*/ && 
         lockUser!=llGetOwner() /*非自锁*/ && 
         user==llGetOwner() /*自己触摸*/
     ){
         llRegionSayTo(user, 0, getLanguageVar("You're locked by %1% and not allow to operate it!%%;"+userInfo(lockUser)));
         return -1; // 为了让Escape功能有效，因此返回-1而不是FALSE
-    }else if(
+    }
+    else if(
+        isLocked==TRUE /*锁定状态*/ && 
+        user==VICTIM_UUID /*自己触摸*/
+    ){
+        llRegionSayTo(user, 0, getLanguageVar("You're locked and not allow to operate it!%%;"+userInfo(lockUser)));
+        return -1; // 为了让Escape功能有效，因此返回-1而不是FALSE
+    }
+    else if(
         user!=llGetOwner() /*非自己触摸*/ && 
         !checkRelationship(user, "owner") /*非主人*/ && 
         !checkRelationship(user, "trust") /*非信任*/ && 
@@ -351,6 +397,7 @@ integer allowOperate(key user){
 
 integer isLocked=FALSE;
 key lockUser=NULL_KEY;
+key captureByUser=NULL_KEY;
 integer lockTime=0;
 string lockSound;
 string unlockSound;
@@ -506,7 +553,6 @@ string getTimeDistStr(integer baseTime, integer curTime){
 }
 
 integer menuOperateLock=FALSE;
-integer allowStruggle=FALSE;
 key curMenuUser=NULL_KEY;
 showMenu(key user){
     integer isAllow=allowOperate(user);
@@ -541,12 +587,12 @@ showMenu(key user){
         (string)hardcore;
     list mainMenu=applyFeatureList(getMenuFeature(user), featureList);
     if(isAllow==-1){ // 对于被锁住的情况，允许访问Escape逃跑功能
-        if(allowStruggle==TRUE && user==llGetOwner()){
+        if(STRUGGLE_READY==TRUE && user==llGetOwner()){
             mainMenu=["Struggle"];
         }else{
             mainMenu=[];
         }
-        if(!hardcore){ // 硬核模式未开启时，仅显示Escape按钮，菜单名使用AccessMenu以确保功能生效
+        if(!hardcore && !REZ_MODE){ // 硬核模式未开启时，仅显示Escape按钮，菜单名使用AccessMenu以确保功能生效
             mainMenu+=["Access"];
         }else{ // 硬核模式开启时，不显示菜单。
         }
@@ -615,6 +661,14 @@ integer LEASH_MSG_NUM=1005;
 integer ANIM_MSG_NUM=1006;
 integer STRUGGLE_MSG_NUM=1007;
 
+integer RLV_READY=FALSE;
+integer RENAMER_READY=FALSE;
+integer ACCESS_READY=FALSE;
+integer TIMER_READY=FALSE;
+integer LEASH_READY=FALSE;
+integer ANIM_READY=FALSE;
+integer STRUGGLE_READY=FALSE;
+
 list owner=[];
 list trust=[];
 list black=[];
@@ -632,8 +686,6 @@ string touchSound;
 integer REZ_MODE=FALSE;
 key VICTIM_UUID;
 
-integer rlvInited=FALSE;
-integer accessInited=FALSE;
 integer attachFlag=TRUE;
 
 integer timeoutRunning=FALSE;
@@ -668,12 +720,20 @@ default{
             if (avatar != NULL_KEY){
                 VICTIM_UUID=avatar;
                 if(sitAutoLock==TRUE){
-                    setLock(TRUE, llList2Key(owner, 0), FALSE);
+                    if(captureByUser!=NULL_KEY){
+                        setLock(TRUE, captureByUser, FALSE);
+                        captureByUser=NULL_KEY;
+                    }else{
+                        setLock(TRUE, llList2Key(owner, 0), FALSE);
+                    }
                 }
             }else{
                 VICTIM_UUID=NULL_KEY;
                 setLock(FALSE, NULL_KEY, FALSE);
             }
+            triggerFeature("CHANGE", (string)change, llAvatarOnSitTarget());
+        }else{
+            triggerFeature("CHANGE", (string)change, NULL_KEY);
         }
     }
     attach(key user){
@@ -681,7 +741,7 @@ default{
         VICTIM_UUID=llGetOwner();
         triggerFeature("ATTACH", "", user);
         llMessageLinked(LINK_SET, MAIN_MSG_NUM, "MAIN.ATTACH|"+(string)user, NULL_KEY);
-        llMessageLinked(LINK_SET, STRUGGLE_MSG_NUM, "STRUGGLE.GET.READY", NULL_KEY);
+        // llMessageLinked(LINK_SET, STRUGGLE_MSG_NUM, "STRUGGLE.GET.READY", NULL_KEY);
     }
     on_rez(integer start_param){
         // 登录、穿戴时也会触发on_rez，并且比attach更早触发。有时候登录时不触发attach，因此将attach的部分也添加到这里。
@@ -699,13 +759,10 @@ default{
         VICTIM_UUID=NULL_KEY;
     }
     collision_start(integer num){
-        if(REZ_MODE==TRUE && sitAutoTrap==TRUE && VICTIM_UUID == NULL_KEY){
-            key victim=llDetectedKey(0);
-            llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.CAPTURE|"+(string)victim+"|1", NULL_KEY);
-        }
+        triggerFeature("COLLISION", (string)num, llDetectedKey(0));
     }
     timer(){
-        if(rlvInited==FALSE){ // 如果未成功初始化数据，则每5秒重新读取一次，直到读取成功
+        if(RLV_READY==FALSE){ // 如果未成功初始化数据，则每5秒重新读取一次，直到读取成功
             initMain();
         }else if(timerFlag==1){
             curMenuUser=NULL_KEY;
@@ -716,10 +773,7 @@ default{
         }
     }
     touch_start(integer num_detected){
-        showMenu(llDetectedKey(0));
-        if(touchSound!=""){
-            llPlaySound(touchSound, 1);
-        }
+        triggerFeature("TOUCH", (string)num_detected, llDetectedKey(0));
         //string json="[9,\"<1,1,1>\",false,{\"A\":8,\"Z\":9}]";
         //llJsonSetValue(json, ["test1"], "testv1");
         //llJsonSetValue(json, ["test2"], "testv2");
@@ -759,6 +813,7 @@ default{
                     else if(menuText=="Unsit"){
                         setLock(FALSE, NULL_KEY, FALSE);
                         llUnSit(llAvatarOnSitTarget());
+                        captureByUser=NULL_KEY;
                         llSleep(3);
                     }
                     else if(menuText=="AutoLock"){
@@ -779,6 +834,7 @@ default{
                     key buUser=llList2Key(sensorUserList, ((integer)(buIndex-1)));
                     if(buUser!=NULL_KEY){
                         llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.CAPTURE|"+(string)buUser+"|1", user);
+                        captureByUser=user;
                     }
                     sensorUserList=[];
                 }
@@ -790,6 +846,37 @@ default{
                 curMenuUser=NULL_KEY;
                 timerFlag=0;
                 llSetTimerEvent(0);
+            }
+        }
+        else if(num==RLV_MSG_NUM){
+            list rlvCmdList=strSplit(str, "|");
+            string rlvCmdStr=llList2String(rlvCmdList, 0);
+            string rlvCmdName=llList2String(rlvCmdList, 1);
+            string rlvCmdText=llList2String(rlvCmdList, 2);
+            list rlvCmdData=strSplit(llList2String(rlvCmdList, 2), ";");
+
+            if(rlvCmdStr=="RLV.EXEC"){
+                if(rlvCmdName=="RLV.GET.LOCK" || rlvCmdName=="RLV.LOCK"){
+                    isLocked=llList2Integer(rlvCmdData, 0);
+                    lockUser=llList2Key(rlvCmdData, 1);
+                    if(isLocked){
+                        lockTime=llGetUnixTime();
+                        llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.RUN.TEMP|detach=n", NULL_KEY);
+                    }else{
+                        lockTime=0;
+                        llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.RUN.TEMP|detach=y", NULL_KEY);
+                    }
+                    // llMessageLinked(LINK_SET, STRUGGLE_MSG_NUM, "STRUGGLE.GET.READY", NULL_KEY);
+                }
+            }
+            if(rlvCmdStr=="RLV.LOAD.NOTECARD"){
+                RLV_READY=(integer)rlvCmdText; // 处理RLV读取记事卡的逻辑，读取完成后不再重新读取
+                llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.GET.LOCK", NULL_KEY);
+            }
+        }
+        else if(num==RENAMER_MSG_NUM){
+            if(includes(str, "RENAMER.LOAD.NOTECARD")){
+                RENAMER_READY=TRUE;
             }
         }
         else if(num==ACCESS_MSG_NUM){
@@ -821,33 +908,7 @@ default{
                     setLock(FALSE, NULL_KEY, FALSE);
                 }
             }else if(accessCmdStr=="ACCESS.LOAD.NOTECARD"){
-                accessInited=TRUE;
-                llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.GET.LOCK", NULL_KEY);
-            }
-        }
-        else if(num==RLV_MSG_NUM){
-            list rlvCmdList=strSplit(str, "|");
-            string rlvCmdStr=llList2String(rlvCmdList, 0);
-            string rlvCmdName=llList2String(rlvCmdList, 1);
-            string rlvCmdText=llList2String(rlvCmdList, 2);
-            list rlvCmdData=strSplit(llList2String(rlvCmdList, 2), ";");
-
-            if(rlvCmdStr=="RLV.EXEC"){
-                if(rlvCmdName=="RLV.GET.LOCK" || rlvCmdName=="RLV.LOCK"){
-                    isLocked=llList2Integer(rlvCmdData, 0);
-                    lockUser=llList2Key(rlvCmdData, 1);
-                    if(isLocked){
-                        lockTime=llGetUnixTime();
-                        llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.RUN.TEMP|detach=n", NULL_KEY);
-                    }else{
-                        lockTime=0;
-                        llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.RUN.TEMP|detach=y", NULL_KEY);
-                    }
-                    llMessageLinked(LINK_SET, STRUGGLE_MSG_NUM, "STRUGGLE.GET.READY", NULL_KEY);
-                }
-            }
-            if(rlvCmdStr=="RLV.LOAD.NOTECARD"){
-                rlvInited=(integer)rlvCmdText; // 处理RLV读取记事卡的逻辑，读取完成后不再重新读取
+                ACCESS_READY=TRUE;
                 llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.GET.LOCK", NULL_KEY);
             }
         }
@@ -863,7 +924,10 @@ default{
         }
         else if(num==TIMER_MSG_NUM){
             // 计时器功能监听
-            if (includes(str, "TIMER.TIMEOUT")) { // 接收计时器系统回调
+            if(includes(str, "TIMER.READY")){
+                TIMER_READY=TRUE;
+            }
+            else if (includes(str, "TIMER.TIMEOUT")) { // 接收计时器系统回调
                 timeoutRunning=FALSE;
                 if(isLocked){
                     setLock(FALSE, NULL_KEY, FALSE); // 计时结束时，解锁
@@ -876,10 +940,23 @@ default{
                 timeoutRunning=FALSE;
             }
         }
-        else if(num==STRUGGLE_MSG_NUM){
-            if(includes(str, "STRUGGLE.READY")){
-                allowStruggle=TRUE;
+        else if(num==LEASH_MSG_NUM){
+            if(includes(str, "LEASH.LOAD.NOTECARD")){
+                LEASH_READY=TRUE;
             }
+        }
+        else if(num==ANIM_MSG_NUM){
+            if(includes(str, "ANIM.LOAD.NOTECARD")){
+                ANIM_READY=TRUE;
+            }
+        }
+        else if(num==STRUGGLE_MSG_NUM){
+            if(includes(str, "STRUGGLE.LOAD.NOTECARD")){
+                STRUGGLE_READY=TRUE;
+            }
+            // if(includes(str, "STRUGGLE.READY")){
+            //     STRUGGLE_READY=TRUE;
+            // }
             // 挣扎功能监听
             if (includes(str, "STRUGGLE.APPLY.SUCCESS")) { // 接收挣扎系统回调
                 if(isLocked){

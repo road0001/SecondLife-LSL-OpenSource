@@ -59,6 +59,9 @@ Author: JMRY
 Description: A better leash control system, use link_message to operate leashes.
 
 ***更新记录***
+- 1.1.8 20260310
+    - 加入获取初始化完成的指令。
+
 - 1.1.7 20260301
     - 优化初始化逻辑。
 
@@ -951,7 +954,12 @@ default{
                     /*
                     更改配置：LEASH.GET | ConfigName
                     */
-                    result=getConfig(msgName);
+                    if(headerExt==""){
+                        result=getConfig(msgName);
+                    }
+                    else if(headerExt=="READY"){
+                        llMessageLinked(LINK_THIS, LEASH_MSG_NUM, "LEASH.READY", NULL_KEY);
+                    }
                 }
                 else if(headerSub=="TO"){
                     /*

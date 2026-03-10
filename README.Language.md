@@ -16,6 +16,19 @@
 - 为了方便阅读，下面的语言指令和回调中的分隔符【|】、【;】、【&&】两边都添加了空格，实际执行时并不会添加此空格。
 	- 虽然语言系统能自动处理分割符两边的空格，但仍然不建议在拼接时加空格。
 
+
+### 初始化语言
+#### LAN.INIT
+#### LANGUAGE.INIT
+- 初始化语言系统。当脚本存在且初始化完成时，回调初始化状态。
+```lsl
+LAN.INIT
+LANGUAGE.INIT
+// 回调：
+LANGUAGE.EXEC | LAN.INIT | 1
+LANGUAGE.EXEC | LANGUAGE.INIT | 1
+```
+
 ### 读取（更改）语言
 #### LANGUAGE.CHANGE
 #### LANGUAGE.LOAD

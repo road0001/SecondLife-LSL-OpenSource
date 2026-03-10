@@ -81,6 +81,15 @@ ANIM.GET.PLAYING.FILE
 ANIM.EXEC | ANIM.GET.PLAYING.FILE | AnimFile1
 ```
 
+### 获取就绪状态
+#### ANIM.GET.READY
+- 获取就绪状态。当脚本存在且初始化完成时，回调自己的就绪状态。
+```lsl
+ANIM.GET.READY
+// 回调：
+ANIM.READY
+```
+
 ### 开始播放动画
 #### ANIM.PLAY
 - 开始播放动画。

@@ -14,6 +14,9 @@ Author: JMRY
 Description: A better access permission control system, use link_message to operate permissions.
 
 ***更新记录***
+- 1.0.21 20260310
+    - 加入获取初始化完成的指令。
+
 - 1.0.20 20260228
     - 优化菜单用语。
 
@@ -885,6 +888,9 @@ default{
                             accessMsgName=(string)user;
                         }
                         result=(string)getAccess((key)accessMsgName);
+                    }
+                    else if(accessMsgExt=="READY"){
+                        llMessageLinked(LINK_THIS, ACCESS_MSG_NUM, "ACCESS.READY", NULL_KEY);
                     }
                     else if(accessMsgExt=="OWNER"){
                         result=list2Data(ownerList);
