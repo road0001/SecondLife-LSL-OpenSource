@@ -193,6 +193,9 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.1.5 20260313
+    - 优化REZ模式下，权限错误的bug。
+
 - 1.1.4 20260311
     - 加入设置菜单。
     - 加入APP菜单。
@@ -372,34 +375,51 @@ integer applyLanguage(){
 }
 
 integer allowOperate(key user){
+    // 先判断禁止操作的情况，锁定状态，计时器状态，触摸者
+    // 穿戴模式
+    if(REZ_MODE==FALSE){
+        if(
+            isLocked==TRUE /*锁定状态*/ &&
+            timeoutRunning==TRUE /*倒计时状态*/ &&
+            user==llGetOwner() /*自己触摸*/
+        ){
+            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You're locked by %1% and timer is running, not allow to operate it!%%;"+userInfo(lockUser), user);
+            // llRegionSayTo(user, 0, getLanguageVar("You're locked by %1% and timer is running, not allow to operate it!%%;"+userInfo(lockUser)));
+            return FALSE;
+        }
+        else if(
+            isLocked==TRUE /*锁定状态*/ && 
+            lockUser!=llGetOwner() /*非自锁*/ && 
+            user==llGetOwner() /*自己触摸*/
+        ){
+            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You're locked by %1% and not allow to operate it!%%;"+userInfo(lockUser), user);
+            // llRegionSayTo(user, 0, getLanguageVar("You're locked by %1% and not allow to operate it!%%;"+userInfo(lockUser)));
+            return -1; // 为了让Escape功能有效，因此返回-1而不是FALSE
+        }
+    }
+    // REZ模式
+    else if(REZ_MODE==TRUE){
+        if(
+            isLocked==TRUE /*锁定状态*/ && 
+            timeoutRunning==TRUE /*倒计时状态*/ &&
+            user==VICTIM_UUID /*被困者触摸*/
+        ){
+            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You're locked by %1% and timer is running, not allow to operate it!%%;"+userInfo(lockUser), user);
+            // llRegionSayTo(user, 0, getLanguageVar("You're locked and not allow to operate it!%%;"+userInfo(lockUser)));
+            return FALSE;
+        }
+        else if(
+            isLocked==TRUE /*锁定状态*/ && 
+            // lockUser!=VICTIM_UUID /*非自锁*/ && // REZ模式下，自锁也不允许解锁
+            user==VICTIM_UUID /*被困者触摸*/
+        ){
+            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You're locked by %1% and not allow to operate it!%%;"+userInfo(lockUser), user);
+            // llRegionSayTo(user, 0, getLanguageVar("You're locked and not allow to operate it!%%;"+userInfo(lockUser)));
+            return -1; // 为了让Escape功能有效，因此返回-1而不是FALSE
+        }
+    }
+    // 再判断授权关系，主人、信任、黑名单、公开、群组
     if(
-        isLocked==TRUE /*锁定状态*/ &&
-        timeoutRunning==TRUE /*倒计时状态*/ &&
-        (user==llGetOwner() /*自己触摸*/ || user==VICTIM_UUID)
-    ){
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You're locked by %1% and timer is running, not allow to operate it!%%;"+userInfo(lockUser), user);
-        // llRegionSayTo(user, 0, getLanguageVar("You're locked by %1% and timer is running, not allow to operate it!%%;"+userInfo(lockUser)));
-        return FALSE;
-    }
-    else if(
-        isLocked==TRUE /*锁定状态*/ && 
-        lockUser!=llGetOwner() /*非自锁*/ && 
-        user==llGetOwner() /*自己触摸*/
-    ){
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You're locked by %1% and not allow to operate it!%%;"+userInfo(lockUser), user);
-        // llRegionSayTo(user, 0, getLanguageVar("You're locked by %1% and not allow to operate it!%%;"+userInfo(lockUser)));
-        return -1; // 为了让Escape功能有效，因此返回-1而不是FALSE
-    }
-    else if(
-        isLocked==TRUE /*锁定状态*/ && 
-        REZ_MODE==TRUE /*REZ模式*/ &&
-        user==VICTIM_UUID /*自己触摸*/
-    ){
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You're locked and not allow to operate it!%%;"+userInfo(lockUser), user);
-        // llRegionSayTo(user, 0, getLanguageVar("You're locked and not allow to operate it!%%;"+userInfo(lockUser)));
-        return -1; // 为了让Escape功能有效，因此返回-1而不是FALSE
-    }
-    else if(
         user!=llGetOwner() /*非自己触摸*/ && 
         !checkRelationship(user, "owner") /*非主人*/ && 
         !checkRelationship(user, "trust") /*非信任*/ && 
@@ -412,7 +432,8 @@ integer allowOperate(key user){
             // llRegionSayTo(user, 0, getLanguageVar("This %1% is locked by %2%, you don't have permission to operate it!%%;"+llGetObjectName()+";"+userInfo(lockUser)));
         }
         return FALSE;
-    }else{
+    }
+    else{
         return TRUE;
     }
 }
@@ -459,7 +480,7 @@ integer setLock(integer lock, key user, integer isShowMenu){
         if(tempLockTime>0){
             usedTime=getLanguageVar("Total locked time: %1%%%;"+getTimeDistStr(tempLockTime, llGetUnixTime()));
         }
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You're %1% by %2%. %3%%%;"+lockedStatus+";"+userInfo(user)+";"+usedTime, llGetOwner());
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You're %1% by %2%. %3%%%;"+lockedStatus+";"+userInfo(user)+";"+usedTime, VICTIM_UUID);
         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You %1% %2%'s %3%. %4%%%;"+lockedStatus+";"+userInfo(llGetOwner())+";"+llGetObjectName()+";"+usedTime, user);
 
         // llRegionSayTo(llGetOwner(), 0, getLanguageVar("You're %1% by %2%. %3%%%;"+lockedStatus+";"+userInfo(user)+";"+usedTime));

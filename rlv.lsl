@@ -65,6 +65,9 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 2.0.17 20260313
+    - 优化RLV限制在开关时的输出信息。
+
 - 2.0.16 20260311
     - 优化记事卡读取速度。
 
@@ -1090,7 +1093,12 @@ default{
                         onOff="ON";
                     }
                     resultList+=[applyResult];
-                    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your %1% - %2% restrictions is set to %3%.%%;"+curRlvSubMenu+";"+msgSub+";"+onOff, user);
+                    if(VICTIM_UUID==NULL_KEY){
+                        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Your %1% - %2% restrictions is set to %3%.%%;"+curRlvSubMenu+";"+msgSub+";"+onOff, user);
+                    }else{
+                        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|%4%'s %1% - %2% restrictions is set to %3%.%%;"+curRlvSubMenu+";"+msgSub+";"+onOff+";"+userInfo(VICTIM_UUID), user);
+                        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Your %1% - %2% restrictions is set to %3%.%%;"+curRlvSubMenu+";"+msgSub+";"+onOff, VICTIM_UUID);
+                    }
                     showRLVSubMenu(rlvParentMenuName, curRlvSubMenu, user);
                 }
             }

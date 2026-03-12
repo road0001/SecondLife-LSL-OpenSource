@@ -5,6 +5,7 @@ initConfig(){
     confusionReplaceEn=["f", "h", "m", "n"];
     confusionReplaceCn=["咕", "呜", "唔", "姆"];
     renamerConfusion="None"; // None, Loose, Middle, Strict, Muffle
+    renamerConfusionMuffleText="";
     renamerConfusionOOC=TRUE;
     allowHive=FALSE;
     renamerHive=FALSE;
@@ -19,6 +20,9 @@ Author: JMRY
 Description: A better RLV Renamer management system, use link_message to operate Renamer restraints.
 
 ***更新记录***
+- 1.1.4 20260313
+    - 加入消音时自动说的文字。
+
 - 1.1.3 20260311
     - 优化记事卡读取速度。
     - 修复Renamer读取记事卡回调错误的bug。
@@ -307,6 +311,7 @@ list confusionReplaceCn=[];
 string objectName=":";
 string renamerName="";
 string renamerConfusion="";
+string renamerConfusionMuffleText="";
 integer renamerConfusionOOC=TRUE;
 float renamerConfusionProb=0.00;
 integer renamerHive=FALSE;
@@ -384,6 +389,18 @@ integer renamerSay(string name, string msg, integer type) {
             }
         }
     }else if(renamerConfusionProb>=1.0 && renamerHive==FALSE){
+        if(renamerConfusionMuffleText!=""){
+            if(type==0){
+                llSay(0,name+": "+renamerConfusionMuffleText);
+            }else if(type==1){
+                llWhisper(0,name+": "+renamerConfusionMuffleText);
+            }else if(type==2){
+                llShout(0,name+": "+renamerConfusionMuffleText);
+            }else if(type==3){
+                llRegionSay(0, name+": "+renamerConfusionMuffleText);
+            }
+            
+        }
         return FALSE;
     }
 
@@ -529,7 +546,8 @@ showRenamerConfusionMenu(string parent, key user){
         "["+(string)(renamerConfusion=="Strict")+"]Strict", 
         "["+(string)(renamerConfusion=="Muffle")+"]Muffle",
         "["+(string)(renamerConfusionOOC==TRUE)+"]OOC",
-        "["+(string)(renamerType==TRUE)+"]Whisper"
+        "["+(string)(renamerType==TRUE)+"]Whisper",
+        "MuffleText"
     ];
     if(allowHive==TRUE){
         menuItems+=[
@@ -961,6 +979,11 @@ default{
                     else if(menuButton=="Whisper"){
                         renamerType=!renamerType;
                     }
+                    else if(menuButton=="MuffleText"){
+                        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.INPUT|RenamerMuffleTextInput|Input Muffle text, blank to off (Current: %1%):%%;"+(string)renamerConfusionMuffleText, user);
+                        // 后续交由RenamerMuffleTextInput处理
+                        return;
+                    }
                     else if(menuButton=="Hive"){
                         renamerHive=!renamerHive;
                     }
@@ -989,6 +1012,10 @@ default{
                         renamerVoice=menuButton;
                     }
                     showRenamerVoiceMenu(curRenamerSubMenu, user);
+                }
+                else if(menuName=="RenamerMuffleTextInput"){ // MENU.ACTIVE | RenamerMuffleTextInput | Text
+                    renamerConfusionMuffleText=menuButton;
+                    showRenamerConfusionMenu(curRenamerSubMenu, user);
                 }
                 else if(menuName=="RenamerChannelInput"){ // MENU.ACTIVE | RenamerVoiceInput | Name
                     if(menuButton!="" && (integer)menuButton!=0){
