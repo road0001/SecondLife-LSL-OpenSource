@@ -273,6 +273,9 @@ TODO:
 /*
 基础功能依赖函数
 */
+string userInfo(key user){
+    return "secondlife:///app/agent/"+(string)user+"/inspect";
+}
 integer includes(string src, string target){
     integer startPos = llSubStringIndex(src, target);
     if(~startPos){

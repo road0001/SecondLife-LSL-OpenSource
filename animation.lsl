@@ -8,7 +8,7 @@ initConfig(){
         if(i==0){
             auto=TRUE;
         }
-        animConfigList+=[animName, animName+";0;0", "Animation", auto];
+        animConfigList+=[animName, animName+";10;0", "Animation", auto];
     }
     autoReload=TRUE;
 }
@@ -19,6 +19,9 @@ Author: JMRY
 Description: A better animation control system, use link_message to operate animations.
 
 ***更新记录***
+- 1.1.10 20260317
+    - 优化默认加载动画时重播的逻辑。
+
 - 1.1.9 20260311
     - 优化记事卡读取速度。
 

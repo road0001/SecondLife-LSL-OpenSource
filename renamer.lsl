@@ -22,6 +22,7 @@ Description: A better RLV Renamer management system, use link_message to operate
 ***更新记录***
 - 1.1.4 20260313
     - 加入消音时自动说的文字。
+    - 修复消音文本名字错误的bug。
 
 - 1.1.3 20260311
     - 优化记事卡读取速度。
@@ -390,19 +391,14 @@ integer renamerSay(string name, string msg, integer type) {
         }
     }else if(renamerConfusionProb>=1.0 && renamerHive==FALSE){
         if(renamerConfusionMuffleText!=""){
-            if(type==0){
-                llSay(0,name+": "+renamerConfusionMuffleText);
-            }else if(type==1){
-                llWhisper(0,name+": "+renamerConfusionMuffleText);
-            }else if(type==2){
-                llShout(0,name+": "+renamerConfusionMuffleText);
-            }else if(type==3){
-                llRegionSay(0, name+": "+renamerConfusionMuffleText);
-            }
-            
+            msg=renamerConfusionMuffleText;
+            jump speak;
+        }else{
+            return FALSE;
         }
-        return FALSE;
     }
+
+    @speak;
 
     string oname = llGetObjectName();
 
@@ -446,7 +442,7 @@ integer renamerSay(string name, string msg, integer type) {
         renamerMsg+=" (( "+omsg+" ))";
     }
     
-    if(renamerConfusionProb<1.0){
+    if(renamerConfusionProb<1.0 || renamerConfusionMuffleText!=""){
         if(type==0){
             llSay(0,renamerMsg);
         }else if(type==1){
