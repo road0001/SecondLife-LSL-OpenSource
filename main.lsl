@@ -7,6 +7,7 @@ initMain(){
     lockSound="";
     unlockSound="";
     touchSound="";
+    soundVolume=1.0;
     // Init Config End
 
     RLV_READY=FALSE;
@@ -26,7 +27,7 @@ initMain(){
         RENAMER_MSG_NUM, "RENAMER.LOAD|main", 0,
         ACCESS_MSG_NUM, "ACCESS.LOAD|main", 0,
         LAN_MSG_NUM, "LANGUAGE.INIT", 0,
-        TIMER_MSG_NUM, "TIMER.GET.READY", 0,
+        TIMER_MSG_NUM, "TIMER.LOAD|main", 0,
         LEASH_MSG_NUM, "LEASH.LOAD|main", 0,
         ANIM_MSG_NUM, "ANIM.LOAD|main", 0,
         STRUGGLE_MSG_NUM, "STRUGGLE.LOAD|main", 0
@@ -71,7 +72,7 @@ triggerFeature(string menuName, string menuText, key user){
     else if(menuName=="TOUCH"){
         showMenu("mainMenu", llDetectedKey(0));
         if(touchSound!=""){
-            llPlaySound(touchSound, 1);
+            llPlaySound(touchSound, soundVolume);
         }
     }
     else if(menuName=="COLLISION"){
@@ -193,6 +194,10 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.1.6 20260319
+    - 加入音效的音量参数。
+    - 加入计时器读取记事卡功能。
+
 - 1.1.5 20260313
     - 优化REZ模式下，权限错误的bug。
 
@@ -444,6 +449,7 @@ key captureByUser=NULL_KEY;
 integer lockTime=0;
 string lockSound;
 string unlockSound;
+float soundVolume;
 integer setLock(integer lock, key user, integer isShowMenu){
     // if(!allowOperate(user)){
     //     return isLocked;
@@ -490,9 +496,9 @@ integer setLock(integer lock, key user, integer isShowMenu){
         showMenu("mainMenu", user); // 防止出现打开双重菜单的bug，无必要不showMenu，尤其在Access逃跑或RLV锁定变更时。
     }
     if(isLocked==TRUE && lockSound!=""){
-        llPlaySound(lockSound, 1);
+        llPlaySound(lockSound, soundVolume);
     }else if(unlockSound!=""){
-        llPlaySound(unlockSound, 1);
+        llPlaySound(unlockSound, soundVolume);
     }
     return isLocked;
 }
@@ -976,7 +982,7 @@ default{
         }
         else if(num==TIMER_MSG_NUM){
             // 计时器功能监听
-            if(includes(str, "TIMER.READY")){
+            if(includes(str, "TIMER.LOAD.NOTECARD")){
                 TIMER_READY=TRUE;
             }
             else if (includes(str, "TIMER.TIMEOUT")) { // 接收计时器系统回调

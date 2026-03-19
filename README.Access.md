@@ -239,7 +239,7 @@ ACCESS.EXEC | ACCESS.LOAD.LIST | access_a1; access_a2; access_a3; ...
 
 ### 读取Access记事卡
 #### ACCESS.LOAD
-- 从access_开头的记事卡中获取访问数据数据。
+- 从access_开头的记事卡中获取访问数据。
   - 名字中不需要带access_前缀，如记事卡为access_main，则只需传递main。
 - 执行后，将合并现有主人、信任和黑名单数据，并覆盖其余权限。
 ```lsl

@@ -1,3 +1,9 @@
+initConfig(){
+    timerType=TIMER_TYPE_REAL;
+    timerTextBool=TRUE;
+    timerTextColor=<1.0, 0.0, 0.0>;
+    timerTextAlpha=1.0;
+}
 /*CONFIG END*/
 /*
 Name: Timer
@@ -5,6 +11,10 @@ Author: JMRY
 Description: A better timer control system, use link_message to operate timers.
 
 ***更新记录***
+- 1.0.9 20260319
+    - 加入计时器初始化配置功能。
+    - 加入读取记事卡功能。
+
 - 1.0.8 20260311
     - 调整部分功能文本。
 
@@ -249,6 +259,13 @@ timerRunningEvent(){
     }
 }
 
+
+string notecardHeader="timer_";
+key readNotecardQuery=NULL_KEY;
+integer readNotecardLine=0;
+string readNotecardName="";
+string curNotecardName="";
+
 string timerMenuText="Timer";
 string timerMenuName="TimerMenu";
 string timerParentMenuName="";
@@ -298,6 +315,7 @@ integer LAN_MSG_NUM=1003;
 integer TIMER_MSG_NUM=1004;
 default{
     state_entry(){
+        initConfig();
         // llSetTimerEvent(1);
     }
     changed(integer change){
@@ -452,6 +470,46 @@ default{
                     setTimerRunning(FALSE);
                     result="1";
                 }
+                else if(timerMsgSub=="LOAD"){
+                    /*
+                    读取记事卡（将覆盖现有的Notecard数据）
+                    TIMER.LOAD | file1
+                    返回：
+                    TIMER.EXEC | TIMER.LOAD | 1
+                    */
+                    if(timerMsgExt==""){
+                        readNotecardLine=0;
+                        curNotecardName=timerMsgName;
+                        readNotecardName=notecardHeader+timerMsgName;
+                        if (llGetInventoryType(readNotecardName) == INVENTORY_NOTECARD) {
+                            llOwnerSay("Begin reading Timer settings: "+timerMsgName);
+                            readNotecardQuery=llGetNotecardLine(readNotecardName, readNotecardLine); // 通过给readNotecardQuery赋llGetNotecardLine的key，从而触发datasever事件
+                            // 后续功能交给下方datasever处理
+                            result=(string)TRUE;
+                        }else{
+                            llMessageLinked(LINK_SET, TIMER_MSG_NUM, "TIMER.LOAD.NOTECARD|"+timerMsgName+"|0", NULL_KEY); // Notecard成功读取记事卡后回调
+                            result=(string)FALSE;
+                        }
+                    }
+                    /*
+                    读取记事卡列表
+                    TIMER.LOAD.LIST
+                    返回：
+                    TIMER.EXEC | TIMER.LOAD.LIST | file1; file2; file3 ...
+                    */
+                    else if(timerMsgExt=="LIST"){
+                        list notecardList=[];
+                        integer count = llGetInventoryNumber(INVENTORY_NOTECARD);
+                        integer i;
+                        for (i=0; i<count; i++){
+                            string notecardName = llGetInventoryName(INVENTORY_NOTECARD, i);
+                            if(llGetSubString(notecardName, 0, 9)==notecardHeader){
+                                notecardList+=[llGetSubString(notecardName, 10, -1)];
+                            }
+                        }
+                        result=(string)list2Data(notecardList);
+                    }
+                }
                 else if(timerMsgSub=="MENU"){
                     /*
                     显示菜单
@@ -543,7 +601,44 @@ default{
         if(llGetListLength(resultList)>0){
             llMessageLinked(LINK_SET, TIMER_MSG_NUM, list2Bundle(resultList), user); // 处理完成后的回调
         }
+    }
+    dataserver(key query_id, string data){
+        if (query_id == readNotecardQuery) { // 通过readRLVNotecards触发读取记事卡事件，按行读取指定RLV（readRLVQuery）并设置相关数据。
+            while(TRUE){
+                string temp=llGetNotecardLineSync(readNotecardName, readNotecardLine);
+                if(temp!=NAK){
+                    data=temp;
+                }
+                if (data == EOF) {
+                    llOwnerSay("Finished reading Timer settings: "+curNotecardName);
+                    llMessageLinked(LINK_SET, TIMER_MSG_NUM, "TIMER.LOAD.NOTECARD|"+curNotecardName+"|1", NULL_KEY); // RLV成功读取记事卡后回调
+                    readNotecardQuery=NULL_KEY;
+                    jump end;
+                } else {
+                    /*
+                    configName=configValue
+                    */
+                    if(data!="" && llGetSubString(data,0,0)!="#"){
+                        list notecardStrSp=llParseStringKeepNulls(data, ["="], []);
+                        string notecardName=llList2String(notecardStrSp,0);
+                        string notecardData=llList2String(notecardStrSp,1);
 
-        
+                        if(notecardName=="timerType"){timerType=(integer)notecardData;}
+                        if(notecardName=="timerTextBool"){timerTextBool=(integer)notecardData;}
+                        if(notecardName=="timerTextColor"){timerTextColor=(vector)notecardData;}
+                        if(notecardName=="timerTextAlpha"){timerTextAlpha=(float)notecardData;}
+                    }
+
+                    // increment line count
+                    ++readNotecardLine;
+                    //request next line of notecard.
+                    if(temp==NAK){
+                        readNotecardQuery=llGetNotecardLine(readNotecardName, readNotecardLine);
+                        jump end;
+                    }
+                }
+            }
+            @end;
+        }
     }
 }

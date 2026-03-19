@@ -171,6 +171,29 @@ STRUGGLE.APPLY.SUCCESS
 STRUGGLE.MENU | 上级菜单名
 ```
 
+### 读取记事卡列表
+#### STRUGGLE.LOAD.LIST
+- 读取库存中struggle_开头的记事卡列表。
+```lsl
+STRUGGLE.LOAD.LIST
+// 回调：
+STRUGGLE.EXEC | STRUGGLE.LOAD.LIST | struggle_s1; struggle_s2; struggle_s3; ...
+```
+
+### 读取记事卡
+#### STRUGGLE.LOAD
+- 从struggle_开头的记事卡中获取配置数据。
+  - 名字中不需要带struggle_前缀，如记事卡为struggle_main，则只需传递main。
+```lsl
+STRUGGLE.LOAD | file1
+// 回调：
+STRUGGLE.EXEC | STRUGGLE.LOAD | 1
+// 读取记事卡成功后的回调
+STRUGGLE.LOAD.NOTECARD | file1 | 1
+// 记事卡不存在的回调
+STRUGGLE.LOAD.NOTECARD | file1 | 0
+```
+
 ## 挣扎状态通知
 - 当挣扎开始、停止、成功时，会发送状态通知。
 	- STRUGGLE.APPLY.BEGIN

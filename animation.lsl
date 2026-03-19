@@ -19,6 +19,9 @@ Author: JMRY
 Description: A better animation control system, use link_message to operate animations.
 
 ***更新记录***
+- 1.1.11 20260319
+    - 加入PLAY、PLAY.PARAMS、PLAY.FILE的参数为空时，播放之前正在播放的动画功能。
+
 - 1.1.10 20260317
     - 优化默认加载动画时重播的逻辑。
 
@@ -615,12 +618,18 @@ default{
                         /*
                         播放动画：ANIM.PLAY | AnimName1
                         */
+                        if(msgName==""){
+                            msgName=curPlayingAnimName;
+                        }
                         result=(string)playAnimationByName(msgName);
                     }
                     else if(headerExt=="PARAMS"){
                         /*
                         按参数播放动画：ANIM.PLAY.PARAMS | AnimParams1
                         */
+                        if(msgName==""){
+                            msgName=curPlayingAnimParams;
+                        }
                         result=(string)playAnimationByParams(msgName, "");
                     }
                     else if(headerExt=="FILE"){
@@ -628,6 +637,9 @@ default{
                         直接播放动画文件：ANIM.PLAY.FILE | AnimFileName1
                         */
                         curPlayingAnimParams="";
+                        if(msgName==""){
+                            msgName=curPlayingAnimFileName;
+                        }
                         result=(string)playAnimation(msgName, (integer)msgSub);
                     }
                 }

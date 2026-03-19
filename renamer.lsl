@@ -20,6 +20,10 @@ Author: JMRY
 Description: A better RLV Renamer management system, use link_message to operate Renamer restraints.
 
 ***更新记录***
+- 1.1.5 20260319
+    - 加入Renamer说话通知。
+    - 加入随机音效白名单功能。
+
 - 1.1.4 20260313
     - 加入消音时自动说的文字。
     - 修复消音文本名字错误的bug。
@@ -328,6 +332,33 @@ integer renamerSay(string name, string msg, integer type) {
         llTriggerSound(llList2String(voiceList, rand), renamerVolume); // 使用TriggerSound兼容hud时的音效可在世界播放。缺点：无法跟踪人物实时定位
     }
 
+    // Renamer name
+    string oname = llGetObjectName();
+    if(name==RENAMER_DISPLAY_NAME){
+        if(VICTIM_UUID!=NULL_KEY){
+            name=llGetDisplayName(VICTIM_UUID);
+        }else{
+            name=llGetDisplayName(llGetOwner());
+        }
+    }
+    else if(name==RENAMER_FULL_NAME){
+        if(VICTIM_UUID!=NULL_KEY){
+            name=userInfo(VICTIM_UUID);
+        }else{
+            name=userInfo(llGetOwner());
+        }
+    }
+    else if(name==RENAMER_USER_NAME){
+        if(VICTIM_UUID!=NULL_KEY){
+            name=llKey2Name(VICTIM_UUID);
+        }else{
+            name=llKey2Name(llGetOwner());
+        }
+    }
+    else if(name==RENAMER_OBJECT_NAME){
+        name=oname;
+    }
+
     // Renamer confusion
     if(renamerConfusion=="None"){
         renamerConfusionProb=0.00;
@@ -394,38 +425,12 @@ integer renamerSay(string name, string msg, integer type) {
             msg=renamerConfusionMuffleText;
             jump speak;
         }else{
+            llMessageLinked(LINK_SET, RENAMER_MSG_NUM, "RENAMER.SPEAK|"+(string)type+"|"+name+"||"+omsg, NULL_KEY);
             return FALSE;
         }
     }
 
     @speak;
-
-    string oname = llGetObjectName();
-
-    if(name==RENAMER_DISPLAY_NAME){
-        if(VICTIM_UUID!=NULL_KEY){
-            name=llGetDisplayName(VICTIM_UUID);
-        }else{
-            name=llGetDisplayName(llGetOwner());
-        }
-    }
-    else if(name==RENAMER_FULL_NAME){
-        if(VICTIM_UUID!=NULL_KEY){
-            name=userInfo(VICTIM_UUID);
-        }else{
-            name=userInfo(llGetOwner());
-        }
-    }
-    else if(name==RENAMER_USER_NAME){
-        if(VICTIM_UUID!=NULL_KEY){
-            name=llKey2Name(VICTIM_UUID);
-        }else{
-            name=llKey2Name(llGetOwner());
-        }
-    }
-    else if(name==RENAMER_OBJECT_NAME){
-        name=oname;
-    }
     
     llSetObjectName(objectName); // llSetObjectName不支持中文，因此将remaer名字拼接到字符串中来显示。
     string renamerMsg;
@@ -459,6 +464,7 @@ integer renamerSay(string name, string msg, integer type) {
         llRegionSay(renamerChannel, renamerOMsg);
     }
     llSetObjectName(oname);
+    llMessageLinked(LINK_SET, RENAMER_MSG_NUM, "RENAMER.SPEAK|"+(string)type+"|"+name+"|"+renamerMsg+"|"+omsg, NULL_KEY);
     return TRUE;
 }
 
@@ -955,7 +961,10 @@ default{
                         integer count = llGetInventoryNumber(INVENTORY_SOUND);
                         integer i;
                         for (i=0; i<count; i++){
-                            invVoiceList+=[llGetInventoryName(INVENTORY_SOUND, i)];
+                            string curSound=llGetInventoryName(INVENTORY_SOUND, i);
+                            if(includes(curSound, renamerHeader)){
+                                invVoiceList+=[curSound];
+                            }
                         }
                         renamerVoice=llDumpList2String(invVoiceList, ",");
                     }

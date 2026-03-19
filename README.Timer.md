@@ -196,6 +196,29 @@ TIMER.EXEC | TIMER.CLEAR | 1
 TIMER.MENU | 上级菜单名
 ```
 
+### 读取记事卡列表
+#### TIMER.LOAD.LIST
+- 读取库存中timer_开头的记事卡列表。
+```lsl
+TIMER.LOAD.LIST
+// 回调：
+TIMER.EXEC | TIMER.LOAD.LIST | timer_t1; timer_t2; timer_t3; ...
+```
+
+### 读取记事卡
+#### TIMER.LOAD
+- 从timer_开头的记事卡中获取配置数据。
+  - 名字中不需要带timer_前缀，如记事卡为timer_main，则只需传递main。
+```lsl
+TIMER.LOAD | file1
+// 回调：
+TIMER.EXEC | TIMER.LOAD | 1
+// 读取记事卡成功后的回调
+TIMER.LOAD.NOTECARD | file1 | 1
+// 记事卡不存在的回调
+TIMER.LOAD.NOTECARD | file1 | 0
+```
+
 ## 计时器状态通知
 - 当计时器正在运行、计时结束、状态变更时，会发送状态通知。
 - 当计时器正在计时时，每秒钟都会发送一次当前状态，用于其他脚本监测计时器运行状态。
@@ -212,4 +235,20 @@ TIMER.MENU | 上级菜单名
 TIMER.SET | 60 && TIMER.RUN
 // 回调：
 TIMER.EXEC | TIMER.SET | 60 && TIMER.EXEC | TIMER.RUN | 1
+```
+
+## 配置文件格式
+- 配置文件名为timer_开头的记事卡。
+- 配置文件格式为【配置名=配置值】这种形式，每行一条。
+### 示例
+timer_main
+```lsl
+# 计时器类型（0=限时时间，1=在线时间）
+timerType=1
+# 显示倒计时文字
+timerTextBool=1
+# 倒计时文字颜色
+timerTextColor=<1.0, 0.0, 0.0>
+# 倒计时文字透明度
+timerTextAlpha=1.0
 ```
