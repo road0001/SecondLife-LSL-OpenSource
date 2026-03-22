@@ -129,7 +129,7 @@ Description: A better RLV management system, use link_message to operate RLV res
     - 优化互斥组禁用的逻辑。
 
 - 2.0 20260131
-    -重构RLV脚本。
+    - 重构RLV脚本。
 
 - 1.1.12 20260130
     - 优化RLV组的执行性能。

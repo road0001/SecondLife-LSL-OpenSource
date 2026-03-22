@@ -16,6 +16,9 @@ Author: JMRY
 Description: A struggle system, use link_message to operate struggle things.
 
 ***更新记录***
+- 1.0.4 20260322
+    - 适配文本显示脚本。
+
 - 1.0.3 20260311
     - 优化记事卡读取速度。
 
@@ -198,6 +201,7 @@ stopStruggleAnim(){
     }
 }
 
+integer TEXT_READY=FALSE;
 applyStruggleText(integer bool){
     if(struggleText==""){
         return;
@@ -219,9 +223,17 @@ applyStruggleText(integer bool){
                 struggleDisplayText+=getLanguageBool("[0]");
             }
         }
-        llSetText(struggleDisplayText, struggleTextColor, struggleTextAlpha);
+        if(TEXT_READY==TRUE){
+            llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.SET|Struggle|"+struggleDisplayText+"1|Timer", NULL_KEY);
+        }else{
+            llSetText(struggleDisplayText, struggleTextColor, struggleTextAlpha);
+        }
     }else{
-        llSetText("", ZERO_VECTOR, 0.0);
+        if(TEXT_READY==TRUE){
+            llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.REM|Struggle", NULL_KEY);
+        }else{
+            llSetText("", ZERO_VECTOR, 0.0);
+        }
     }
 }
 
@@ -249,6 +261,7 @@ string curNotecardName="";
 integer MENU_MSG_NUM=1000;
 integer STRUGGLE_MSG_NUM=1007;
 integer LAN_MSG_NUM=1003;
+integer TEXT_READY=1008;
 
 integer struggleLastKey=-1;
 integer struggleTimerCount=0;
@@ -261,6 +274,7 @@ default{
         }
         strugglePlayer=llGetOwner();
         applyStruggleText(FALSE);
+        llMessageLinked(LINK_THIS, TEXT_MSG_NUM, "TEXT.GET.READY", NULL_KEY);
         llMessageLinked(LINK_THIS, STRUGGLE_MSG_NUM, "STRUGGLE.READY", NULL_KEY);
     }
     changed(integer change){
@@ -373,7 +387,7 @@ default{
         struggleTimerCount++;
     }
     link_message(integer sender_num, integer num, string msg, key user){
-        if(num!=STRUGGLE_MSG_NUM && num!=MENU_MSG_NUM && num!=LAN_MSG_NUM){
+        if(num!=STRUGGLE_MSG_NUM && num!=MENU_MSG_NUM && num!=LAN_MSG_NUM && num!=TEXT_MSG_NUM){
             return;
         }
         list msgList=strSplit(msg, "|");
@@ -581,6 +595,9 @@ default{
             if(includes(msg, "INIT")){ // 接收语言系统INIT回调，并启用语言功能
                 hasLanguage=TRUE;
             }
+        }
+        else if(headerMain=="TEXT" &&headerSub=="READY"){
+            TEXT_READY=TRUE;
         }
     }
     dataserver(key query_id, string data){

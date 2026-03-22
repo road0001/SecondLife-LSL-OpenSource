@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better language management system, use link_message to operate languages.
 
 ***更新记录***
+- 1.0.8 20260322
+    - 优化代码结构和函数调用。
+
 - 1.0.7 20260311
     - 优化性能和内存占用。
     - 优化记事卡读取速度。
@@ -150,13 +153,13 @@ string getLanguageKey(string v){
 
 string getLanguageVar(string k){ // 拼接字符串方法，用于首尾拼接变量等内容。格式：Text text %1 %2.%%var1;var2
     list ksp=llParseStringKeepNulls(k, ["%%;"], [""]); // ["Text text %1 %2.", "var1;var2"]
-    string text=getLanguage(trim(llList2String(ksp, 0)));
-    list var=data2List(llList2String(ksp, 1)); // ["var1", "var2"]
+    string text=getLanguage(llStringTrim(llList2String(ksp, 0), STRING_TRIM));
+    list var=strSplit(llList2String(ksp, 1), ";"); // ["var1", "var2"]
     integer i;
     for(i=0; i<llGetListLength(var); i++){
         integer vi=i+1;
         text=llReplaceSubString(text, "%"+(string)vi+"%", getLanguage(llList2String(var, i)), 0);
-        text=llReplaceSubString(text, "%b"+(string)vi+"%", getLanguageBool(llList2String(var, i)), 0);
+        text=llReplaceSubString(text, "%b"+(string)vi+"%", getLanguageBool("["+llList2String(var, i)+"]"), 0);
     }
     return text;
 }
@@ -165,7 +168,7 @@ string defaultBoolStrList="◇|◆";
 string boolStrList=defaultBoolStrList;
 string getLanguageBool(string k){ // 拼接字符串方法之开关，根据传入字符串来判断开关并显示。格式：[0/1]BUTTON_NAME，返回：◇ 按钮名 / ◆ 按钮名
     //return getLanguageVar(k, LVPOS_BEFORE, llList2String(boolStrList,bool));
-    list boolList=msg2List(boolStrList);
+    list boolList=strSplit(boolStrList, "|");
     integer bool=FALSE;
     if(includes(k, "[1]")){
         bool=TRUE;

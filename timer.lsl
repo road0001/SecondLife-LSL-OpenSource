@@ -11,6 +11,9 @@ Author: JMRY
 Description: A better timer control system, use link_message to operate timers.
 
 ***更新记录***
+- 1.0.10 20260322
+    - 适配文本显示脚本。
+
 - 1.0.9 20260319
     - 加入计时器初始化配置功能。
     - 加入读取记事卡功能。
@@ -190,6 +193,7 @@ integer addTimer(integer second){
     return timerLength;
 }
 
+integer TEXT_READY=FALSE;
 integer lockRLVConnect=TRUE;
 integer timerRunning=FALSE;
 string timerStatus="";
@@ -217,7 +221,11 @@ integer setTimerRunning(integer bool){ // 0=Pause, 1=Running, 2=Reset and Runnin
     }else{
         timerStatus="STOP";
         llSetTimerEvent(0);
-        llSetText("",ZERO_VECTOR,0);
+        if(TEXT_READY==TRUE){
+            llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.REM|Timer", NULL_KEY);
+        }else{
+            llSetText("",ZERO_VECTOR,0);
+        }
     }
     llMessageLinked(LINK_SET, TIMER_MSG_NUM, "TIMER.SETRUNNING|"+(string)timerType+"|"+(string)timerRunning+"|"+(string)timerLength, NULL_KEY); // 发送状态变化消息
     return timerRunning;
@@ -236,10 +244,14 @@ timerRunningEvent(){
         }else if(timerType==TIMER_TYPE_ONLINE){ // 在线时间
             timerCurrent++;
         }
-        if(timerTextBool==TRUE){
-            llSetText(formatTime(timerLength - timerCurrent), timerTextColor, timerTextAlpha);
+        if(TEXT_READY==TRUE){
+            llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.SET|Timer|"+formatTime(timerLength - timerCurrent)+"|"+(string)timerTextBool+"|Locked", NULL_KEY);
         }else{
-            llSetText("",ZERO_VECTOR,0);
+            if(timerTextBool==TRUE){
+                llSetText(formatTime(timerLength - timerCurrent), timerTextColor, timerTextAlpha);
+            }else{
+                llSetText("",ZERO_VECTOR,0);
+            }
         }
         if(timerCurrent>=timerLength){
             llMessageLinked(LINK_SET, TIMER_MSG_NUM, "TIMER.TIMEOUT|"+(string)timerType+"|"+(string)timerCurrent+"|"+(string)timerLength, NULL_KEY); // 发送计时结束消息
@@ -252,7 +264,11 @@ timerRunningEvent(){
             timerStatus="RUNNING";
         }
     }else{
-        llSetText("",ZERO_VECTOR,0);
+        if(TEXT_READY==TRUE){
+            llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.REM|Timer", NULL_KEY);
+        }else{
+            llSetText("",ZERO_VECTOR,0);
+        }
         if(timerType==TIMER_TYPE_REAL && timerStamp>0){
             timerStamp++; // Sync timestamp for pause
         }
@@ -300,7 +316,7 @@ showTimerMenu(string parent, key user){
     ];
 
     list timerMenuList=[
-        "["+(string)timerTextBool+"]ShowText", "BACK", "Clear",
+        "["+(string)timerTextBool+"]ShowTimer", "BACK", "Clear",
         tType, "["+(string)timerRunning+"]StartTimer", "Restart",
         "+5 Minute", "+30 Minute", "+1 Hour",
         "-5 Minute", "-30 Minute", "-1 Hour"
@@ -313,6 +329,7 @@ integer MENU_MSG_NUM=1000;
 integer RLV_MSG_NUM=1001;
 integer LAN_MSG_NUM=1003;
 integer TIMER_MSG_NUM=1004;
+integer TEXT_MSG_NUM=1008;
 default{
     state_entry(){
         initConfig();
@@ -333,7 +350,7 @@ default{
         timerRunningEvent();
     }
     link_message(integer sender_num, integer num, string msg, key user){
-        if(num!=TIMER_MSG_NUM && num!=MENU_MSG_NUM && num!=LAN_MSG_NUM && num!=RLV_MSG_NUM){
+        if(num!=TIMER_MSG_NUM && num!=MENU_MSG_NUM && num!=LAN_MSG_NUM && num!=RLV_MSG_NUM && num!=TEXT_MSG_NUM){
             return;
         }
 
@@ -553,7 +570,7 @@ default{
                     else if(menuButton=="Restart"){
                         setTimerRunning(2);
                     }
-                    else if(menuButton=="ShowText"){
+                    else if(menuButton=="ShowTimer"){
                         if(timerTextBool==TRUE){
                             timerTextBool=FALSE;
                         }else{
@@ -595,6 +612,12 @@ default{
                 // 语言功能监听
                 if (includes(str, "LANGUAGE.EXEC") && includes(str, "INIT")) { // 接收语言系统INIT回调，并启用语言功能
                     hasLanguage=TRUE;
+                }
+            }
+            else if(num==TEXT_MSG_NUM){
+                // 语言功能监听
+                if (includes(str, "TEXT.READY")) { // 接收语言系统INIT回调，并启用语言功能
+                    TEXT_READY=TRUE;
                 }
             }
         }

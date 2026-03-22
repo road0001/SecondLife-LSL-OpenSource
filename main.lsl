@@ -4,6 +4,7 @@ initMain(){
     sitRot=ZERO_ROTATION;
     sitAutoLock=FALSE;
     sitAutoTrap=FALSE;
+    showText=TRUE;
     lockSound="";
     unlockSound="";
     touchSound="";
@@ -30,8 +31,8 @@ initMain(){
         TIMER_MSG_NUM, "TIMER.LOAD|main", 0,
         LEASH_MSG_NUM, "LEASH.LOAD|main", 0,
         ANIM_MSG_NUM, "ANIM.LOAD|main", 0,
-        STRUGGLE_MSG_NUM, "STRUGGLE.LOAD|main", 0
-        // STRUGGLE_MSG_NUM, "STRUGGLE.GET.READY", 0
+        STRUGGLE_MSG_NUM, "STRUGGLE.LOAD|main", 0,
+        TEXT_MSG_NUM, "TEXT.GET.READY", 0
     ];
     integer i;
     for(i=0; i<llGetListLength(initMessageLinkChain); i+=3){
@@ -79,6 +80,37 @@ triggerFeature(string menuName, string menuText, key user){
         if(REZ_MODE==TRUE && sitAutoTrap==TRUE && VICTIM_UUID == NULL_KEY){
             key victim=llDetectedKey(0);
             llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.CAPTURE|"+(string)victim+"|1", NULL_KEY);
+        }
+    }
+    else if(menuName=="CHANGE"){
+        if((integer)menuText & CHANGED_INVENTORY){
+            initMain();
+        }
+        if ((integer)menuText & CHANGED_LINK) {
+            if (user != NULL_KEY){
+                VICTIM_UUID=user;
+                if(sitAutoLock==TRUE){
+                    if(captureByUser!=NULL_KEY){
+                        setLock(TRUE, captureByUser, FALSE);
+                        captureByUser=NULL_KEY;
+                    }else{
+                        setLock(TRUE, llList2Key(owner, 0), FALSE);
+                    }
+                }
+                if(showText==TRUE && VICTIM_UUID!=NULL_KEY){
+                    llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.SET|Victim|"+llGetDisplayName(VICTIM_UUID)+" ("+llGetUsername(VICTIM_UUID)+")|"+(string)showText+"|TOP", NULL_KEY);
+                    llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.SET|Locked|%b1%Locked%%;"+(string)isLocked+"|1|Victim", NULL_KEY);
+                    // llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.SET|Victim|%1%\n%b2%Locked%%;"+llGetDisplayName(VICTIM_UUID)+" ("+llGetUsername(VICTIM_UUID)+");"+(string)isLocked+"|1", NULL_KEY);
+                }else{
+                    llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.REM|Victim", NULL_KEY);
+                    llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.REM|Locked", NULL_KEY);
+                }
+            }else{
+                VICTIM_UUID=NULL_KEY;
+                setLock(FALSE, NULL_KEY, FALSE);
+                llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.REM|Victim", NULL_KEY);
+                llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.REM|Locked", NULL_KEY);
+            }
         }
     }
     else if(menuName=="mainMenu"){
@@ -181,7 +213,7 @@ list getMenuFeature(string menuName, key user){
             menuList+=["Language"];
         }
         if(REZ_MODE==TRUE && RLV_READY){
-            menuList+=["["+(string)sitAutoLock+"]AutoLock", "["+(string)sitAutoTrap+"]AutoTrap"];
+            menuList+=["["+(string)sitAutoLock+"]AutoLock", "["+(string)sitAutoTrap+"]AutoTrap", "["+(string)showText+"]ShowText"];
         }
     }
 
@@ -194,6 +226,10 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.1.7 20260321
+    - 加入REZ模式下的文字显示。
+    - 优化代码结构。
+
 - 1.1.6 20260319
     - 加入音效的音量参数。
     - 加入计时器读取记事卡功能。
@@ -415,7 +451,7 @@ integer allowOperate(key user){
         }
         else if(
             isLocked==TRUE /*锁定状态*/ && 
-            // lockUser!=VICTIM_UUID /*非自锁*/ && // REZ模式下，自锁也不允许解锁
+            lockUser!=VICTIM_UUID /*非自锁*/ && // REZ模式下，自锁也不允许解锁
             user==VICTIM_UUID /*被困者触摸*/
         ){
             llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You're locked by %1% and not allow to operate it!%%;"+userInfo(lockUser), user);
@@ -454,7 +490,7 @@ integer setLock(integer lock, key user, integer isShowMenu){
     // if(!allowOperate(user)){
     //     return isLocked;
     // }
-    if(REZ_MODE==TRUE && VICTIM_UUID==NULL_KEY){
+    if(REZ_MODE==TRUE && VICTIM_UUID==NULL_KEY && lock==TRUE){
         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|No victims to lock!", user);
         // llRegionSayTo(user, 0, getLanguageVar("No victims to lock!"));
         return FALSE;
@@ -499,6 +535,9 @@ integer setLock(integer lock, key user, integer isShowMenu){
         llPlaySound(lockSound, soundVolume);
     }else if(unlockSound!=""){
         llPlaySound(unlockSound, soundVolume);
+    }
+    if(REZ_MODE==TRUE && showText==TRUE){
+        llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.SET|Locked|%b1%Locked%%;"+(string)isLocked+"|1|Victim", NULL_KEY);
     }
     return isLocked;
 }
@@ -707,6 +746,7 @@ integer TIMER_MSG_NUM=1004;
 integer LEASH_MSG_NUM=1005;
 integer ANIM_MSG_NUM=1006;
 integer STRUGGLE_MSG_NUM=1007;
+integer TEXT_MSG_NUM=1008;
 
 integer RLV_READY=FALSE;
 integer RENAMER_READY=FALSE;
@@ -728,6 +768,7 @@ vector sitPos;
 rotation sitRot;
 integer sitAutoLock;
 integer sitAutoTrap;
+integer showText;
 string touchSound;
 
 integer REZ_MODE=FALSE;
@@ -758,26 +799,8 @@ default{
         if(change & CHANGED_OWNER){ // 物品易主时，重置脚本
             llResetScript();
         }
-        if(change & CHANGED_INVENTORY){ // 库存变更，初始化语言和RLV
-            initMain();
-        }
         if (change & CHANGED_LINK) {
             REZ_MODE=TRUE;
-            key avatar = llAvatarOnSitTarget();
-            if (avatar != NULL_KEY){
-                VICTIM_UUID=avatar;
-                if(sitAutoLock==TRUE){
-                    if(captureByUser!=NULL_KEY){
-                        setLock(TRUE, captureByUser, FALSE);
-                        captureByUser=NULL_KEY;
-                    }else{
-                        setLock(TRUE, llList2Key(owner, 0), FALSE);
-                    }
-                }
-            }else{
-                VICTIM_UUID=NULL_KEY;
-                setLock(FALSE, NULL_KEY, FALSE);
-            }
             triggerFeature("CHANGE", (string)change, llAvatarOnSitTarget());
         }else{
             triggerFeature("CHANGE", (string)change, NULL_KEY);
@@ -801,12 +824,16 @@ default{
             VICTIM_UUID=NULL_KEY;
         }
     }
-    object_rez(key user){
+    object_rez(key id){
         REZ_MODE=TRUE;
         VICTIM_UUID=NULL_KEY;
+        triggerFeature("REZ", "", id);
     }
     collision_start(integer num){
         triggerFeature("COLLISION", (string)num, llDetectedKey(0));
+    }
+    collision_end(integer num){
+        triggerFeature("COLLISION_END", (string)num, llDetectedKey(0));
     }
     timer(){
         if(RLV_READY==FALSE){ // 如果未成功初始化数据，则每5秒重新读取一次，直到读取成功
@@ -826,6 +853,9 @@ default{
         //llJsonSetValue(json, ["test2"], "testv2");
         //llOwnerSay("JSON: "+json);
         //llOwnerSay(llJsonGetValue(json,["test1"]));
+    }
+    touch_end(integer num_detected){
+        triggerFeature("TOUCH_END", (string)num_detected, llDetectedKey(0));
     }
     listen(integer channel, string name, key id, string message){
         triggerListen(channel, name, id, message);
@@ -869,9 +899,6 @@ default{
                     else if(menuText=="Settings"){
                         showMenu("settingMenu", user);
                     }
-                    else{
-                        triggerFeature(menuName, menuText, user);
-                    }
                 }
                 else if(menuName=="settingMenu"){
                     if(menuText=="AutoLock"){
@@ -882,8 +909,9 @@ default{
                         sitAutoTrap=!sitAutoTrap;
                         showMenu("settingMenu", user);
                     }
-                    else{
-                        triggerFeature(menuName, menuText, user);
+                    else if(menuText=="ShowText"){
+                        showText=!showText;
+                        showMenu("settingMenu", user);
                     }
                 }
                 else if(menuName=="CaptureMenu"){
@@ -896,9 +924,7 @@ default{
                     }
                     sensorUserList=[];
                 }
-                else{
-                    triggerFeature(menuName, menuText, user);
-                }
+                triggerFeature(menuName, menuText, user);
             }
             else if(menuCmdStr=="MENU.CLOSE"){
                 curMenuUser=NULL_KEY;
@@ -1022,9 +1048,7 @@ default{
                 }
             }
         }
-        else{
-            triggerLinkMessage(sender_num, num, str, user);
-        }
+        triggerLinkMessage(sender_num, num, str, user);
         // llOwnerSay("LINK_MESSAGE: "+str);
         //llOwnerSay("OPERATER: "+(string)user);
         // llSleep(0.01);
