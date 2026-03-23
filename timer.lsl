@@ -11,6 +11,9 @@ Author: JMRY
 Description: A better timer control system, use link_message to operate timers.
 
 ***更新记录***
+- 1.0.11 20260324
+    - 适配新版菜单脚本。
+
 - 1.0.10 20260322
     - 适配文本显示脚本。
 
@@ -316,13 +319,22 @@ showTimerMenu(string parent, key user){
     ];
 
     list timerMenuList=[
-        "["+(string)timerTextBool+"]ShowTimer", "BACK", "Clear",
-        tType, "["+(string)timerRunning+"]StartTimer", "Restart",
+        "-5 Minute", "-30 Minute", "-1 Hour",
         "+5 Minute", "+30 Minute", "+1 Hour",
-        "-5 Minute", "-30 Minute", "-1 Hour"
+        tType, "["+(string)timerRunning+"]StartTimer", "Restart",
+        "["+(string)timerTextBool+"]ShowTimer", "Clear"
     ];
 
-    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.CONFIRM|"+timerMenuName+"|"+list2Data(menuText)+"|"+list2Data(timerMenuList)+"|"+parent, user);
+    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+timerMenuName+"|"+list2Data(menuText)+"|"+list2Data(timerMenuList)+"|"+parent, user);
+
+    // list timerMenuList=[
+    //     "["+(string)timerTextBool+"]ShowTimer", "BACK", "Clear",
+    //     tType, "["+(string)timerRunning+"]StartTimer", "Restart",
+    //     "+5 Minute", "+30 Minute", "+1 Hour",
+    //     "-5 Minute", "-30 Minute", "-1 Hour"
+    // ];
+
+    // llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.CONFIRM|"+timerMenuName+"|"+list2Data(menuText)+"|"+list2Data(timerMenuList)+"|"+parent, user);
 }
 
 integer MENU_MSG_NUM=1000;

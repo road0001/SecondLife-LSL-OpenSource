@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better menu management system, use link_message to operate menus.
 
 ***更新记录***
+- 1.1.22 20260324
+    - 调整菜单生成算法，当当菜单项数为10~11时，显示在单页。
+
 - 1.1.21 20260311
     - 优化性能和内存占用。
     - 优化输出文本内容的逻辑，当目标UUID为空时，使用llMessageLinked传递的user。
@@ -488,6 +491,19 @@ integer showMenu(string mname, string mtext, string mlist, string mparent, integ
                 back=llList2String(pageBu,2);
             }else{
                 back=llList2String(pageBu,3);
+            }
+
+            // 按钮数量为10~11时，限制在一页内
+            if(llGetListLength(showMenuList)>=buttonsPerPage+1 && llGetListLength(showMenuList)<=buttonsPerPage+2){
+                prev=llList2String(showMenuList, buttonsPerPage);
+                next=llList2String(showMenuList, buttonsPerPage+1);
+                totalPages=1;
+                if(prev==""){
+                    prev=" ";
+                }
+                if(next==""){
+                    next=" ";
+                }
             }
 
             if(totalPages>1){

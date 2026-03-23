@@ -259,7 +259,7 @@ vector setAnimAdjust(vector pos, string params, key user){
         }
     }
     animAdjustData+=[user, params, pos]; // 找不到时，添加
-    if(llGetListLength(animAdjustMemLimit)>animAdjustMemLimit*animAdjustDataLength){ // 超过记忆容量时，删除最前面的
+    if(llGetListLength(animAdjustData)>animAdjustMemLimit*animAdjustDataLength){ // 超过记忆容量时，删除最前面的
         animAdjustData=llList2List(animAdjustData, animAdjustDataLength, -1);
     }
     return pos;
