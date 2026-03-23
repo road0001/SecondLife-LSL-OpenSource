@@ -261,7 +261,7 @@ string curNotecardName="";
 integer MENU_MSG_NUM=1000;
 integer STRUGGLE_MSG_NUM=1007;
 integer LAN_MSG_NUM=1003;
-integer TEXT_READY=1008;
+integer TEXT_MSG_NUM=1008;
 
 integer struggleLastKey=-1;
 integer struggleTimerCount=0;

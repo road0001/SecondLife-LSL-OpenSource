@@ -4,6 +4,7 @@ initMain(){
     sitRot=ZERO_ROTATION;
     sitAutoLock=FALSE;
     sitAutoTrap=FALSE;
+    sitText="";
     showText=TRUE;
     lockSound="";
     unlockSound="";
@@ -44,6 +45,7 @@ initMain(){
         llRequestPermissions(llGetOwner(), PERMISSION_ATTACH);
     }
     llSitTarget(sitPos, sitRot);
+    llSetSitText(sitText);
     listenHandle=llListen(cmdChannel, "", NULL_KEY, "");
     // llSleep(0);
     // llOwnerSay("Initialize Complete, Enjoy!");
@@ -226,6 +228,9 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.1.8 20260324
+    - 加入自定义“坐在这里”文本功能。
+
 - 1.1.7 20260321
     - 加入REZ模式下的文字显示。
     - 优化代码结构。
@@ -768,6 +773,7 @@ vector sitPos;
 rotation sitRot;
 integer sitAutoLock;
 integer sitAutoTrap;
+string sitText="";
 integer showText;
 string touchSound;
 

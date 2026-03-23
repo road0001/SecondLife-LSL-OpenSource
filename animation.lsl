@@ -1,5 +1,5 @@
 initConfig(){
-    animConfigList=[]; // name, animName;interval;floatHeight;Ext1;Ext2;..., class, auto
+    animConfigList=[]; // name, animName;interval;floatHeight;Adjust;Ext2;..., class, auto
     integer count = llGetInventoryNumber(INVENTORY_ANIMATION);
     integer i;
     for (i=0; i<count; i++){
@@ -8,9 +8,11 @@ initConfig(){
         if(i==0){
             auto=TRUE;
         }
-        animConfigList+=[animName, animName+";10;0", "Animation", auto];
+        animConfigList+=[animName, animName+";10;0;<0.0,0.0,0.0>", "Animation", auto];
     }
     autoReload=TRUE;
+    allowStopAnim=TRUE;
+    allowRezAdjust=TRUE;
 }
 /*CONFIG END*/
 /*
@@ -19,6 +21,9 @@ Author: JMRY
 Description: A better animation control system, use link_message to operate animations.
 
 ***更新记录***
+- 1.2 20260323
+    - 加入REZ模式下，动画调整位置功能。
+
 - 1.1.11 20260319
     - 加入PLAY、PLAY.PARAMS、PLAY.FILE的参数为空时，播放之前正在播放的动画功能。
 
@@ -161,7 +166,7 @@ integer playAnimationByParams(string params, string name){
         curPlayingAnimName=name;
         curPlayingAnimParams=params;
         list animParams=strSplit(params, ";");
-        // animName;interval;floatHeight;Ext1;Ext2;...
+        // animName;interval;floatHeight;Adjust;Ext2;...
         playAnimInterval=(float)llList2String(animParams, 1);
         if(playAnimInterval<=0.0){ // 重播间隔小于等于0时，说明参数解析错误，因此将其修正。
             playAnimInterval=0.0;
@@ -170,6 +175,7 @@ integer playAnimationByParams(string params, string name){
         if(playAnimFloatHeight<=0.0){
             playAnimFloatHeight=0.0;
         }
+        playAnimAdjust=(vector)llList2String(animParams, 3);
 
         // curPlayingAnimFileName=llList2String(animParams, 0);
         playAnimation(llList2String(animParams, 0), TRUE);
@@ -191,6 +197,7 @@ string lastPlayingAnimFileName="";
 integer allowPlayAnim=FALSE;
 float playAnimInterval=10;
 float playAnimFloatHeight=0;
+vector playAnimAdjust=ZERO_VECTOR;
 integer playAnimationFlag=FALSE;
 integer playAnimation(string name, integer stop){
     curPlayingAnimFileName=name;
@@ -226,6 +233,48 @@ integer stopAllAnimation(integer bool){
     }
     llRequestPermissions(animPlayer,PERMISSION_TRIGGER_ANIMATION);
     return playAnimationFlag;
+}
+
+list animAdjustData=[]; // user, anim, pos
+integer animAdjustDataLength=3;
+integer animAdjustMemLimit=20;
+float animAdjustStep=0.1;
+vector animAdjustTemp=ZERO_VECTOR;
+vector getAnimAdjust(string params, key user){
+    integer i;
+    for(i=0; i<llGetListLength(animAdjustData); i+=animAdjustDataLength){
+        if(llList2Key(animAdjustData, i) == user && llList2String(animAdjustData, i+1) == params){ // 找到符合user和params的调整位置，返回
+            return llList2Vector(animAdjustData, i+2);
+        }
+    }
+    return ZERO_VECTOR; // 找不到时，返回默认
+}
+
+vector setAnimAdjust(vector pos, string params, key user){
+    integer i;
+    for(i=0; i<llGetListLength(animAdjustData); i+=animAdjustDataLength){
+        if(llList2Key(animAdjustData, i) == user && llList2String(animAdjustData, i+1) == params){ // 找到符合user和params的调整位置，修改
+            animAdjustData=llListReplaceList(animAdjustData, [pos], i+2, i+2);
+            return pos;
+        }
+    }
+    animAdjustData+=[user, params, pos]; // 找不到时，添加
+    if(llGetListLength(animAdjustMemLimit)>animAdjustMemLimit*animAdjustDataLength){ // 超过记忆容量时，删除最前面的
+        animAdjustData=llList2List(animAdjustData, animAdjustDataLength, -1);
+    }
+    return pos;
+}
+
+applyAnimAdjust(vector pos, key user){
+    if(user!=NULL_KEY){
+        integer linkNum = llGetNumberOfPrims();
+        integer i;
+        for(i=0; i<=linkNum; i++){
+            if (user == llGetLinkKey(i)){
+                llSetLinkPrimitiveParams(linkNum, [PRIM_POS_LOCAL, pos]);
+            }
+        }
+    }
 }
 // integer playAnimation(string name, integer stop){
 //     playAnimationFlag=TRUE;
@@ -345,6 +394,9 @@ showAnimMenu(string parent, key user){
         if(allowStopAnim==TRUE){
             menuList+=["[STOP]"];
         }
+        // if(allowRezAdjust==TRUE && REZ_MODE==TRUE){
+        //     menuList+=["[Adjust]"];
+        // }
         menuList+=animClassList;
         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+animMenuName+"|Animation Menu\nCurrent Playing: %1%%%;"+curPlayingAnimName+"|"+list2Data(menuList)+"|"+parent, user);
     }
@@ -364,7 +416,13 @@ showAnimSubMenu(string parent, string class, key user){
     animParentSubMenuName=parent;
     curAnimSubMenu=class;
     string animSubDesc="This is Animation [%1%] menu.\nCurrent Playing: %2%%%;"+class+";"+curPlayingAnimName;
-    list animCmdList=["[STOP]"];
+    list animCmdList=[];
+    if(allowStopAnim==TRUE){
+        animCmdList+=["[STOP]"];
+    }
+    if(allowRezAdjust==TRUE && REZ_MODE==TRUE){
+        animCmdList+=["[Adjust]"];
+    }
     integer animCmdCount=llGetListLength(animConfigList);
     integer i;
     for(i=0; i<animCmdCount; i+=animConfigLength){
@@ -377,6 +435,19 @@ showAnimSubMenu(string parent, string class, key user){
     llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+animSubMenuName+"|"+animSubDesc+"|"+list2Data(animCmdList)+"|"+parent, user);
 }
 
+string animAdjustMenuName="AnimationAdjustMenu";
+string animParentAdjustMenuName="";
+showAdjustMenu(string parent, key user){
+    animParentAdjustMenuName=parent;
+    string animAdjustDesc="This is Animation [Adjust] menu.\nCurrent User: %1%\nCurrent Anim: %2%\nCurrent Pos: %3%%%;"+"secondlife:///app/agent/"+(string)user+"/about"+";"+curPlayingAnimName+";"+(string)animAdjustTemp;
+    list menuList=[
+        "X+", "Y+", "Z+",
+        "X-", "Y-", "Z-",
+        animAdjustStep, "[Save]", "[Restore]"
+    ];
+    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+animAdjustMenuName+"|"+animAdjustDesc+"|"+list2Data(menuList)+"|"+parent, user);
+}
+
 integer REZ_MODE=FALSE;
 key animPlayer=NULL_KEY;
 integer autoReload=FALSE;
@@ -386,6 +457,7 @@ integer ANIM_MSG_NUM=1006;
 
 integer allowAutoAdjustHeight=TRUE;
 integer allowStopAnim=TRUE;
+integer allowRezAdjust=TRUE;
 string curAnimClass="";
 default{
     state_entry(){
@@ -461,7 +533,19 @@ default{
                 llSetTimerEvent(playAnimInterval);
                 if(allowAutoAdjustHeight==TRUE && playAnimFloatHeight!=0 && REZ_MODE==FALSE){
                     llOwnerSay("@adjustheight:"+(string)playAnimFloatHeight+"=force");
-                };
+                }
+                else if(allowRezAdjust==TRUE && curPlayingAnimParams!="" && REZ_MODE==TRUE){
+                    if(animAdjustTemp!=ZERO_VECTOR){
+                        applyAnimAdjust(animAdjustTemp, animPlayer);
+                    }else{
+                        vector curAnimAdjust=getAnimAdjust(curPlayingAnimParams, animPlayer);
+                        if(curAnimAdjust!=ZERO_VECTOR){
+                            applyAnimAdjust(curAnimAdjust, animPlayer);
+                        }else if(playAnimAdjust!=ZERO_VECTOR){
+                            applyAnimAdjust(playAnimAdjust, animPlayer);
+                        }
+                    }
+                }
             }else if(playAnimationFlag==FALSE){
                 if(lastPlayingAnimFileName==""){
                     return;
@@ -679,7 +763,15 @@ default{
                     if(msgSub=="[STOP]"){
                         stopAnimation(TRUE);
                         showAnimMenu(animParentMenuName, user);
-                    }else{
+                    }
+                    else if(msgSub=="[Adjust]"){
+                        animAdjustTemp=getAnimAdjust(curPlayingAnimParams, animPlayer); // 点Adjust时，给临时变量赋值
+                        if(animAdjustTemp==ZERO_VECTOR){
+                            animAdjustTemp=playAnimAdjust;
+                        }
+                        showAdjustMenu(animMenuName, user);
+                    }
+                    else{
                         showAnimSubMenu(animMenuName, msgSub, user);
                     }
                 }
@@ -687,11 +779,81 @@ default{
                 else if(msgName==animSubMenuName && msgSub!=""){ // MENU.ACTIVE | Class1 | [1]Anim1
                     if(msgSub=="[STOP]"){
                         stopAnimation(TRUE);
-                    }else{
-                        playAnimationByName(msgSub);
+                        showAnimSubMenu(animParentSubMenuName, curAnimSubMenu, user);
                     }
-                    showAnimSubMenu(animParentSubMenuName, curAnimSubMenu, user);
+                    else if(msgSub=="[Adjust]"){
+                        animAdjustTemp=getAnimAdjust(curPlayingAnimParams, animPlayer); // 点Adjust时，给临时变量赋值
+                        if(animAdjustTemp==ZERO_VECTOR){
+                            animAdjustTemp=playAnimAdjust;
+                        }
+                        showAdjustMenu(animSubMenuName, user);
+                    }
+                    else{
+                        playAnimationByName(msgSub);
+                        showAnimSubMenu(animParentSubMenuName, curAnimSubMenu, user);
+                    }
                 }
+                // 动画定位菜单
+                else if(msgName==animAdjustMenuName && msgSub!=""){
+                    integer adjustFlag=-1;
+                    if(msgSub=="X+"){
+                        animAdjustTemp.x+=animAdjustStep;
+                        adjustFlag=0;
+                    }
+                    else if(msgSub=="X-"){
+                        animAdjustTemp.x-=animAdjustStep;
+                        adjustFlag=0;
+                    }
+                    else if(msgSub=="Y+"){
+                        animAdjustTemp.y+=animAdjustStep;
+                        adjustFlag=0;
+                    }
+                    else if(msgSub=="Y-"){
+                        animAdjustTemp.y-=animAdjustStep;
+                        adjustFlag=0;
+                    }
+                    else if(msgSub=="Z+"){
+                        animAdjustTemp.z+=animAdjustStep;
+                        adjustFlag=0;
+                    }
+                    else if(msgSub=="Z-"){
+                        animAdjustTemp.z-=animAdjustStep;
+                        adjustFlag=0;
+                    }
+                    else if(msgSub=="0.100000"){
+                        animAdjustStep=0.5;
+                        adjustFlag=0;
+                    }
+                    else if(msgSub=="0.500000"){
+                        animAdjustStep=0.01;
+                        adjustFlag=0;
+                    }
+                    else if(msgSub=="0.010000"){
+                        animAdjustStep=0.05;
+                        adjustFlag=0;
+                    }
+                    else if(msgSub=="0.050000"){
+                        animAdjustStep=0.1;
+                        adjustFlag=0;
+                    }
+                    else if(msgSub=="[Save]"){
+                        setAnimAdjust(animAdjustTemp, curPlayingAnimParams, animPlayer);
+                        applyAnimAdjust(animAdjustTemp, animPlayer);
+                        animAdjustTemp=ZERO_VECTOR;
+                        adjustFlag=-1;
+                    }
+                    else if(msgSub=="[Restore]"){
+                        animAdjustTemp=ZERO_VECTOR;
+                        adjustFlag=0;
+                    }
+                    if(~adjustFlag){
+                        applyAnimAdjust(animAdjustTemp, animPlayer);
+                        showAdjustMenu(animParentAdjustMenuName, user);
+                    }
+                }
+            }
+            else if(headerMain=="MENU" && headerSub=="CLOSE"){
+                animAdjustTemp=ZERO_VECTOR;
             }
         }
 
