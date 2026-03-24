@@ -16,6 +16,9 @@ Author: JMRY
 Description: A struggle system, use link_message to operate struggle things.
 
 ***更新记录***
+- 1.0.5 20260324
+    - 优化初始化逻辑。
+
 - 1.0.4 20260322
     - 适配文本显示脚本。
 
@@ -271,8 +274,9 @@ default{
         initConfig();
 		if(llGetAttached()){
             strugglePlayer=llGetOwner();
+        }else{
+            strugglePlayer=NULL_KEY;
         }
-        strugglePlayer=llGetOwner();
         applyStruggleText(FALSE);
         llMessageLinked(LINK_THIS, TEXT_MSG_NUM, "TEXT.GET.READY", NULL_KEY);
         llMessageLinked(LINK_THIS, STRUGGLE_MSG_NUM, "STRUGGLE.READY", NULL_KEY);
