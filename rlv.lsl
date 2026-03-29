@@ -65,6 +65,10 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 2.0.19 20260330
+    - 优化REZ模式下，RLV推送逻辑，阻止非预期的授权弹窗。
+    - 修复REZ模式下，玩家站立后，未清空RLV限制的bug。
+
 - 2.0.18 20260323
     - 优化RLV的通知逻辑。
 
@@ -677,12 +681,13 @@ default{
         }
         if (change & CHANGED_LINK) {
             RLV_MODE=1;
+            llSleep(0.1); // 延迟0.1秒再更新状态、发送通知，以确保其他脚本CHANGED_LINK全部生效
             key avatar = llAvatarOnSitTarget();
             if (avatar != NULL_KEY){
                 VICTIM_UUID=avatar;
                 applyAllEnabledRLVCmd("",TRUE);
             }else{
-                executeRLV("sit:"+(string)llGetKey()+"=rem", TRUE);
+                executeRLV("clear", TRUE);
                 VICTIM_UUID=NULL_KEY;
             }
         }

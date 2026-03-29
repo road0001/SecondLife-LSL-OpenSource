@@ -20,6 +20,13 @@ Author: JMRY
 Description: A better RLV Renamer management system, use link_message to operate Renamer restraints.
 
 ***更新记录***
+- 1.1.7 20260330
+    - 优化Renamer开关和联动锁检测逻辑。
+    - 优化REZ模式下的说话效果。
+
+- 1.1.6 20260327
+    - 调整声音触发逻辑，发送/me手势时不触发声音。
+
 - 1.1.5 20260319
     - 加入Renamer说话通知。
     - 加入随机音效白名单功能。
@@ -305,7 +312,6 @@ integer renamerEnabled(integer bool, key user){
 }
 
 string RENAMER_DISPLAY_NAME="RENAMER_DISPLAY_NAME";
-string RENAMER_DISPLAY_LINK="RENAMER_DISPLAY_LINK";
 string RENAMER_FULL_NAME="RENAMER_FULL_NAME";
 string RENAMER_USER_NAME="RENAMER_USER_NAME";
 string RENAMER_OBJECT_NAME="RENAMER_OBJECT_NAME";
@@ -326,7 +332,7 @@ integer renamerType=0; // 0: Say; 1: Whisper; 2: Shour; 3: RegionSay
 integer renamerSay(string name, string msg, integer type) {
     string omsg=msg;
     // Renamer voice
-    if(renamerVoice!=""){
+    if(renamerVoice!="" && !includes(omsg, "/me")){
         list voiceList=strSplit(renamerVoice, ",");
         integer rand = (integer)llFrand(llGetListLength(voiceList));
         llTriggerSound(llList2String(voiceList, rand), renamerVolume); // 使用TriggerSound兼容hud时的音效可在世界播放。缺点：无法跟踪人物实时定位
@@ -432,7 +438,9 @@ integer renamerSay(string name, string msg, integer type) {
 
     @speak;
     
-    llSetObjectName(objectName); // llSetObjectName不支持中文，因此将remaer名字拼接到字符串中来显示。
+    if(RLV_MODE==0){ // 只有穿戴模式才改名
+        llSetObjectName(objectName); // llSetObjectName不支持中文，因此将remaer名字拼接到字符串中来显示。
+    }
     string renamerMsg;
     string renamerOMsg;
     if(llGetSubString(msg, 0, 2) == "/me"){
@@ -493,7 +501,7 @@ showRenamerMenu(string parent, key user){
     //     ]),
     //     parent
     // ];
-    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+renamerMenuName+"|"+"This is Renamer menu.\nCurrent name: %1%%%;"+renamerName+"|"+list2Data(["["+(string)renamerBool+"]Enabled", "SetName", renamerConfusionMenuText, renamerVoiceMenuText])+"|"+parent, user);
+    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+renamerMenuName+"|"+"This is Renamer menu.\nCurrent name: %1%%%;"+renamerName+"|"+list2Data(["["+(string)curRenamerBool+"]Enabled", "SetName", renamerConfusionMenuText, renamerVoiceMenuText])+"|"+parent, user);
     // llMessageLinked(LINK_SET, MENU_MSG_NUM, list2Msg(renamerMenuList), user);
 }
 
@@ -591,19 +599,18 @@ default{
         }
         if (change & CHANGED_LINK) {
             key avatar = llAvatarOnSitTarget();
+            llSleep(0.1);
             if (avatar != NULL_KEY){
                 RLV_MODE=1;
                 VICTIM_UUID=avatar;
+                renamerEnabled(curRenamerBool, VICTIM_UUID);
+                runRLV();
             }else{
+                executeRLV("@clear");
                 VICTIM_UUID=NULL_KEY;
             }
         }
     }
-
-    control(key id, integer level, integer edge){
-
-    }
-
     listen(integer channel, string name, key user, string message){
         if(channel==rlvChannel){ // 监听RLV返回数据并发送消息
             list msgList=["RENAMER.EXEC","CALLBACK",message];
@@ -935,7 +942,9 @@ default{
                 
                 if(menuName==renamerMenuName && menuButton!=""){ // MENU.ACTIVE | RLVRenamerMenu | Button1
                     if(menuButton=="Enabled"){
+                        renamerBool=curRenamerBool;
                         renamerEnabled(-1,user);
+                        curRenamerBool=renamerBool;
                         showRenamerMenu(curRenamerSubMenu, user);
                     }
                     else if(menuButton=="SetName"){
