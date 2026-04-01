@@ -4,6 +4,7 @@ import glob
 import shutil
 
 buildPath='./build'
+appPath='Apps'
 cfgPath='./Config'
 lanPath='./Language'
 buildConfigTag='//SRC_PATH'
@@ -124,6 +125,18 @@ def main():
 		else:
 			buildRs=False
 			print('Error!')
+	
+	lslAppList=glob.glob(f'{appPath}/*.lsl')
+	if len(lslAppList)>0:
+		os.makedirs(f'{buildPath}/{appPath}')
+		for lsl in lslAppList:
+			print(f'Building App {lsl}...', end='')
+			curRs=buildLsl(lsl)
+			if curRs==True:
+				print('Done!')
+			else:
+				buildRs=False
+				print('Error!')
 	
 	cfgList=glob.glob(f'{cfgPath}/*.txt')
 	for cfg in cfgList:
