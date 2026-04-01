@@ -81,3 +81,10 @@ Renamer系统支持改名、混淆、触发各种效果等，自带Renamer管理
 [配置管理文档](README.Config.md)
 
 ******config.lsl******
+
+# 开源LSL脚本扩展
+
+## PA2唤起系统
+PA2唤起系统支持配置、PA2唤起。
+[PA2唤起文档](Apps/README.Arousal.md)
+******Apps/arousal.lsl******
