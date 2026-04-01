@@ -8,6 +8,10 @@ Author: JMRY
 Description: A arousal controller for restraint items.
 
 ***更新记录***
+- 1.0.1 20260402
+	- 优化菜单用语和相关逻辑。
+	- 修复强制高潮不会弹出菜单的bug。
+
 - 1.0 20260324
     - 完成主要功能。
 ***更新记录***
@@ -41,7 +45,7 @@ integer RandomInteger(integer a, integer b){
     return a + (integer)llFrand(b - a + 1);
 }
 
-string arousalMode="Stop";
+string arousalMode="A:Stop";
 integer arousalEdge=FALSE;
 integer arousalAllowAnim=TRUE;
 integer arousalEdgeLower=20;
@@ -63,8 +67,8 @@ setArousalEdge(integer bool, key user){
 }
 
 list arousalValList=[
-	2, 5, 10, // Low, Medium, High arousal val
-	1, 10, // Tease random delay range
+	2, 5, 10, // A:Low, A:Medium, A:High arousal val
+	1, 10, // A:Tease random delay range
 	5, 50 // Random arousal val range
 ];
 
@@ -73,27 +77,27 @@ integer arousalVal=0;
 integer arousalDelay=0;
 integer isEdged=FALSE;
 applyArousal(){
-	if(arousalMode=="Low"){
+	if(arousalMode=="A:Low"){
 		arousalVal=llList2Integer(arousalValList, 0);
 		arousalDelay=1;
 	}
-	else if(arousalMode=="Medium"){
+	else if(arousalMode=="A:Medium"){
 		arousalVal=llList2Integer(arousalValList, 1);
 		arousalDelay=1;
 	}
-	else if(arousalMode=="High"){
+	else if(arousalMode=="A:High"){
 		arousalVal=llList2Integer(arousalValList, 2);
 		arousalDelay=1;
 	}
-	else if(arousalMode=="Tease"){
+	else if(arousalMode=="A:Tease"){
 		arousalVal=RandomInteger(llList2Integer(arousalValList, 0), llList2Integer(arousalValList, 2));
 		arousalDelay=RandomInteger(llList2Integer(arousalValList, 3), llList2Integer(arousalValList, 4));
 	}
-	else if(arousalMode=="Random"){
+	else if(arousalMode=="A:Random"){
 		arousalVal=RandomInteger(llList2Integer(arousalValList, 5), llList2Integer(arousalValList, 6));
 		arousalDelay=RandomInteger(llList2Integer(arousalValList, 3), llList2Integer(arousalValList, 4));
 	}
-	else if(arousalMode=="Stop"){
+	else if(arousalMode=="A:Stop"){
 		arousalVal=0;
 		arousalDelay=0;
 	}
@@ -106,7 +110,7 @@ applyArousal(){
 	}
 
 	if(arousalEdge==FALSE || (arousalEdge==TRUE && isEdged==FALSE)){
-		llOwnerSay("Arousal+"+(string)arousalVal+" Current: "+(string)arousalCurrent);
+		// llOwnerSay("Arousal+"+(string)arousalVal+" Current: "+(string)arousalCurrent);
 		if(arousalAllowAnim==FALSE){
 			llMessageLinked(LINK_SET, PA2_MSG_NUM, "arousalStopAnimType|"+(string)VICTIM_UUID+"|ArousedStanding", "");
 			llMessageLinked(LINK_SET, PA2_MSG_NUM, "arousalStopAnimType|"+(string)VICTIM_UUID+"|ArousedSitting", "");
@@ -125,10 +129,10 @@ showArousalMenu(string parent, key user){
     arousalParent=parent;
     string menuText="This is Arousal menu.\nCurrent mode: %1%\nEdge Lower: %2%%, Edge Upper: %3%%%%;"+arousalMode+";"+(string)arousalEdgeLower+";"+(string)arousalEdgeUpper;
     list menuList=[
-        "Low", "Medium", "High",
-        "Tease", "Random", "Stop",
-        "["+(string)arousalEdge+"]Edge","EdgeLower","EdgeUpper",
-		"Orgasm"
+        "A:Low", "A:Medium", "A:High",
+        "A:Tease", "A:Random", "A:Stop",
+        "["+(string)arousalEdge+"]A:Edge","A:EdgeLower","A:EdgeUpper",
+		"A:Orgasm"
     ];
     llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+arousalMenuName+"|"+menuText+"|"+llDumpList2String(menuList, ";")+"|"+parent, user);
 }
@@ -206,38 +210,40 @@ default{
                 showArousalMenu(msg1,user);
             }
 			else if(msg1==arousalMenuName && msg2!=""){
-				if(msg2=="Low" || msg2=="Medium" || msg2=="High" || msg2=="Tease" || msg2=="Random" || msg2=="Stop"){
+				if(msg2=="A:Low" || msg2=="A:Medium" || msg2=="A:High" || msg2=="A:Tease" || msg2=="A:Random" || msg2=="A:Stop"){
 					setArousalMode(msg2, user);
 					showArousalMenu(arousalParent,user);
 				}
-				else if(msg2=="Edge"){
+				else if(msg2=="A:Edge"){
 					setArousalEdge(!arousalEdge, user);
 					showArousalMenu(arousalParent,user);
 				}
-				else if(msg2=="EdgeLower"){
+				else if(msg2=="A:EdgeLower"){
 					llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.INPUT|ArousalInput_"+msg2+"|Input %1% (0~100), blank to return (Current: %2%):%%;"+msg2+";"+(string)arousalEdgeLower, user);
 				}
-				else if(msg2=="EdgeUpper"){
+				else if(msg2=="A:EdgeUpper"){
 					llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.INPUT|ArousalInput_"+msg2+"|Input %1% (0~100), blank to return (Current: %2%):%%;"+msg2+";"+(string)arousalEdgeUpper, user);
 				}
-				else if(msg2=="Orgasm"){
+				else if(msg2=="A:Orgasm"){
 					if(arousalAllowAnim==FALSE){
 						llMessageLinked(LINK_SET, PA2_MSG_NUM, "arousalStopAnimType|"+(string)VICTIM_UUID+"|ArousedStanding", "");
 						llMessageLinked(LINK_SET, PA2_MSG_NUM, "arousalStopAnimType|"+(string)VICTIM_UUID+"|ArousedSitting", "");
 						llMessageLinked(LINK_SET, PA2_MSG_NUM, "arousalStopAnimType|"+(string)VICTIM_UUID+"|GetUp", "");
 						llMessageLinked(LINK_SET, PA2_MSG_NUM, "arousalStopAnimType|"+(string)VICTIM_UUID+"|Moan", "");
 					}
-					llMessageLinked(LINK_SET,PA2_MSG_NUM,"arousalForceOrgasm|"+(string)VICTIM_UUID+"|"+"1", "");
+					llMessageLinked(LINK_SET, PA2_MSG_NUM, "arousalForceOrgasm|"+(string)VICTIM_UUID+"|"+"1", "");
+					llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You had a powerful orgasm.", VICTIM_UUID);
+					showArousalMenu(arousalParent,user);
 				}
 			}
-			else if(msg1=="ArousalInput_EdgeLower" || msg1=="ArousalInput_EdgeUpper"){
-				if(msg1=="ArousalInput_EdgeLower" && msg2!=""){
+			else if(msg1=="ArousalInput_A:EdgeLower" || msg1=="ArousalInput_A:EdgeUpper"){
+				if(msg1=="ArousalInput_A:EdgeLower" && msg2!=""){
 					arousalEdgeLower=(integer)msg2;
 					if(arousalEdgeLower<0){arousalEdgeLower=0;}
 					if(arousalEdgeLower>100){arousalEdgeLower=100;}
 					if(arousalEdgeLower>arousalEdgeUpper){arousalEdgeLower=arousalEdgeUpper;}
 				}
-				else if(msg1=="ArousalInput_EdgeUpper" && msg2!=""){
+				else if(msg1=="ArousalInput_A:EdgeUpper" && msg2!=""){
 					arousalEdgeUpper=(integer)msg2;
 					if(arousalEdgeUpper<0){arousalEdgeUpper=0;}
 					if(arousalEdgeUpper>100){arousalEdgeUpper=100;}

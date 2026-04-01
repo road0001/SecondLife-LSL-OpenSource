@@ -5,6 +5,9 @@ Author: JMRY
 Description: A better RLV Extension management system, use link_message to operate RLV Extension restraints.
 
 ***更新记录***
+- 1.0.7 20260402
+    - 修复非预期的授权请求bug。
+
 - 1.0.6 20260301
     - 优化初始化流程。
 
@@ -439,6 +442,9 @@ default{
                 string result="";
                 if(rlvMsgSub=="RUN"){
                     if(rlvMsgName=="clear"){
+                        if(RLV_MODE>0 && VICTIM_UUID!=NULL_KEY){
+                            VICTIM_UUID=llAvatarOnSitTarget(); // REZ模式下，当检测到VICTIM_UUID不为空时，重新检测一次VICTIM_UUID，以确保正确
+                        }
                         integer i;
                         for(i=0; i<llGetListLength(RLVExtList); i++){
                             result=(string)executeRLVExt(llList2String(RLVExtList, i), "y", "");

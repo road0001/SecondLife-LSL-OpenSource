@@ -6,9 +6,9 @@ initMain(){
     sitAutoTrap=FALSE;
     sitText="";
     showText=TRUE;
-    lockSound="";
-    unlockSound="";
-    touchSound="";
+    lockSound="lock";
+    unlockSound="unlock";
+    touchSound="touch";
     soundVolume=1.0;
     // Init Config End
 
@@ -74,7 +74,7 @@ triggerFeature(string menuName, string menuText, key user){
     }
     else if(menuName=="TOUCH"){
         showMenu("mainMenu", llDetectedKey(0));
-        if(touchSound!=""){
+        if(touchSound!="" && llGetInventoryType(touchSound)==INVENTORY_SOUND){
             llPlaySound(touchSound, soundVolume);
         }
     }
@@ -199,10 +199,13 @@ list getMenuFeature(string menuName, key user){
         if(ACCESS_READY){
             menuList+=["Access"];
         }
-        if(llGetListLength(featureList)>0){
+        if(llGetListLength(featureList)>0 && ~llListFindList(featureList, ["appMenu"])){
             menuList+=["Apps"];
         }
         menuList+=["Settings"];
+        if(llGetListLength(featureList)>0 && ~llListFindList(featureList, ["mainMenu"])){
+            menuList=applyFeatureList(menuName, menuList, featureList);
+        }
     }
 
     else if(menuName=="appMenu"){
@@ -217,6 +220,7 @@ list getMenuFeature(string menuName, key user){
         if(REZ_MODE==TRUE && RLV_READY){
             menuList+=["["+(string)sitAutoLock+"]AutoLock", "["+(string)sitAutoTrap+"]AutoTrap", "["+(string)showText+"]ShowText"];
         }
+        menuList=applyFeatureList(menuName, menuList, featureList);
     }
 
     return menuList;
@@ -228,6 +232,11 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.1.9 20260402
+    - 自定义菜单功能支持注册在不同菜单中。
+    - 加入默认音频并自动检测是否存在。
+    - 修复REZ模式下，无人时上锁判断错误的bug。
+
 - 1.1.8 20260324
     - 加入自定义“坐在这里”文本功能。
 
@@ -495,7 +504,7 @@ integer setLock(integer lock, key user, integer isShowMenu){
     // if(!allowOperate(user)){
     //     return isLocked;
     // }
-    if(REZ_MODE==TRUE && VICTIM_UUID==NULL_KEY && lock==TRUE){
+    if(REZ_MODE==TRUE && VICTIM_UUID==NULL_KEY && (lock==TRUE || lock==-1)){
         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|No victims to lock!", user);
         // llRegionSayTo(user, 0, getLanguageVar("No victims to lock!"));
         return FALSE;
@@ -536,9 +545,9 @@ integer setLock(integer lock, key user, integer isShowMenu){
     if(isShowMenu){
         showMenu("mainMenu", user); // 防止出现打开双重菜单的bug，无必要不showMenu，尤其在Access逃跑或RLV锁定变更时。
     }
-    if(isLocked==TRUE && lockSound!=""){
+    if(isLocked==TRUE && lockSound!="" && llGetInventoryType(lockSound)==INVENTORY_SOUND){
         llPlaySound(lockSound, soundVolume);
-    }else if(unlockSound!=""){
+    }else if(unlockSound!="" && llGetInventoryType(unlockSound)==INVENTORY_SOUND){
         llPlaySound(unlockSound, soundVolume);
     }
     if(REZ_MODE==TRUE && showText==TRUE){
@@ -595,16 +604,16 @@ list getOwnerNameList(){
     return ownerNameList;
 }
 
-list featureList=[];
-integer featureLen=2;
-list registFeature(string name, string parent){
+list featureList=[]; // name, parent, menuName
+integer featureLen=3;
+list registFeature(string name, string parent, string menuName){
     integer i;
     for(i=0; i<llGetListLength(featureList); i+=featureLen){
         if(llList2String(featureList, i) == name){
             return featureList; // 已存在时，直接返回list
         }
     }
-    featureList+=[name, parent];
+    featureList+=[name, parent, menuName];
     return featureList;
 }
 
@@ -613,11 +622,18 @@ list applyFeatureList(string menuName, list origin, list feature){
     for(i=0; i<llGetListLength(feature); i+=featureLen){
         string featureName=llList2String(feature, i);
         string featureParent=llList2String(feature, i+1);
-        integer parentIndex=llListFindList(origin, [featureParent]);
-        if(~parentIndex){
-            origin=llListInsertList(origin, [featureName], parentIndex+1);
-        }else{
-            origin+=[featureName];
+        string featureMenuName=llList2String(feature, i+2);
+        if(featureMenuName == menuName){
+            if(featureParent=="TOP"){
+                origin=[featureName]+origin;
+            }else{
+                integer parentIndex=llListFindList(origin, [featureParent]);
+                if(~parentIndex){
+                    origin=llListInsertList(origin, [featureName], parentIndex+1);
+                }else{
+                    origin+=[featureName];
+                }
+            }
         }
     }
     return origin;
@@ -873,8 +889,12 @@ default{
             string mainCmdStr=llList2String(mainCmdList, 0);
             string mainName=llList2String(mainCmdList, 1);
             string mainText=llList2String(mainCmdList, 2);
-            if(mainCmdStr=="FEATURE.REG"){ // FEATURE.REG | featureName | featureParent
-                registFeature(mainName, mainText);
+            string mainMenuName=llList2String(mainCmdList, 3);
+            if(mainCmdStr=="FEATURE.REG"){ // FEATURE.REG | featureName | featureParent | featureMenuName
+                if(mainMenuName==""){
+                    mainMenuName="appMenu";
+                }
+                registFeature(mainName, mainText, mainMenuName);
             }
         }
         else if(num==MENU_MSG_NUM){
@@ -897,7 +917,6 @@ default{
                         setLock(FALSE, NULL_KEY, FALSE);
                         llUnSit(llAvatarOnSitTarget());
                         captureByUser=NULL_KEY;
-                        llSleep(3);
                     }
                     else if(menuText=="Apps"){
                         showMenu("appMenu", user);

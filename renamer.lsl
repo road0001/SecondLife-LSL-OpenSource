@@ -20,6 +20,10 @@ Author: JMRY
 Description: A better RLV Renamer management system, use link_message to operate Renamer restraints.
 
 ***更新记录***
+- 1.1.8 20260402
+    - 加入音频检测是否存在功能。
+    - 修复REZ模式下，转发的说话内容显示错误的bug。
+
 - 1.1.7 20260330
     - 优化Renamer开关和联动锁检测逻辑。
     - 优化REZ模式下的说话效果。
@@ -335,7 +339,10 @@ integer renamerSay(string name, string msg, integer type) {
     if(renamerVoice!="" && !includes(omsg, "/me")){
         list voiceList=strSplit(renamerVoice, ",");
         integer rand = (integer)llFrand(llGetListLength(voiceList));
-        llTriggerSound(llList2String(voiceList, rand), renamerVolume); // 使用TriggerSound兼容hud时的音效可在世界播放。缺点：无法跟踪人物实时定位
+        string voiceName=llList2String(voiceList, rand);
+        if(llGetInventoryType(voiceName)==INVENTORY_SOUND){
+            llTriggerSound(voiceName, renamerVolume); // 使用TriggerSound兼容hud时的音效可在世界播放。缺点：无法跟踪人物实时定位
+        }
     }
 
     // Renamer name
@@ -618,10 +625,11 @@ default{
             llListenRemove(rlvListenHandle);
             llSetTimerEvent(0);
         }
-        if(channel==renamerChannel){
-            if(llGetOwnerKey(user) == llGetOwner()){
+        else if(channel==renamerChannel){
+            if(llGetOwnerKey(user) == llGetOwner() || llGetOwnerKey(user) == VICTIM_UUID){
                 renamerSay(renamerName, message, renamerType);
-            }else{
+            }
+            else if(renamerHive==TRUE){
                 string oname = llGetObjectName();
                 llSetObjectName(objectName);
                 llRegionSayTo(llGetOwner(), 0, message);
