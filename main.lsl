@@ -10,6 +10,7 @@ initMain(){
     unlockSound="unlock";
     touchSound="touch";
     soundVolume=1.0;
+    allowPermaLock=FALSE;
     // Init Config End
 
     RLV_READY=FALSE;
@@ -175,14 +176,18 @@ list getMenuFeature(string menuName, key user){
         ];
 
         if(RLV_READY){
+            string lockStr="["+(string)isLocked+"]Lock";
+            if(allowPermaLock==TRUE && isPermaLocked==TRUE){
+                lockStr="PermaLocked";
+            }
             if(REZ_MODE==TRUE){
                 string captureStr="Capture";
                 if(VICTIM_UUID!=NULL_KEY){
                     captureStr="Unsit";
                 }
-                menuList+=["["+(string)isLocked+"]Lock", captureStr, "RLV"];
+                menuList+=[lockStr, captureStr, "RLV"];
             }else{
-                menuList+=["["+(string)isLocked+"]Lock", "RLV"];
+                menuList+=[lockStr, "RLV"];
             }
         }
         if(LEASH_READY && REZ_MODE==FALSE){
@@ -224,9 +229,13 @@ list getMenuFeature(string menuName, key user){
         if(REZ_MODE==TRUE && RLV_READY){
             menuList+=["["+(string)sitAutoLock+"]AutoLock", "["+(string)sitAutoTrap+"]AutoTrap"];
         }
+
+        if(allowPermaLock==TRUE && isPermaLocked==FALSE && isLocked==TRUE && lockUser==user && ~llListFindList(owner, [(string)user]) && hardcore==TRUE && REZ_MODE==FALSE && RLV_READY){
+            // 允许永久锁定 && 未被永久锁定 && 已上锁 && 操作者为上锁者 && 操作者在主人列表中 && 非REZ模式 && RLV就绪
+            menuList+=["PermaLock"];
+        }
         menuList=applyFeatureList(menuName, menuList, featureList);
     }
-
     return menuList;
 }
 /*CONFIG END*/
@@ -237,6 +246,7 @@ Description: A main controller for restraint items.
 
 ***更新记录***
 - 1.1.10 20260404
+    - 加入永久锁定功能。
     - 优化设置菜单显示内容。
 
 - 1.1.9 20260402
@@ -501,6 +511,7 @@ integer allowOperate(key user){
 }
 
 integer isLocked=FALSE;
+integer isPermaLocked=FALSE;
 key lockUser=NULL_KEY;
 key captureByUser=NULL_KEY;
 integer lockTime=0;
@@ -691,6 +702,7 @@ showMenu(string menuName, key user){
     }else{
         curMenuUser=user;
     }
+    string menuCmd="MENU.REG.OPEN";
     string menuText;
     string menuParent;
     list mainMenu=getMenuFeature(menuName, user);
@@ -698,16 +710,15 @@ showMenu(string menuName, key user){
         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.CLEAR", user);
         // mainMenu=applyFeatureList(menuName, getMenuFeature(menuName, user), featureList);
         if(isAllow==-1){ // 对于被锁住的情况，允许访问Escape逃跑功能
+            mainMenu=[llList2String(mainMenu, 0)];
             if(STRUGGLE_READY==TRUE && user==llGetOwner()){
-                mainMenu=["Struggle"];
-            }else{
-                mainMenu=[];
+                mainMenu+=["Struggle"];
             }
             if(!hardcore && !REZ_MODE){ // 硬核模式未开启时，仅显示Escape按钮，菜单名使用AccessMenu以确保功能生效
                 mainMenu+=["Access"];
             }else{ // 硬核模式开启时，不显示菜单。
             }
-            if(llGetListLength(mainMenu)<1){
+            if(llGetListLength(mainMenu)<=1){
                 return;
             }
         }
@@ -716,11 +727,20 @@ showMenu(string menuName, key user){
     else if(menuName=="appMenu" || menuName=="settingMenu"){
         menuParent="mainMenu";
     }
+    else if(menuName=="permaLockMenu"){
+        mainMenu=[
+            "%1% is requesting to PERMANENT LOCK your %2%, are you sure to be PERMANENT LOCKED?\nOnce confirmed, you will be permanently locked out and unable to unlock!%%;"+userInfo(user)+";"+llGetObjectName(),
+            "YES", "NO"
+        ];
+        menuCmd="MENU.CONFIRM";
+        menuParent="settingMenu";
+        user=llGetOwner(); // 必须重写user，让佩戴者弹出菜单，而不是操作者
+    }
     
     // getMenuFeature第0位为菜单文本，从1~末尾是菜单按钮内容，因此要将它们分开
     menuText=llList2String(mainMenu, 0);
     mainMenu=llList2List(mainMenu, 1, -1);
-    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+menuName+"|"+menuText+"|"+llDumpList2String(mainMenu, ";")+"|"+menuParent, user);
+    llMessageLinked(LINK_SET, MENU_MSG_NUM, menuCmd+"|"+menuName+"|"+menuText+"|"+llDumpList2String(mainMenu, ";")+"|"+menuParent, user);
     return;
     // if( 
     //     (checkOwner(user) || checkTrust(user) || checkPublic(user) || checkGroup(user)) && 
@@ -792,6 +812,7 @@ integer public=1;
 integer group=0;
 integer hardcore=0;
 integer autoLock=0;
+integer allowPermaLock=FALSE;
 
 vector sitPos;
 rotation sitRot;
@@ -917,6 +938,9 @@ default{
                     if(menuText == "Lock"){
                         setLock(-1, user, TRUE);
                     }
+                    else if(menuText=="PermaLocked"){
+                        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.SAY|%1% is PERMANENT LOCKED by %2%!%%;"+userInfo(llGetOwner())+";"+userInfo(lockUser), NULL_KEY);
+                    }
                     else if(menuText=="Capture"){
                         curSensorType=menuText;
                         llSensor("", NULL_KEY, AGENT, 96.0, PI);
@@ -946,6 +970,24 @@ default{
                         showText=!showText;
                         showMenu("settingMenu", user);
                     }
+                    else if(menuText=="PermaLock"){
+                        showMenu("permaLockMenu", user);
+                    }
+                }
+                else if(menuName=="permaLockMenu"){
+                    if(user != llGetOwner()){
+                        return;
+                    }
+                    if(menuText=="YES"){
+                        isPermaLocked=TRUE;
+                        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You are permanent locked by %1%!%%;"+userInfo(lockUser), llGetOwner());
+                        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You permanent locked %1%!%%;"+userInfo(lockUser), lockUser);
+                        llMessageLinked(LINK_SET, MAIN_MSG_NUM, "MAIN.SET.PERMALOCK|"+(string)isPermaLocked, lockUser);
+                    }
+                    else if(menuText=="NO"){
+                        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|%1% refused to accept your permanent lock request!%%;"+userInfo(lockUser), lockUser);
+                    }
+                    return;
                 }
                 else if(menuName=="CaptureMenu"){
                     list buList=llParseStringKeepNulls(menuText,[". "],[""]);
