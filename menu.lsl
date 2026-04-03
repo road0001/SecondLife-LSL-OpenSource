@@ -4,6 +4,11 @@ Author: JMRY
 Description: A better menu management system, use link_message to operate menus.
 
 ***更新记录***
+- 1.2 20260402
+    - 去除按钮文字超长裁剪机制getMenuButtonStr。
+    - 重构菜单消息传递逻辑。
+    - 优化内存占用。
+
 - 1.1.22 20260324
     - 调整菜单生成算法，当当菜单项数为10~11时，显示在单页。
 
@@ -184,33 +189,7 @@ list strSplit(string m, string sp){
     }
     return temp;
 }
-// string strJoin(list m, string sp){
-//     return llDumpList2String(m, sp);
-// }
 
-// // string bundleSplit="&&";
-// list bundle2List(string b){
-//     return strSplit(b, "&&");
-// }
-// string list2Bundle(list b){
-//     return strJoin(b, "&&");
-// }
-
-// // string messageSplit="|";
-// list msg2List(string m){
-//     return strSplit(m, "|");
-// }
-// string list2Msg(list m){
-//     return strJoin(m, "|");
-// }
-
-// // string dataSplit=";";
-// list data2List(string d){
-//     return strSplit(d, ";");
-// }
-// string list2Data(list d){
-//     return strJoin(d, ";");
-// }
 /*
 菜单多语言通用方法。
 设置语言（文字KEY，文字值），返回：当前语言的KEY对应文字
@@ -306,10 +285,6 @@ integer applyLanguage(){
 string parentHeader="P::";
 list menuRegistList=[]; // mname, mtext, mlist, mparent, mpage。由于list里不能嵌套list，因此mlist保持字符串原形
 integer menuRegistLength=5;
-// list menuNameList=[];
-// list menuTextList=[];
-// list menuItemList=[];
-// list menuParentList=[];
 integer findMenu(string mname){
     integer menuIndex=llListFindList(menuRegistList, [mname]);
     if(menuIndex%5==0){
@@ -323,17 +298,8 @@ integer registMenu(string mname, string mtext, string mlist, string mparent){
     // string menuItem=list2Data(mlist);
     if(~menuIndex){ // 菜单名存在时，覆盖 ~menuIndex等价于menuIndex!=-1，速度更快
         menuRegistList = llListReplaceList(menuRegistList, [mtext, mlist, parentHeader+mparent], menuIndex+1, menuIndex+menuRegistLength-2);
-        // menuRegistList = llListReplaceList(menuRegistList, [mtext, mlist, parentHeader+mparent, 1], menuIndex+1, menuIndex+menuRegistLength-1);
-        // menuTextList = llListReplaceList(menuTextList, [mtext], menuIndex, menuIndex);
-        // menuItemList = llListReplaceList(menuItemList, [menuItem], menuIndex, menuIndex);
-        // menuParentList=llListReplaceList(menuParentList, [mparent], menuIndex, menuIndex);
     }else{ // 菜单名不存在时，插入
         menuRegistList+=[mname, mtext, mlist, parentHeader+mparent, 1];
-        // menuRegistList+=[mname, mtext, menuItem, mparent];
-        // menuNameList+=[mname];
-        // menuTextList+=[mtext];
-        // menuItemList+=[menuItem];
-        // menuParentList+=[mparent];
     }
     return TRUE;
 }
@@ -343,24 +309,12 @@ integer removeMenu(string mname){
     integer menuIndex=findMenu(mname);
     if(~menuIndex){
         menuRegistList=llDeleteSubList(menuRegistList, menuIndex, menuIndex+menuRegistLength-1);
-        // menuNameList=llDeleteSubList(menuNameList, menuIndex, menuIndex);
-        // menuTextList=llDeleteSubList(menuTextList, menuIndex, menuIndex);
-        // menuItemList=llDeleteSubList(menuItemList, menuIndex, menuIndex);
-        // menuParentList=llDeleteSubList(menuParentList, menuIndex, menuIndex);
         return TRUE;
     }else{
         return FALSE;
     }
 }
-integer clearMenu(){
-    // setShowMenuPageList("",-1);
-    menuRegistList=[];
-    // menuNameList=[];
-    // menuTextList=[];
-    // menuItemList=[];
-    // menuParentList=[];
-    return TRUE;
-}
+
 integer executeMenu(string mname, integer reset, key user){
     if(mname==""){
         mname=llList2String(showMenuData,0);
@@ -379,19 +333,11 @@ integer executeMenu(string mname, integer reset, key user){
             }
         }
         showMenu(mname, llList2String(menuRegistList, menuIndex+1), llList2String(menuRegistList, menuIndex+2), llList2String(menuRegistList, menuIndex+3), TRUE, user); // menuType必须传TRUE，不然会回到原生菜单
-        // string menuText=llList2String(menuTextList, menuIndex);
-        // // list menuItem=llParseStringKeepNulls(llList2String(menuItemList, menuIndex), ["|"], []);
-        // list menuItem=data2List(llList2String(menuItemList, menuIndex));
-        // string menuParent=llList2String(menuParentList, menuIndex);
-        // showMenu(menuName, menuText, menuItem, menuParent, user);
         return TRUE;
     }else{
         return FALSE;
     }
 }
-// integer reshowMenu(string mname, key user){
-//     return executeMenu(mname, FALSE, user);
-// }
 
 // list showMenuPageList=[];
 integer setShowMenuPageList(string mname, integer mpage){
@@ -402,21 +348,6 @@ integer setShowMenuPageList(string mname, integer mpage){
     }else{
         return -1;
     }
-    // if(mname=="" && mpage<0){ // 同时传空字符串和-1表示清空
-    //     showMenuPageList=[];
-    //     return mpage;
-    // }
-    // integer menuIndex=llListFindList(showMenuPageList, [mname]);
-    // if(menuIndex%2==0){
-    //     if(mpage>=0){
-    //         showMenuPageList=llListReplaceList(showMenuPageList, [mpage], menuIndex+1, menuIndex+1); // 页数大于0时，修改
-    //     }else{
-    //         llDeleteSubList(showMenuPageList, menuIndex, menuIndex+1); // 页数小于0时，删除
-    //     }
-    // }else if(mpage>=0){
-    //     showMenuPageList+=[mname, mpage]; // 未找到时，添加
-    // }
-    // return mpage;
 }
 
 integer getShowMenuPageList(string mname){
@@ -426,17 +357,11 @@ integer getShowMenuPageList(string mname){
     }else{
         return -1;
     }
-    // integer menuIndex=llListFindList(showMenuPageList, [mname]);
-    // if(menuIndex%2==0){
-    //     return llList2Integer(showMenuPageList, menuIndex+1);
-    // }else{
-    //     return -1;
-    // }
 }
 
-string getMenuButtonStr(string s){
-    return llGetSubString(getLanguageBool(s), 0, 23);
-}
+// string getMenuButtonStr(string s){
+//     return llGetSubString(getLanguageBool(s), 0, 23);
+// }
 /*
 显示菜单通用方法。
 参数：菜单名（用于重显示菜单），菜单文字，菜单按钮表，用户
@@ -521,10 +446,10 @@ integer showMenu(string mname, string mtext, string mlist, string mparent, integ
             }
             // 根据菜单按钮规则重新排序并添加翻页和返回按钮
             menuItems=[
-                getMenuButtonStr(prev), getMenuButtonStr(back), getMenuButtonStr(next), // 第四行
-                getMenuButtonStr(llList2String(menuItems,6)), getMenuButtonStr(llList2String(menuItems,7)), getMenuButtonStr(llList2String(menuItems,8)), // 第三行
-                getMenuButtonStr(llList2String(menuItems,3)), getMenuButtonStr(llList2String(menuItems,4)), getMenuButtonStr(llList2String(menuItems,5)), // 第二行
-                getMenuButtonStr(llList2String(menuItems,0)), getMenuButtonStr(llList2String(menuItems,1)), getMenuButtonStr(llList2String(menuItems,2))  // 第一行
+                getLanguageBool(prev), getLanguageBool(back), getLanguageBool(next), // 第四行
+                getLanguageBool(llList2String(menuItems,6)), getLanguageBool(llList2String(menuItems,7)), getLanguageBool(llList2String(menuItems,8)), // 第三行
+                getLanguageBool(llList2String(menuItems,3)), getLanguageBool(llList2String(menuItems,4)), getLanguageBool(llList2String(menuItems,5)), // 第二行
+                getLanguageBool(llList2String(menuItems,0)), getLanguageBool(llList2String(menuItems,1)), getLanguageBool(llList2String(menuItems,2))  // 第一行
             ];
             // for(i=0; i<llGetListLength(menuItems); i++){ // 截断菜单按钮长度，防止超长
             //     llListReplaceList(menuItems, [llGetSubString(llList2String(menuItems, i), 0, 23)], i, i);
@@ -539,7 +464,7 @@ integer showMenu(string mname, string mtext, string mlist, string mparent, integ
             }
             integer i;
             for(i=0; i<menuCount; i++){
-                menuItems=llListReplaceList(menuItems,[getMenuButtonStr(llList2String(menuItems, i))], i, i);
+                menuItems=llListReplaceList(menuItems,[getLanguageBool(llList2String(menuItems, i))], i, i);
             }
         }
         llDialog(user, showMenuTextInner, menuItems, menuChannel);
@@ -548,53 +473,6 @@ integer showMenu(string mname, string mtext, string mlist, string mparent, integ
     }
     llSetTimerEvent(60);
     return TRUE;
-}
-
-showMenuHandle(string message, key user){
-    // list pageBu=msg2List(pageBuStr);
-    string showMenuName=llList2String(showMenuData,0);
-    integer showMenuType=llList2Integer(showMenuData,4);
-    if(showMenuType>0 && message == " "){
-        // showMenu(showMenuName, showMenuText, showMenuListStr, showMenuParent, showMenuType, user);
-        showMenu(showMenuName, llList2String(showMenuData,1), llList2String(showMenuData,2), llList2String(showMenuData,3), showMenuType, llList2Key(showMenuData,5));
-        return;
-    }
-    if(showMenuType>0){
-        message=getLanguageKey(trim(message));
-    }else{
-        message=llStringTrim(message,STRING_TRIM); // trim会做一些别的事情，因此使用LL函数trim字符串
-    }
-    if (showMenuType>0 && message == llList2String(pageBu,0)){ // 上一页
-        showMenuPage--;
-        setShowMenuPageList(showMenuName,showMenuPage);
-        showMenu(showMenuName, llList2String(showMenuData,1), llList2String(showMenuData,2), llList2String(showMenuData,3), showMenuType, llList2Key(showMenuData,5));
-        // showMenu(showMenuName, showMenuText, showMenuListStr, showMenuParent, showMenuType, user);
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.PREV", user);
-    }else if (showMenuType>0 && message == llList2String(pageBu,1)){ // 下一页
-        showMenuPage++;
-        setShowMenuPageList(showMenuName,showMenuPage);
-        showMenu(showMenuName, llList2String(showMenuData,1), llList2String(showMenuData,2), llList2String(showMenuData,3), showMenuType, llList2Key(showMenuData,5));
-        // showMenu(showMenuName, showMenuText, showMenuListStr, showMenuParent, showMenuType, user);
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.NEXT", user);
-    }else if(showMenuType>0 && message == llList2String(pageBu,2)){ // 返回
-        removeMenu(showMenuName); // 返回上级菜单时，移除当前菜单
-        executeMenu(llList2String(showMenuData,3), FALSE, user);
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.BACK", user);
-    }else if(showMenuType>0 && message == llList2String(pageBu,3)){ // 关闭
-        showMenu("", "", "", "", TRUE, NULL_KEY);
-        menuRegistList=[]; // 关闭菜单时，清空菜单
-        llListenRemove(menuListenHandle);
-        llSetTimerEvent(0);
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.CLOSE", user);
-    }else{
-        list menuCmdList=[
-            "MENU.ACTIVE",
-            showMenuName,
-            message
-        ];
-        // MENU.ACTIVE|MainMenu|Button 1
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, llDumpList2String(menuCmdList, "|"), user);
-    }
 }
 
 integer MENU_MSG_NUM=1000;
@@ -614,13 +492,65 @@ default{
 
     listen(integer channel, string name, key user, string message){
         if(channel==menuChannel){ // 监听菜单按钮并调用相关函数
-            showMenuHandle(message, user);
+            // showMenuHandle(message, user);
+            // list pageBu=msg2List(pageBuStr);
+            string showMenuName=llList2String(showMenuData,0);
+            integer showMenuType=llList2Integer(showMenuData,4);
+            if(showMenuType>0 && message == " "){
+                // showMenu(showMenuName, showMenuText, showMenuListStr, showMenuParent, showMenuType, user);
+                showMenu(showMenuName, llList2String(showMenuData,1), llList2String(showMenuData,2), llList2String(showMenuData,3), showMenuType, llList2Key(showMenuData,5));
+                return;
+            }
+            if(showMenuType>0){
+                message=getLanguageKey(trim(message));
+            }else{
+                message=llStringTrim(message,STRING_TRIM); // trim会做一些别的事情，因此使用LL函数trim字符串
+            }
+            if (showMenuType>0 && message == llList2String(pageBu,0)){ // 上一页
+                showMenuPage--;
+                setShowMenuPageList(showMenuName,showMenuPage);
+                showMenu(showMenuName, llList2String(showMenuData,1), llList2String(showMenuData,2), llList2String(showMenuData,3), showMenuType, llList2Key(showMenuData,5));
+                // showMenu(showMenuName, showMenuText, showMenuListStr, showMenuParent, showMenuType, user);
+                llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.PREV", user);
+            }else if (showMenuType>0 && message == llList2String(pageBu,1)){ // 下一页
+                showMenuPage++;
+                setShowMenuPageList(showMenuName,showMenuPage);
+                showMenu(showMenuName, llList2String(showMenuData,1), llList2String(showMenuData,2), llList2String(showMenuData,3), showMenuType, llList2Key(showMenuData,5));
+                // showMenu(showMenuName, showMenuText, showMenuListStr, showMenuParent, showMenuType, user);
+                llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.NEXT", user);
+            }else if(showMenuType>0 && message == llList2String(pageBu,2)){ // 返回
+                removeMenu(showMenuName); // 返回上级菜单时，移除当前菜单
+                executeMenu(llList2String(showMenuData,3), FALSE, user);
+                llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.BACK", user);
+            }else if(showMenuType>0 && message == llList2String(pageBu,3)){ // 关闭
+                showMenu("", "", "", "", TRUE, NULL_KEY);
+                menuRegistList=[]; // 关闭菜单时，清空菜单
+                llListenRemove(menuListenHandle);
+                llSetTimerEvent(0);
+                llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.CLOSE", user);
+            }else{
+                /*
+                按钮激活格式：llMessageLinked(LINK_SET, 1000, 指令, 操作者UUID)
+                MENU.ACTIVE | mainMenu | Button 1
+                MENU.ACTIVE | confirmMenu | OK
+                MENU.ACTIVE | inputMenu | Inputed something
+                */
+                // MENU.ACTIVE|MainMenu|Button 1
+                llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.ACTIVE|"+showMenuName+"|"+message, user);
+                // list menuCmdList=[
+                //     "MENU.ACTIVE",
+                //     showMenuName,
+                //     message
+                // ];
+                // // MENU.ACTIVE|MainMenu|Button 1
+                // llMessageLinked(LINK_SET, MENU_MSG_NUM, llDumpList2String(menuCmdList, "|"), user);
+            }
         }
     }
 
     timer(){ // 超时关闭菜单并重置
         showMenu("", "", "", "", TRUE, NULL_KEY);
-        menuRegistList=[];;
+        menuRegistList=[];
         llListenRemove(menuListenHandle);
         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.CLOSE", NULL_KEY);
     }
@@ -629,143 +559,147 @@ default{
         if(num!=MENU_MSG_NUM && num!=LAN_MSG_NUM){
             return;
         }
-        /*
-        注册菜单，格式：标头 | 菜单名 | 菜单文本 | 菜单按钮1; 菜单按钮2; ... | 上级菜单（可选）
-        MENU.REGIST | mainMenu | Main menu desc | Button 1; Button 2; Button 3
-        MENU.REG | subMenu | Sub menu desc | Button 1; Button 2; Button 3 | mainMenu
-        注册并显示菜单，格式和上面相同
-        MENU.REGIST.OPEN | mainMenu | Main menu desc | Button 1; Button 2; Button 3
-        MENU.REG.OPEN | subMenu | Sub menu desc | Button 1; Button 2; Button 3 | mainMenu
-        MENU.REG.OPEN.1 | subMenu | Sub menu desc | Button 1; Button 2; Button 3 | mainMenu
-        MENU.REG.OPEN.RESET | subMenu | Sub menu desc | Button 1; Button 2; Button 3 | mainMenu
-        菜单文本拼接变量
-        MENU.REG.OPEN | subMenu | Sub menu desc %1% %2% %%;val1;val2 | Button 1; Button 2; Button 3 | mainMenu
-        打开菜单，格式：标头 | 菜单名 | 重置页数（可选）
-        默认不reshow菜单，在有需要reshow的场合，重新调用同名菜单即可。
-        MENU.OPEN | mainMenu
-        MENU.OPEN.1 | mainMenu
-        MENU.OPEN.RESET | subMenu
-        简易菜单（用于提示、确认事项等），格式：标头 | 菜单名 | 菜单文本 | 菜单按钮1; 菜单按钮2; ...（可选，留空为OK）
-        MENU.CONFIRM | confirmMenu | Are you confirm desc %1% %2% %%;val1;val2
-        MENU.CONFIRM | confirmMenu | Are you confirm desc %1% %2% %%;val1;val2 | OK; Wait; Cancel
-        MENU.CONFIRM | confirmMenu | Are you confirm desc %1% %2% %%;val1;val2 | OK; Wait; Cancel; BACK | mainMenu
-        文本输入，格式：标头 | 菜单名 | 菜单文本
-        MENU.INPUT | inputMenu | Please input something %1% %2% %%;val1;val2
-        移除菜单，格式：标头 | 菜单名
-        MENU.REM | subMenu
-        MENU.REMOVE | subMenu
-        清空菜单，格式：标头
-        MENU.CLEAR
-        按钮激活格式：llMessageLinked(LINK_SET, 1000, 指令, 操作者UUID)
-        MENU.ACTIVE | mainMenu | Button 1
-        MENU.ACTIVE | confirmMenu | OK
-        MENU.ACTIVE | inputMenu | Inputed something
-        菜单执行后，会发送执行结果回调，格式：
-        MENU.EXEC | MENU.REG.OPEN.RESET | 1 // 1=成功，0=失败，或其他结果字符串
-        */
-        list msgList=strSplit(msg, "&&");
-        list resultList=[];
-        integer msgCount=llGetListLength(msgList);
-        integer mi;
-        for(mi=0; mi<msgCount; mi++){
-            string str=llList2String(msgList, mi);
-            if (llGetSubString(str, 0, 4) == "MENU." && !includes(str, "EXEC")) {
-                list menuCmdList=strSplit(str, "|");
-                string menuCmdStr=llList2String(menuCmdList, 0);
-                list menuCmdGroup=llParseStringKeepNulls(menuCmdStr, ["."], [""]);
-    
-                string menuCmd=llList2String(menuCmdGroup, 0);
-                string menuCmdSub=llList2String(menuCmdGroup, 1);
-                string menuCmdExt=llList2String(menuCmdGroup, 2);
-                string menuCmdExt2=llList2String(menuCmdGroup, 3);
-    
-                string menuName=llList2String(menuCmdList, 1);
-                string menuText=llList2String(menuCmdList, 2);
-                string menuButtons=llList2String(menuCmdList, 3);
-                // list menuButtons=data2List(llList2String(menuCmdList, 3));
-                string menuParent=llList2String(menuCmdList, 4);
-    
-                string result="";
-                if(menuCmdSub=="REG" || menuCmdSub=="REGIST"){
-                    result=(string)registMenu(menuName, menuText, menuButtons, menuParent);
-                    if(menuCmdExt=="OPEN"){
-                        integer reset=FALSE;
-                        if(menuCmdExt2!=""){
-                            if(menuCmdExt2=="RESET"){
-                                reset=1;
-                            }else{
-                                reset=(integer)menuCmdExt2;
-                            }
-                        }
-                        result=(string)executeMenu(menuName, reset, user);
-                    }
-                }
-                else if(menuCmdSub=="CONFIRM"){
-                    result=(string)showMenu(menuName, menuText, menuButtons, menuParent, 2, user);
-                }
-                else if(menuCmdSub=="INPUT"){
-                    result=(string)showMenu(menuName, menuText, "", "", 0, user);
-                }
-                else if(menuCmdSub=="OPEN"){
+
+        list msgList=strSplit(msg, "|");
+        string msgHeader=llList2String(msgList, 0);
+        list msgHeaderGroup=llParseStringKeepNulls(msgHeader, ["."], [""]);
+
+        string menuCmd=llList2String(msgHeaderGroup, 0);
+        string menuCmdSub=llList2String(msgHeaderGroup, 1);
+        string menuCmdExt=llList2String(msgHeaderGroup, 2);
+        string menuCmdExt2=llList2String(msgHeaderGroup, 3);
+
+        string menuName=llList2String(msgList, 1);
+        string menuText=llList2String(msgList, 2);
+        string menuButtons=llList2String(msgList, 3);
+        string menuParent=llList2String(msgList, 4);
+
+        if (menuCmd == "MENU" && menuCmdSub != "EXEC") {
+            string result="";
+            /*
+            注册菜单，格式：标头 | 菜单名 | 菜单文本 | 菜单按钮1; 菜单按钮2; ... | 上级菜单（可选）
+            MENU.REGIST | mainMenu | Main menu desc | Button 1; Button 2; Button 3
+            MENU.REG | subMenu | Sub menu desc | Button 1; Button 2; Button 3 | mainMenu
+            注册并显示菜单，格式和上面相同
+            MENU.REGIST.OPEN | mainMenu | Main menu desc | Button 1; Button 2; Button 3
+            MENU.REG.OPEN | subMenu | Sub menu desc | Button 1; Button 2; Button 3 | mainMenu
+            MENU.REG.OPEN.1 | subMenu | Sub menu desc | Button 1; Button 2; Button 3 | mainMenu
+            MENU.REG.OPEN.RESET | subMenu | Sub menu desc | Button 1; Button 2; Button 3 | mainMenu
+            菜单文本拼接变量
+            MENU.REG.OPEN | subMenu | Sub menu desc %1% %2% %%;val1;val2 | Button 1; Button 2; Button 3 | mainMenu
+            */
+            if(menuCmdSub=="REG" || menuCmdSub=="REGIST"){
+                result=(string)registMenu(menuName, menuText, menuButtons, menuParent);
+                if(menuCmdExt=="OPEN"){
                     integer reset=FALSE;
-                    if(menuCmdExt!=""){
-                        if(menuCmdExt=="RESET"){
+                    if(menuCmdExt2!=""){
+                        if(menuCmdExt2=="RESET"){
                             reset=1;
                         }else{
-                            reset=(integer)menuCmdExt;
+                            reset=(integer)menuCmdExt2;
                         }
                     }
                     result=(string)executeMenu(menuName, reset, user);
                 }
-                else if(menuCmdSub=="REM" || menuCmdSub=="REMOVE"){
-                    result=(string)removeMenu(menuName);
-                }
-                else if(menuCmdSub=="CLEAR"){
-                    menuRegistList=[];
-                    llListenRemove(menuListenHandle);
-                    llSetTimerEvent(0);
-                    result="1";
-                }
-                else if(menuCmdSub=="OUT" || menuCmdSub=="OUTPUT"){
-                    string outputText=getLanguageVar(menuName);
-                    integer outputChannel=(integer)menuText;
-                    key outputUser=(key)menuButtons;
-                    if(outputUser=="" || outputUser==NULL_KEY){
-                        outputUser=user;
-                    }
-                    if(menuCmdExt=="" || menuCmdExt=="OWNER" || menuCmdExt=="SELF"){
-                        llOwnerSay(outputText);
-                    }else if(menuCmdExt=="SAY"){
-                        llSay(outputChannel, outputText);
-                    }else if(menuCmdExt=="WHISPER"){
-                        llWhisper(outputChannel, outputText);
-                    }else if(menuCmdExt=="SHOUT"){
-                        llShout(outputChannel, outputText);
-                    }else if(menuCmdExt=="TO"){
-                        llRegionSayTo(outputUser, outputChannel, outputText);
-                    }else if(menuCmdExt=="REGION"){
-                        llRegionSay(outputChannel, outputText);
-                    }
-                    // outputMessage(menuCmdExt, menuName, menuText, menuButtons);
-                }
-                
-                if(result!=""){
-                    list menuExeResult=[
-                        "MENU.EXEC", menuCmdStr, result
-                    ];
-                    resultList+=[llDumpList2String(menuExeResult, "|")];
-                    //llMessageLinked(LINK_SET, 0, list2Msg(menuExeResult), user); // 菜单处理完成后的回调
-                }
             }
-            else if (includes(str, "LANGUAGE.EXEC") && includes(str, "INIT")) { // 接收语言系统INIT回调，并启用语言功能
-                hasLanguage=TRUE;
+            /*
+            简易菜单（用于提示、确认事项等），格式：标头 | 菜单名 | 菜单文本 | 菜单按钮1; 菜单按钮2; ...（可选，留空为OK）
+            MENU.CONFIRM | confirmMenu | Are you confirm desc %1% %2% %%;val1;val2
+            MENU.CONFIRM | confirmMenu | Are you confirm desc %1% %2% %%;val1;val2 | OK; Wait; Cancel
+            MENU.CONFIRM | confirmMenu | Are you confirm desc %1% %2% %%;val1;val2 | OK; Wait; Cancel; BACK | mainMenu
+            */
+            else if(menuCmdSub=="CONFIRM"){
+                result=(string)showMenu(menuName, menuText, menuButtons, menuParent, 2, user);
             }
-            else if (llGetSubString(str, 0, 2) == "LAN" && includes(str, "ACTIVE")) { // 接收语言系统ACTIVE回调，并应用语言数据
-                applyLanguage();
+            /*
+            文本输入，格式：标头 | 菜单名 | 菜单文本
+            MENU.INPUT | inputMenu | Please input something %1% %2% %%;val1;val2
+            */
+            else if(menuCmdSub=="INPUT"){
+                result=(string)showMenu(menuName, menuText, "", "", 0, user);
+            }
+            /*
+            打开菜单，格式：标头 | 菜单名 | 重置页数（可选）
+            默认不reshow菜单，在有需要reshow的场合，重新调用同名菜单即可。
+            MENU.OPEN | mainMenu
+            MENU.OPEN.1 | mainMenu
+            MENU.OPEN.RESET | subMenu
+            */
+            else if(menuCmdSub=="OPEN"){
+                integer reset=FALSE;
+                if(menuCmdExt!=""){
+                    if(menuCmdExt=="RESET"){
+                        reset=1;
+                    }else{
+                        reset=(integer)menuCmdExt;
+                    }
+                }
+                result=(string)executeMenu(menuName, reset, user);
+            }
+            /*
+            移除菜单，格式：标头 | 菜单名
+            MENU.REM | subMenu
+            MENU.REMOVE | subMenu
+            */
+            else if(menuCmdSub=="REM" || menuCmdSub=="REMOVE"){
+                result=(string)removeMenu(menuName);
+            }
+            /*
+            清空菜单，格式：标头
+            MENU.CLEAR
+            */
+            else if(menuCmdSub=="CLEAR"){
+                menuRegistList=[];
+                llListenRemove(menuListenHandle);
+                llSetTimerEvent(0);
+                result="1";
+            }
+            /*
+            输出文本内容
+            MENU.OUT | Your text here. // 使用llOwnerSay发送
+            MENU.OUT.OWNER | Your text here. // 使用llOwnerSay发送
+            MENU.OUT.SELF | Your text here. // 使用llOwnerSay发送
+            MENU.OUT.SAY | Your text here. | N // 使用llSay发送到频道N，频道可省略，默认为0
+            MENU.OUT.WHISPER | Your text here. | N // 使用llWhisper发送到频道N，频道可省略，默认为0
+            MENU.OUT.SHOUT | Your text here. | N // 使用llShout发送到频道N，频道可省略，默认为0
+            MENU.OUT.TO | Your text here. | N | UUID // 使用llRegionSayTo发送到指定用户的频道N，频道和用户可省略。频道默认为0，用户默认为传递此消息的用户UUID。
+            MENU.OUT.REGION | Your text here. | N // 使用llRegionSay发送到全sim用户的频道N，频道可省略，默认为0
+            */
+            else if(menuCmdSub=="OUT" || menuCmdSub=="OUTPUT"){
+                string outputText=getLanguageVar(menuName);
+                integer outputChannel=(integer)menuText;
+                key outputUser=(key)menuButtons;
+                if(outputUser=="" || outputUser==NULL_KEY){
+                    outputUser=user;
+                }
+                if(menuCmdExt=="" || menuCmdExt=="OWNER" || menuCmdExt=="SELF"){
+                    llOwnerSay(outputText);
+                }else if(menuCmdExt=="SAY"){
+                    llSay(outputChannel, outputText);
+                }else if(menuCmdExt=="WHISPER"){
+                    llWhisper(outputChannel, outputText);
+                }else if(menuCmdExt=="SHOUT"){
+                    llShout(outputChannel, outputText);
+                }else if(menuCmdExt=="TO"){
+                    llRegionSayTo(outputUser, outputChannel, outputText);
+                }else if(menuCmdExt=="REGION"){
+                    llRegionSay(outputChannel, outputText);
+                }
+                // outputMessage(menuCmdExt, menuName, menuText, menuButtons);
+            }
+            /*
+            菜单执行后，会发送执行结果回调，格式：
+            MENU.EXEC | MENU.REG.OPEN.RESET | 1 // 1=成功，0=失败，或其他结果字符串
+            */
+            if(result!=""){
+                llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.EXEC|"+msgHeader+"|"+result, user);
             }
         }
-        if(llGetListLength(resultList)>0){
-            llMessageLinked(LINK_SET, MENU_MSG_NUM, llDumpList2String(resultList, "&&"), user); // 菜单处理完成后的回调
+        else if (msgHeader == "LANGUAGE.EXEC" && includes(msg, "INIT")) { // 接收语言系统INIT回调，并启用语言功能
+            hasLanguage=TRUE;
+        }
+        else if (msgHeader == "LANGUAGE.ACTIVE") { // 接收语言系统ACTIVE回调，并应用语言数据
+            applyLanguage();
         }
         // llSleep(0.01);
         // llOwnerSay("Menu Memory Used: "+(string)llGetUsedMemory()+"/"+(string)(65536-llGetUsedMemory())+" Free: "+(string)llGetFreeMemory());

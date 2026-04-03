@@ -19,6 +19,7 @@ initMain(){
     LEASH_READY=FALSE;
     ANIM_READY=FALSE;
     STRUGGLE_READY=FALSE;
+    TEXT_READY=FALSE;
     hasLanguage=FALSE;
 
     llOwnerSay("Begin Initialize...");
@@ -217,8 +218,11 @@ list getMenuFeature(string menuName, key user){
         if(hasLanguage){
             menuList+=["Language"];
         }
+        if(TEXT_READY){
+            menuList+=["["+(string)showText+"]ShowText"];
+        }
         if(REZ_MODE==TRUE && RLV_READY){
-            menuList+=["["+(string)sitAutoLock+"]AutoLock", "["+(string)sitAutoTrap+"]AutoTrap", "["+(string)showText+"]ShowText"];
+            menuList+=["["+(string)sitAutoLock+"]AutoLock", "["+(string)sitAutoTrap+"]AutoTrap"];
         }
         menuList=applyFeatureList(menuName, menuList, featureList);
     }
@@ -232,6 +236,9 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.1.10 20260404
+    - 优化设置菜单显示内容。
+
 - 1.1.9 20260402
     - 自定义菜单功能支持注册在不同菜单中。
     - 加入默认音频并自动检测是否存在。
@@ -776,6 +783,7 @@ integer TIMER_READY=FALSE;
 integer LEASH_READY=FALSE;
 integer ANIM_READY=FALSE;
 integer STRUGGLE_READY=FALSE;
+integer TEXT_READY=FALSE;
 
 list owner=[];
 list trust=[];
@@ -1071,6 +1079,11 @@ default{
                 if(isLocked){
                     setLock(FALSE, NULL_KEY, FALSE); // 挣扎成功时，解锁
                 }
+            }
+        }
+        else if(num==TEXT_MSG_NUM){
+            if(includes(str, "TEXT.READY")){
+                TEXT_READY=TRUE;
             }
         }
         triggerLinkMessage(sender_num, num, str, user);

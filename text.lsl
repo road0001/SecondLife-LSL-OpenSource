@@ -2,6 +2,7 @@ initConfig(){
     textColor=<1.0,0.0,0.0>;
     textAlpha=1.0;
 	textDisplay=TRUE;
+	textLinkName="floattext";
 }
 /*CONFIG END*/
 /*
@@ -10,6 +11,9 @@ Author: JMRY
 Description: A text system, use link_message to operate text things.
 
 ***更新记录***
+- 1.0.2 20260402
+	- 加入指定显示文本的Prim功能。
+
 - 1.0.1 20260322
 	- 加入获取文字参数的功能。
 	- 优化参数传递结构。
@@ -42,6 +46,19 @@ list strSplit(string m, string sp){
 }
 string list2Data(list d){
     return llDumpList2String(d, ";");
+}
+
+integer getLinkByName(string name){
+    name=llToLower(llStringTrim(name,STRING_TRIM));
+    integer linkCount=llGetNumberOfPrims();
+    integer i;
+    for (i=-1; i<=linkCount;++i){
+        string curPrimName = llToLower(llStringTrim(llList2String(llGetLinkPrimitiveParams(i,[PRIM_NAME]),0),STRING_TRIM));
+        if(curPrimName==name){
+            return i;
+        }
+    }
+    return 0;
 }
 
 /*
@@ -196,8 +213,10 @@ integer removeText(string name){
 vector textColor=<1.0, 1.0, 1.0>;
 float textAlpha=1.0;
 integer textDisplay=TRUE;
+string textLinkName="floattext";
 displayText(){
 	list displayTextList=[];
+	integer textLink=getLinkByName(textLinkName);
 	if(textDisplay==TRUE){
 		integer i;
 		for(i=1; i<llGetListLength(textList); i+=textDataLength){
@@ -205,9 +224,17 @@ displayText(){
 				displayTextList+=getLanguageVar(llList2String(textList, i));
 			}
 		}
-		llSetText(llDumpList2String(displayTextList, "\n"), textColor, textAlpha);
+		if(textLink>0){
+			llSetLinkPrimitiveParamsFast(textLink, [PRIM_TEXT, llDumpList2String(displayTextList, "\n"), textColor, textAlpha]);
+		}else{
+			llSetText(llDumpList2String(displayTextList, "\n"), textColor, textAlpha);
+		}
 	}else{
-		llSetText("", ZERO_VECTOR, 0.0);
+		if(textLink>0){
+			llSetLinkPrimitiveParamsFast(textLink, [PRIM_TEXT, "", ZERO_VECTOR, 0.0]);
+		}else{
+			llSetText("", ZERO_VECTOR, 0.0);
+		}
 	}
 }
 

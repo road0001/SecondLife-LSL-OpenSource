@@ -65,6 +65,9 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 2.0.20 20260402
+    - 修复RLV变更提示内容发送对象错误的bug。
+
 - 2.0.19 20260330
     - 优化REZ模式下，RLV推送逻辑，阻止非预期的授权弹窗。
     - 修复REZ模式下，玩家站立后，未清空RLV限制的bug。
@@ -1104,11 +1107,16 @@ default{
                         onOff="ON";
                     }
                     resultList+=[applyResult];
-                    if(VICTIM_UUID==NULL_KEY && RLV_MODE==0){
-                        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Your %1% - %2% restrictions is set to %3%.%%;"+curRlvSubMenu+";"+msgSub+";"+onOff, user);
-                    }else if(VICTIM_UUID!=NULL_KEY){
-                        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|%4%'s %1% - %2% restrictions is set to %3%.%%;"+curRlvSubMenu+";"+msgSub+";"+onOff+";"+userInfo(VICTIM_UUID), user);
+                    if(VICTIM_UUID==NULL_KEY && RLV_MODE==0){ // 穿戴模式
+                        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Your %1% - %2% restrictions is set to %3%.%%;"+curRlvSubMenu+";"+msgSub+";"+onOff, llGetOwner());
+                        if(user != llGetOwner()){
+                            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|%4%'s %1% - %2% restrictions is set to %3%.%%;"+curRlvSubMenu+";"+msgSub+";"+onOff+";"+userInfo(llGetOwner()), user);
+                        }
+                    }else if(VICTIM_UUID!=NULL_KEY){ // REZ模式
                         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Your %1% - %2% restrictions is set to %3%.%%;"+curRlvSubMenu+";"+msgSub+";"+onOff, VICTIM_UUID);
+                        if(VICTIM_UUID != user){
+                            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|%4%'s %1% - %2% restrictions is set to %3%.%%;"+curRlvSubMenu+";"+msgSub+";"+onOff+";"+userInfo(VICTIM_UUID), user);
+                        }
                     }
                     showRLVSubMenu(rlvParentMenuName, curRlvSubMenu, user);
                 }
