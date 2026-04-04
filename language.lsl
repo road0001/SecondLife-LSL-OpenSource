@@ -1,9 +1,16 @@
+initConfig(){
+    defaultLanguage="English";
+}
+/*CONFIG END*/
 /*
 Name: Language
 Author: JMRY
 Description: A better language management system, use link_message to operate languages.
 
 ***更新记录***
+- 1.0.9 20260404
+    - 加入脚本重置时，重新读取默认语言功能。
+
 - 1.0.8 20260322
     - 优化代码结构和函数调用。
 
@@ -214,6 +221,7 @@ list getLanguageNotecards(){
     return lanList;
 }
 
+string defaultLanguage="";
 key readLanQuery=NULL_KEY;
 integer readLanLine=0;
 string readLanName="";
@@ -252,6 +260,9 @@ integer LAN_MSG_NUM=1003;
 default{
     state_entry(){
         hasLanguage=TRUE;
+        if(defaultLanguage!=""){
+            llMessageLinked(LINK_SET, LAN_MSG_NUM, "LANGUAGE.CHANGE|"+defaultLanguage, NULL_KEY);
+        }
     }
     changed(integer change){
         if(change & CHANGED_OWNER){
@@ -407,7 +418,7 @@ default{
                 }else if(menuName=="languageMenu" && menuText!=""){
                     //readLanguageNotecards(menuText); // 由于需要语言的执行回调LANGUAGE.EXEC，因此不允许直接调用
                     list lanChanList=[
-                        "LAN.CHANGE",
+                        "LANGUAGE.CHANGE",
                         menuText
                     ];
                     llMessageLinked(LINK_SET, LAN_MSG_NUM, list2Msg(lanChanList), user);
