@@ -8,6 +8,9 @@ Author: JMRY
 Description: A arousal controller for restraint items.
 
 ***更新记录***
+- 1.0.2 20260406
+	- 优化REZ模式下，玩家UUID的识别效果。
+
 - 1.0.1 20260402
 	- 优化菜单用语和相关逻辑。
 	- 修复强制高潮不会弹出菜单的bug。
@@ -175,6 +178,7 @@ default{
             llResetScript();
         }
         if(change & CHANGED_LINK){
+			llSleep(0.01);
             VICTIM_UUID=llAvatarOnSitTarget();
         }
     }

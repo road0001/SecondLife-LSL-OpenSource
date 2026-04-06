@@ -5,6 +5,9 @@ Author: JMRY
 Description: A better RLV Extension management system, use link_message to operate RLV Extension restraints.
 
 ***更新记录***
+- 1.0.8 20260406
+    - 修复REZ模式下，起立时报错的bug。
+
 - 1.0.7 20260402
     - 修复非预期的授权请求bug。
 
@@ -203,7 +206,9 @@ integer setMoveTurn(integer isAllow, string rname){
             controlVal=controlVal | CONTROL_ROT_LEFT | CONTROL_ROT_RIGHT;
         }
     }
-    llRequestPermissions(VICTIM_UUID, PERMISSION_TAKE_CONTROLS);
+    if(VICTIM_UUID!=NULL_KEY){
+        llRequestPermissions(VICTIM_UUID, PERMISSION_TAKE_CONTROLS);
+    }
 
     // if(controlVal==0){
     //     // controlVal==0说明没有任何控制，释放之
@@ -316,7 +321,9 @@ integer setSpeed(integer isAllow, string params){
     }else{
         moveSpeed=0;
     }
-    llRequestPermissions(VICTIM_UUID, PERMISSION_TAKE_CONTROLS);
+    if(VICTIM_UUID!=NULL_KEY){
+        llRequestPermissions(VICTIM_UUID, PERMISSION_TAKE_CONTROLS);
+    }
     return isAllow;
 }
 
@@ -338,6 +345,7 @@ default{
             llResetScript();
         }
         if (change & CHANGED_LINK) {
+            llSleep(0.1);
             RLV_MODE=1;
             VICTIM_UUID = llAvatarOnSitTarget();
             if (VICTIM_UUID != NULL_KEY){

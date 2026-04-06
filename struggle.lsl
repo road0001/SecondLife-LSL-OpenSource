@@ -16,6 +16,9 @@ Author: JMRY
 Description: A struggle system, use link_message to operate struggle things.
 
 ***更新记录***
+- 1.0.6 20260406
+    - 优化REZ模式下，玩家UUID的识别效果。
+
 - 1.0.5 20260324
     - 优化初始化逻辑。
 
@@ -286,6 +289,7 @@ default{
             llResetScript();
         }
         if(change & CHANGED_LINK){
+            llSleep(0.01);
             strugglePlayer=llAvatarOnSitTarget();
         }
     }

@@ -20,6 +20,9 @@ Author: JMRY
 Description: A better RLV Renamer management system, use link_message to operate Renamer restraints.
 
 ***更新记录***
+- 1.1.9 20260406
+    - 优化REZ模式下，玩家UUID的识别效果。
+
 - 1.1.8 20260402
     - 加入音频检测是否存在功能。
     - 修复REZ模式下，转发的说话内容显示错误的bug。
@@ -605,8 +608,8 @@ default{
             llResetScript();
         }
         if (change & CHANGED_LINK) {
-            key avatar = llAvatarOnSitTarget();
             llSleep(0.1);
+            key avatar = llAvatarOnSitTarget();
             if (avatar != NULL_KEY){
                 RLV_MODE=1;
                 VICTIM_UUID=avatar;

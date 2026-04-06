@@ -94,12 +94,15 @@ triggerFeature(string menuName, string menuText, key user){
             if (user != NULL_KEY){
                 VICTIM_UUID=user;
                 if(sitAutoLock==TRUE){
+                    // 自动上锁时，APPLY.ALL交给LockConnect完成
                     if(captureByUser!=NULL_KEY){
                         setLock(TRUE, captureByUser, FALSE);
                         captureByUser=NULL_KEY;
                     }else{
                         setLock(TRUE, llList2Key(owner, 0), FALSE);
                     }
+                }else{
+                    llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.APPLY.ALL", NULL_KEY);
                 }
                 if(showText==TRUE && VICTIM_UUID!=NULL_KEY){
                     llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.SET|Victim|"+llGetDisplayName(VICTIM_UUID)+" ("+llGetUsername(VICTIM_UUID)+")|"+(string)showText+"|TOP", NULL_KEY);
@@ -110,10 +113,11 @@ triggerFeature(string menuName, string menuText, key user){
                     llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.REM|Locked", NULL_KEY);
                 }
             }else{
-                VICTIM_UUID=NULL_KEY;
                 setLock(FALSE, NULL_KEY, FALSE);
+                VICTIM_UUID=NULL_KEY;
                 llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.REM|Victim", NULL_KEY);
                 llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.REM|Locked", NULL_KEY);
+                llSleep(1.0);
             }
         }
     }
@@ -245,6 +249,9 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.1.11 20260406
+    - - 优化REZ模式下的各种处理逻辑。
+
 - 1.1.10 20260404
     - 加入永久锁定功能。
     - 优化设置菜单显示内容。
@@ -851,6 +858,7 @@ default{
             llResetScript();
         }
         if (change & CHANGED_LINK) {
+            llSleep(0.1);
             REZ_MODE=TRUE;
             triggerFeature("CHANGE", (string)change, llAvatarOnSitTarget());
         }else{
@@ -946,9 +954,9 @@ default{
                         llSensor("", NULL_KEY, AGENT, 96.0, PI);
                     }
                     else if(menuText=="Unsit"){
-                        setLock(FALSE, NULL_KEY, FALSE);
-                        llUnSit(llAvatarOnSitTarget());
+                        // setLock(FALSE, NULL_KEY, FALSE);
                         captureByUser=NULL_KEY;
+                        llUnSit(llAvatarOnSitTarget());
                     }
                     else if(menuText=="Apps"){
                         showMenu("appMenu", user);
@@ -1018,12 +1026,16 @@ default{
                 if(rlvCmdName=="RLV.GET.LOCK" || rlvCmdName=="RLV.LOCK"){
                     isLocked=llList2Integer(rlvCmdData, 0);
                     lockUser=llList2Key(rlvCmdData, 1);
+                    string lockStr="detach";
+                    if(REZ_MODE==1){
+                        lockStr="unsit";
+                    }
                     if(isLocked){
                         lockTime=llGetUnixTime();
-                        llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.RUN.TEMP|detach=n", NULL_KEY);
+                        llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.RUN.TEMP|"+lockStr+"=n", NULL_KEY);
                     }else{
                         lockTime=0;
-                        llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.RUN.TEMP|detach=y", NULL_KEY);
+                        llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.RUN.TEMP|"+lockStr+"=y", NULL_KEY);
                     }
                     // llMessageLinked(LINK_SET, STRUGGLE_MSG_NUM, "STRUGGLE.GET.READY", NULL_KEY);
                 }

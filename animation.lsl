@@ -21,6 +21,9 @@ Author: JMRY
 Description: A better animation control system, use link_message to operate animations.
 
 ***更新记录***
+- 1.2.1 20260406
+    - 优化REZ模式下，玩家UUID的识别效果。
+
 - 1.2 20260323
     - 加入REZ模式下，动画调整位置功能。
 
@@ -491,6 +494,7 @@ default{
             }
         }
         if(change & CHANGED_LINK){
+            llSleep(0.01);
             animPlayer=llAvatarOnSitTarget();
             if(animPlayer!=NULL_KEY){
                 playAnimation(curPlayingAnimFileName, FALSE);
