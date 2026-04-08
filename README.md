@@ -964,6 +964,9 @@ Renamer系统支持改名、混淆、触发各种效果等，自带Renamer管理
 ## PA2唤起系统
 PA2唤起系统支持配置、PA2唤起。
 [PA2唤起文档](Apps/README.Arousal.md)
+- 1.0.3 20260409
+	- 加入Arousal模式音效。
+
 - 1.0.2 20260406
 	- 优化REZ模式下，玩家UUID的识别效果。
 

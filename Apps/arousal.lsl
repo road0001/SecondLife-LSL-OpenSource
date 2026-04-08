@@ -1,4 +1,15 @@
 initMain(){
+	arousalAllowAnim=FALSE;
+    arousalEdgeLower=20;
+    arousalEdgeUpper=80;
+
+	arousalValList=[
+		2, 5, 10, // A:Low, A:Medium, A:High arousal val
+		1, 10, // A:Tease random delay range
+		5, 50 // Random arousal val range
+	];
+	arousalVoiceList=[
+	]; // VoiceName, VoiceMode, VoiceVolume
 }
 /*CONFIG END*/
 
@@ -8,6 +19,9 @@ Author: JMRY
 Description: A arousal controller for restraint items.
 
 ***更新记录***
+- 1.0.3 20260409
+	- 加入Arousal模式音效。
+
 - 1.0.2 20260406
 	- 优化REZ模式下，玩家UUID的识别效果。
 
@@ -48,6 +62,56 @@ integer RandomInteger(integer a, integer b){
     return a + (integer)llFrand(b - a + 1);
 }
 
+list arousalVoiceList=[
+	// VoiceName, VoiceMode, VoiceVolume
+];
+integer arousalVoiceDataLength=3;
+
+list getVoiceByName(string name){
+	integer index=llListFindList(arousalVoiceList, [name]);
+	if(~index){
+		return llList2List(arousalVoiceList, index, index+arousalVoiceDataLength-1);
+	}else{
+		return [];
+	}
+}
+list getVoiceByMode(string mode){
+	integer index=llListFindList(arousalVoiceList, [mode]);
+	if(~index){
+		return llList2List(arousalVoiceList, index-1, index+arousalVoiceDataLength-2);
+	}else{
+		return [];
+	}
+}
+
+
+string arousalVoiceName="";
+float arousalVoiceVolume=0;
+applyArousalSound(string mode){
+	if(mode=="A:Orgasm"){
+		list orgasmVoiceData=getVoiceByMode("A:Orgasm");
+		if(llGetListLength(orgasmVoiceData)>0){
+			llTriggerSound(llList2String(orgasmVoiceData, 0), llList2Float(orgasmVoiceData, 2)); // llTriggerSound不会打断现有的llPlaySound
+		}
+		return;
+	}
+	else if(mode!=""){
+		list arousalVoiceData=getVoiceByMode(arousalMode);
+		if(llGetListLength(arousalVoiceData)>0){
+			arousalVoiceName=llList2String(arousalVoiceData, 0);
+			arousalVoiceVolume=llList2Float(arousalVoiceData, 2);
+		}else{
+			arousalVoiceName="";
+			arousalVoiceVolume=0;
+		}
+	}
+	if(arousalVoiceName!="" && VICTIM_UUID!=NULL_KEY){
+		llLoopSound(arousalVoiceName, arousalVoiceVolume);
+	}else{
+		llStopSound();
+	}
+}
+
 string arousalMode="A:Stop";
 integer arousalEdge=FALSE;
 integer arousalAllowAnim=TRUE;
@@ -58,6 +122,9 @@ string setArousalMode(string mode, key user){
 		arousalMode=mode;
 		llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Your Arousal mode is set to: %1%%%;"+arousalMode, VICTIM_UUID);
 	}
+	applyArousalSound(mode);
+
+	timerTick=0;
 	applyArousal();
 	return mode;
 }
@@ -67,6 +134,7 @@ integer setArousalEdge(integer bool, key user){
 		arousalEdge=bool;
 		llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Your Arousal edge mode is set to: %b1%%%;"+(string)arousalEdge, VICTIM_UUID);
 	}
+	timerTick=0;
 	applyArousal();
 	return bool;
 }
@@ -124,7 +192,11 @@ applyArousal(){
 		}
 		llMessageLinked(LINK_SET, PA2_MSG_NUM, "caeilarousalup|"+(string)VICTIM_UUID+"|"+(string)arousalVal, "");
 	}
-	llSetTimerEvent(arousalDelay);
+	if(arousalDelay>0){
+		llSetTimerEvent(1);
+	}else{
+		llSetTimerEvent(0);
+	}
 }
 
 applyOrgasm(){
@@ -136,6 +208,8 @@ applyOrgasm(){
 	}
 	llMessageLinked(LINK_SET, PA2_MSG_NUM, "arousalForceOrgasm|"+(string)VICTIM_UUID+"|"+"1", "");
 	llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You had a powerful orgasm.", VICTIM_UUID);
+
+	applyArousalSound("A:Orgasm");
 }
 
 string arousalMenuName="ArousalMenu";
@@ -157,6 +231,7 @@ integer MAIN_MSG_NUM=9000;
 integer AROUSAL_MSG_NUM=90001;
 integer PA2_MSG_NUM=0;
 key VICTIM_UUID;
+integer timerTick=0;
 
 default{
     state_entry(){
@@ -180,13 +255,20 @@ default{
         if(change & CHANGED_LINK){
 			llSleep(0.01);
             VICTIM_UUID=llAvatarOnSitTarget();
+			applyArousalSound("");
         }
     }
 	timer(){
-		applyArousal();
+		if(arousalDelay > 0){
+			if(timerTick % arousalDelay == 0){
+				applyArousal();
+			}
+		}
+		timerTick++;
 	}
 	attach(key user){
         VICTIM_UUID=user;
+		applyArousalSound("");
     }
 	object_rez(key user){
         VICTIM_UUID=NULL_KEY;
@@ -376,6 +458,7 @@ default{
 					应用唤起状态
 					AROUSAL.APPLY
 					*/
+					timerTick=0;
 					applyArousal();
 				}
 				else if(headerExt=="ORGASM"){
