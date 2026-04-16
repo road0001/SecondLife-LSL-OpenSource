@@ -21,6 +21,10 @@ Author: JMRY
 Description: A better animation control system, use link_message to operate animations.
 
 ***更新记录***
+- 1.2.2 20260416
+    - 加入.开头的class为隐藏类别功能。
+    - 修复悬浮高度无法使用负值的bug。
+
 - 1.2.1 20260406
     - 优化REZ模式下，玩家UUID的识别效果。
 
@@ -175,9 +179,9 @@ integer playAnimationByParams(string params, string name){
             playAnimInterval=0.0;
         }
         playAnimFloatHeight=(float)llList2String(animParams, 2);
-        if(playAnimFloatHeight<=0.0){
-            playAnimFloatHeight=0.0;
-        }
+        // if(playAnimFloatHeight<=0.0){
+        //     playAnimFloatHeight=0.0;
+        // }
         playAnimAdjust=(vector)llList2String(animParams, 3);
 
         // curPlayingAnimFileName=llList2String(animParams, 0);
@@ -384,7 +388,7 @@ showAnimMenu(string parent, key user){
     integer i;
     for(i=0; i<llGetListLength(animConfigList); i+=animConfigLength){
         string class=llList2String(animConfigList, i+2);
-        if(class!="" && curClass != class){
+        if(class!="" && llGetSubString(class, 0, 1)!="." && curClass != class){
             animClassList+=[class];
             curClass=class;
         }

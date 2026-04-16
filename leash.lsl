@@ -59,6 +59,10 @@ Author: JMRY
 Description: A better leash control system, use link_message to operate leashes.
 
 ***更新记录***
+- 1.1.10 20260416
+    - 修复检测物体或玩家时，按钮文字会超长的bug。
+    - 修复周围没有玩家时，无法弹出选择玩家对话框的bug。
+
 - 1.1.9 20260311
     - 优化记事卡读取速度。
     - 修复Leash读取记事卡回调错误的bug。
@@ -706,7 +710,8 @@ showLeashSubMenu(string menuName, string parent, key user, integer reset){
                 // string un=userName(uk,1);
                 // userList+=[(string)(i+1) + ". " + un];
                 // buttonList+=[(string)(i+1) + ". " + un];
-                buttonList+=[(string)(i+1) + ". " + llGetUsername(uk)];
+                // buttonList+=[(string)(i+1) + ". " + llGetUsername(uk)];
+                buttonList+=[llGetSubString((string)(i+1) + ". " + llGetUsername(uk), 0, 23)];
             }
         }
     }
@@ -718,7 +723,8 @@ showLeashSubMenu(string menuName, string parent, key user, integer reset){
             if(uk){
                 string un=llList2String(llGetObjectDetails(uk, [OBJECT_NAME]), 0);
                 // userList+=[(string)(i+1) + ". " + un];
-                buttonList+=[(string)(i+1) + ". " + un];
+                // buttonList+=[(string)(i+1) + ". " + un];
+                buttonList+=[llGetSubString((string)(i+1) + ". " + un, 0, 23)];
             }
         }
     }
@@ -1254,6 +1260,10 @@ default{
             key uuid = llDetectedKey(i);
             sensorUserList+=uuid;
         }
+        showLeashSubMenu(leashSubMenuFlag, leashSubMenuParent, leashSubMenuUser, TRUE);
+    }
+    no_sensor(){
+        sensorUserList=[];
         showLeashSubMenu(leashSubMenuFlag, leashSubMenuParent, leashSubMenuUser, TRUE);
     }
 }

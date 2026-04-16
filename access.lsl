@@ -14,6 +14,10 @@ Author: JMRY
 Description: A better access permission control system, use link_message to operate permissions.
 
 ***更新记录***
+- 1.0.23 20260416
+    - 修复检测玩家时，按钮会超长的bug。
+    - 修复周围没有玩家时，无法弹出选择玩家对话框的bug。
+
 - 1.0.22 20260311
     - 优化文本提示。
     - 优化记事卡读取速度。
@@ -709,7 +713,7 @@ showAccessActiveMenu(string button, key user){
                 // string un=userName(uk,1);
                 string un=llGetUsername(uk);
                 // userList+=[(string)(i+1) + ". " + un];
-                buttonList+=[(string)i + ". " + un];
+                buttonList+=[llGetSubString((string)i + ". " + un, 0, 23)];
             }
         }
         // menuText+=[llDumpList2String(userList, "\n")];
@@ -1154,6 +1158,13 @@ default{
         for (i = 0; i < detected && i<maxSensor; i++) {
             key uuid = llDetectedKey(i);
             sensorUserList+=uuid;
+        }
+        showAccessActiveMenu(accessActiveFlag, accessCurUser);
+    }
+    no_sensor(){
+        sensorUserList=[];
+        if(REZ_MODE==FALSE){
+            sensorUserList+=[llGetOwner()]; // 穿在身上时，添加自己
         }
         showAccessActiveMenu(accessActiveFlag, accessCurUser);
     }

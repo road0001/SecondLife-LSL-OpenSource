@@ -53,8 +53,8 @@ initMain(){
     // llOwnerSay("Initialize Complete, Enjoy!");
 }
 
-triggerFeature(string menuName, string menuText, key user){
-    if(menuName=="ATTACH"){
+triggerFeature(string featureName, string text, key user){
+    if(featureName=="ATTACH"){
         if(user!=NULL_KEY){
             if(RLV_READY==FALSE){ // 穿戴时，如果未成功初始化数据，则重新读取
                 initMain();
@@ -74,23 +74,23 @@ triggerFeature(string menuName, string menuText, key user){
             llListenRemove(listenHandle);
         }
     }
-    else if(menuName=="TOUCH"){
+    else if(featureName=="TOUCH"){
         showMenu("mainMenu", llDetectedKey(0));
-        if(touchSound!="" && llGetInventoryType(touchSound)==INVENTORY_SOUND){
+        if(touchSound!="" && (llGetInventoryType(touchSound)==INVENTORY_SOUND || llStringLength(touchSound)==36)){
             llPlaySound(touchSound, soundVolume);
         }
     }
-    else if(menuName=="COLLISION"){
+    else if(featureName=="COLLISION"){
         if(REZ_MODE==TRUE && sitAutoTrap==TRUE && VICTIM_UUID == NULL_KEY){
             key victim=llDetectedKey(0);
             llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.CAPTURE|"+(string)victim+"|1", NULL_KEY);
         }
     }
-    else if(menuName=="CHANGE"){
-        if((integer)menuText & CHANGED_INVENTORY){
+    else if(featureName=="CHANGE"){
+        if((integer)text & CHANGED_INVENTORY){
             initMain();
         }
-        if ((integer)menuText & CHANGED_LINK) {
+        if ((integer)text & CHANGED_LINK) {
             if (user != NULL_KEY){
                 VICTIM_UUID=user;
                 if(sitAutoLock==TRUE){
@@ -121,7 +121,7 @@ triggerFeature(string menuName, string menuText, key user){
             }
         }
     }
-    else if(menuName=="mainMenu"){
+    else if(featureName=="mainMenu"){
     }
 }
 triggerListen(integer channel, string name, key id, string message){
@@ -173,7 +173,8 @@ list getMenuFeature(string menuName, key user){
             "Locked: %1% %2%\nOwner: %3%\nPublic: %b4%\nGroup: %b5%\nHardcore: %b6%%%;"+
             userInfo(lockUser)+";"+
             lockTimeDist+";"+
-            llDumpList2String(getOwnerNameList(), ", ")+";"+
+            llList2String(owner, 0)+";"+
+            // llDumpList2String(getOwnerNameList(), ", ")+";"+
             (string)public+";"+
             (string)group+";"+
             (string)hardcore
@@ -249,6 +250,10 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.1.12 20260416
+    - 修复周围没有玩家时，无法弹出选择玩家对话框的bug。
+    - 修复使用uuid作为声音时，无法播放的bug。
+
 - 1.1.11 20260406
     - - 优化REZ模式下的各种处理逻辑。
 
@@ -570,9 +575,9 @@ integer setLock(integer lock, key user, integer isShowMenu){
     if(isShowMenu){
         showMenu("mainMenu", user); // 防止出现打开双重菜单的bug，无必要不showMenu，尤其在Access逃跑或RLV锁定变更时。
     }
-    if(isLocked==TRUE && lockSound!="" && llGetInventoryType(lockSound)==INVENTORY_SOUND){
+    if(isLocked==TRUE && lockSound!="" && (llGetInventoryType(lockSound)==INVENTORY_SOUND || llStringLength(lockSound)==36)){
         llPlaySound(lockSound, soundVolume);
-    }else if(unlockSound!="" && llGetInventoryType(unlockSound)==INVENTORY_SOUND){
+    }else if(unlockSound!="" && (llGetInventoryType(unlockSound)==INVENTORY_SOUND || llStringLength(unlockSound)==36)){
         llPlaySound(unlockSound, soundVolume);
     }
     if(REZ_MODE==TRUE && showText==TRUE){
@@ -615,19 +620,19 @@ integer checkRelationship(key user, string type){
     }
 }
 
-list getOwnerNameList(){
-    list ownerNameList=[];
-    integer i=0;
-    for(i=0; i<llGetListLength(owner); i++){
-        if(i>=5){
-            ownerNameList+="...";
-            jump finish;
-        }
-        ownerNameList+="secondlife:///app/agent/"+llList2String(owner, i)+"/about";
-    }
-    @finish;
-    return ownerNameList;
-}
+// list getOwnerNameList(){
+//     list ownerNameList=[];
+//     integer i=0;
+//     for(i=0; i<llGetListLength(owner); i++){
+//         if(i>=5){
+//             ownerNameList+="...";
+//             jump finish;
+//         }
+//         ownerNameList+="secondlife:///app/agent/"+llList2String(owner, i)+"/about";
+//     }
+//     @finish;
+//     return ownerNameList;
+// }
 
 list featureList=[]; // name, parent, menuName
 integer featureLen=3;
@@ -779,7 +784,7 @@ showSensorMenu(string type, key user){
     for(i=0; i<llGetListLength(sensorUserList); i++){
         key uk=llList2Key(sensorUserList, i);
         if(uk){
-            buttonList+=[(string)(i+1) + ". " + llGetUsername(uk)];
+            buttonList+=[llGetSubString((string)(i+1) + ". " + llGetUsername(uk), 0, 23)];
         }
     }
     string parent="";
@@ -1164,6 +1169,13 @@ default{
         for (i = 0; i < detected && i<maxSensor; i++) {
             key uuid = llDetectedKey(i);
             sensorUserList+=uuid;
+        }
+        showSensorMenu(curSensorType, curMenuUser);
+    }
+    no_sensor(){
+        sensorUserList=[];
+        if(REZ_MODE==FALSE){
+            sensorUserList+=[llGetOwner()]; // 穿在身上时，添加自己
         }
         showSensorMenu(curSensorType, curMenuUser);
     }
