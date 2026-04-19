@@ -173,7 +173,7 @@ list getMenuFeature(string menuName, key user){
             "Locked: %1% %2%\nOwner: %3%\nPublic: %b4%\nGroup: %b5%\nHardcore: %b6%%%;"+
             userInfo(lockUser)+";"+
             lockTimeDist+";"+
-            llList2String(owner, 0)+";"+
+            userInfo(llList2String(owner, 0))+";"+
             // llDumpList2String(getOwnerNameList(), ", ")+";"+
             (string)public+";"+
             (string)group+";"+
@@ -250,6 +250,9 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.1.14 20260420
+    - 修复主菜单主人显示不正常的bug。
+
 - 1.1.13 20260419
     - 加入\NL不进行语言匹配功能。
     - 优化ShowText的显示逻辑。

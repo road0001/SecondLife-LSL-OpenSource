@@ -14,6 +14,9 @@ Author: JMRY
 Description: A title controller for restraint items.
 
 ***更新记录***
+- 1.0.1 20260420
+	- 优化菜单的部分细节。
+
 - 1.0 20260419
     - 完成主要功能。
 ***更新记录***
@@ -46,7 +49,7 @@ float titleAlpha=0.0;
 integer titleShow=FALSE;
 
 applyTitle(){
-	llMessageLinked(LINK_THIS, TEXT_MSG_NUM, "TEXT.SET|"+titleName+"|"+titleText+"|"+(string)titleShow+"|"+titleParent, NULL_KEY);
+	llMessageLinked(LINK_THIS, TEXT_MSG_NUM, "TEXT.SET|"+titleName+"|\\NL"+titleText+"|"+(string)titleShow+"|"+titleParent, NULL_KEY);
 	llMessageLinked(LINK_THIS, TEXT_MSG_NUM, "TEXT.SET.COLOR|"+(string)titleColor, NULL_KEY);
 	llMessageLinked(LINK_THIS, TEXT_MSG_NUM, "TEXT.SET.ALPHA|"+(string)titleAlpha, NULL_KEY);
 	if(titleShow==TRUE){
@@ -58,12 +61,12 @@ string menuName="TitleMenu";
 string menuParent="";
 showMenu(string parent, key user){
     menuParent=parent;
-    string menuText="This is Title menu.\nCurrent title: %1%\nColor: %2%\nAlpha: %3%%%;"+titleText+";"+(string)titleColor+";"+(string)titleAlpha;
+    string menuText="This is Title menu.\nCurrent title: %1%\nColor: %2%\nAlpha: %3%%%;\\NL"+titleText+";"+(string)titleColor+";"+(string)titleAlpha;
     list menuList=[
         "T:SetTitle", "T:SetColor", "T:SetAlpha",
         "["+(string)titleShow+"]T:ShowTitle"
     ];
-    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+menuName+"|\\NL"+menuText+"|"+llDumpList2String(menuList, ";")+"|"+parent, user);
+    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+menuName+"|"+menuText+"|"+llDumpList2String(menuList, ";")+"|"+parent, user);
 }
 
 integer MENU_MSG_NUM=1000;
@@ -201,7 +204,7 @@ default{
             }
 			else if(msg1==menuName && msg2!=""){
 				if(msg2=="T:SetTitle"){
-					llMessageLinked(LINK_THIS, MENU_MSG_NUM, "MENU.INPUT|TitleInput_"+msg2+"|Input your title (Current: %1%):%%;"+titleText, user);
+					llMessageLinked(LINK_THIS, MENU_MSG_NUM, "MENU.INPUT|TitleInput_"+msg2+"|Input your title (Current: %1%):%%;\\NL"+titleText, user);
 				}
 				else if(msg2=="T:SetColor"){
 					llMessageLinked(LINK_THIS, MENU_MSG_NUM, "MENU.INPUT|TitleInput_"+msg2+"|Input your color in format <red, green, blue> like <1.0, 1.0, 1.0> (Current: %1%):%%;"+(string)titleColor, user);
