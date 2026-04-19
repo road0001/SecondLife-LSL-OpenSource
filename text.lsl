@@ -11,6 +11,9 @@ Author: JMRY
 Description: A text system, use link_message to operate text things.
 
 ***更新记录***
+- 1.0.3 20260419
+	- 加入\NL不进行语言匹配功能。
+
 - 1.0.2 20260402
 	- 加入指定显示文本的Prim功能。
 
@@ -69,8 +72,11 @@ integer hasLanguage=FALSE;
 
 string getLanguage(string k){
     if(!hasLanguage){
-        return k;
+        return llReplaceSubString(k, "\\NL", "", 0);
     }
+	if(llGetSubString(k, 0, 2)=="\\NL"){
+		return llReplaceSubString(k, "\\NL", "", 0);
+	}
     k=llReplaceSubString(llReplaceSubString(k,"\\n","\n",0),"\n","\\n",0); // 替换换行符\n。将转义的\\n替换回去再替换
     string curVal=llLinksetDataRead(lanLinkHeader+k);
     if(curVal){
@@ -293,14 +299,14 @@ default{
 				}
 				else if(headerExt=="COLOR"){
 					/*
-					显示文本开关
+					显示文本颜色
 					TEXT.SET.COLOR | <1.0, 1.0, 1.0>
 					*/
 					textColor=(vector)msg1;
 				}
 				else if(headerExt=="ALPHA"){
 					/*
-					显示文本开关
+					显示文本透明度
 					TEXT.SET.ALPHA | 1.0
 					*/
 					textAlpha=(float)msg1;
@@ -328,7 +334,7 @@ default{
 				}
 				else if(headerExt=="READY"){
 					/*
-					显示文本开关
+					文本系统就绪
 					TEXT.GET.READY
 					返回：
 					TEXT.READY
@@ -346,7 +352,7 @@ default{
 				}
 				else if(headerExt=="COLOR"){
 					/*
-					显示文本开关
+					显示文本颜色
 					TEXT.GET.COLOR
 					返回：
 					TEXT.EXEC | TEXT.GET.COLOR | <1.0, 1.0, 1.0>
@@ -355,7 +361,7 @@ default{
 				}
 				else if(headerExt=="ALPHA"){
 					/*
-					显示文本开关
+					显示文本透明度
 					TEXT.GET.ALPHA
 					返回：
 					TEXT.EXEC | TEXT.GET.ALPHA | 1.0

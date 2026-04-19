@@ -11,6 +11,9 @@ Author: JMRY
 Description: A better timer control system, use link_message to operate timers.
 
 ***更新记录***
+- 1.0.12 20260419
+    - 加入\NL不进行语言匹配功能。
+
 - 1.0.11 20260324
     - 适配新版菜单脚本。
 
@@ -145,8 +148,11 @@ integer hasLanguage=FALSE;
 
 string getLanguage(string k){
     if(!hasLanguage){
-        return k;
+        return llReplaceSubString(k, "\\NL", "", 0);
     }
+    if(llGetSubString(k, 0, 2)=="\\NL"){
+		return llReplaceSubString(k, "\\NL", "", 0);
+	}
     k=replace(replace(k,"\\n","\n"),"\n","\\n"); // 替换换行符\n。将转义的\\n替换回去再替换
     string curVal=llLinksetDataRead(lanLinkHeader+k);
     if(curVal){

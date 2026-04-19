@@ -102,6 +102,9 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 2.0.22 20260419
+    - 修复.开头的RLV类别仍然会显示的bug。
+
 - 2.0.21 20260406
     - 优化REZ模式下，RLV的执行逻辑。
 
@@ -658,7 +661,7 @@ showRLVMenu(string parent, key user){
     integer i;
     for(i=0; i<llGetListLength(rlvCmdList); i+=rlvCmdLength){
         string class=llList2String(rlvCmdList, i+2);
-        if(class!="" && llGetSubString(class, 0, 1)!="." && curClass != class){
+        if(class!="" && llGetSubString(class, 0, 0)!="." && curClass != class){
             rlvClass+=[class];
             curClass=class;
         }

@@ -4,6 +4,9 @@ Author: JMRY
 Description: A better menu management system, use link_message to operate menus.
 
 ***更新记录***
+- 1.2.1 20260419
+    - 加入\NL不进行语言匹配功能。
+
 - 1.2 20260402
     - 去除按钮文字超长裁剪机制getMenuButtonStr。
     - 重构菜单消息传递逻辑。
@@ -204,8 +207,11 @@ initLanguage(){
 string lanLinkHeader="LAN_";
 string getLanguage(string k){
     if(!hasLanguage){
-        return k;
+        return llReplaceSubString(k, "\\NL", "", 0);
     }
+    if(llGetSubString(k, 0, 2)=="\\NL"){
+		return llReplaceSubString(k, "\\NL", "", 0);
+	}
     k=llReplaceSubString(llReplaceSubString(k,"\\n","\n",0),"\n","\\n",0); // 替换换行符\n。将转义的\\n替换回去再替换
     string curVal=llLinksetDataRead(lanLinkHeader+k);
     if(curVal){

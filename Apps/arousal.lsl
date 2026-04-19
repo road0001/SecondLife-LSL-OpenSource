@@ -19,6 +19,9 @@ Author: JMRY
 Description: A arousal controller for restraint items.
 
 ***更新记录***
+- 1.0.4 20260419
+	- 加入显示菜单的指令。
+
 - 1.0.3 20260409
 	- 加入Arousal模式音效。
 
@@ -468,6 +471,13 @@ default{
 					*/
 					applyOrgasm();
 				}
+			}
+			else if(headerSub=="MENU"){
+				/*
+				显示菜单
+				AROUSAL.MENU | Parent
+				*/
+				showArousalMenu(msg1,user);
 			}
 			if(result!=""){
                 llMessageLinked(LINK_SET, AROUSAL_MSG_NUM, "AROUSAL.EXEC|"+msgHeader+"|"+result, user);

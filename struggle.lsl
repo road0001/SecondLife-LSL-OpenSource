@@ -16,6 +16,9 @@ Author: JMRY
 Description: A struggle system, use link_message to operate struggle things.
 
 ***更新记录***
+- 1.0.7 20260419
+    - 加入\NL不进行语言匹配功能。
+
 - 1.0.6 20260406
     - 优化REZ模式下，玩家UUID的识别效果。
 
@@ -74,8 +77,11 @@ integer hasLanguage=FALSE;
 
 string getLanguage(string k){
     if(!hasLanguage){
-        return k;
+        return llReplaceSubString(k, "\\NL", "", 0);
     }
+    if(llGetSubString(k, 0, 2)=="\\NL"){
+		return llReplaceSubString(k, "\\NL", "", 0);
+	}
     k=llReplaceSubString(llReplaceSubString(k,"\\n","\n",0),"\n","\\n",0); // 替换换行符\n。将转义的\\n替换回去再替换
     string curVal=llLinksetDataRead(lanLinkHeader+k);
     if(curVal){

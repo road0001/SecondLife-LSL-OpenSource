@@ -88,3 +88,8 @@ Renamer系统支持改名、混淆、触发各种效果等，自带Renamer管理
 PA2唤起系统支持配置、PA2唤起。
 [PA2唤起文档](Apps/README.Arousal.md)
 ******Apps/arousal.lsl******
+
+## 标题文字系统文档
+标题文字系统文档支持配置显示悬浮文字。
+[标题文字系统文档](Apps/README.Title.md)
+******Apps/title.lsl******

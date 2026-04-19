@@ -21,6 +21,9 @@ Author: JMRY
 Description: A better animation control system, use link_message to operate animations.
 
 ***更新记录***
+- 1.2.3 20260419
+    - 优化.开头的class和动画名的隐藏逻辑。
+
 - 1.2.2 20260416
     - 加入.开头的class为隐藏类别功能。
     - 修复悬浮高度无法使用负值的bug。
@@ -435,7 +438,7 @@ showAnimSubMenu(string parent, string class, key user){
     for(i=0; i<animCmdCount; i+=animConfigLength){
         string curName=llList2String(animConfigList, i);
         string curClass=llList2String(animConfigList, i+2);
-        if(curClass==class){
+        if(curClass==class && llGetSubString(curClass, 0, 0)!="." && llGetSubString(curName, 0, 0)!="."){
             animCmdList+=["["+(string)(curName == curPlayingAnimName)+"]"+curName];
         }
     }

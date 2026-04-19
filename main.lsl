@@ -228,11 +228,11 @@ list getMenuFeature(string menuName, key user){
         if(hasLanguage){
             menuList+=["Language"];
         }
-        if(TEXT_READY){
-            menuList+=["["+(string)showText+"]ShowText"];
-        }
         if(REZ_MODE==TRUE && RLV_READY){
             menuList+=["["+(string)sitAutoLock+"]AutoLock", "["+(string)sitAutoTrap+"]AutoTrap"];
+            if(TEXT_READY){
+                menuList+=["["+(string)showText+"]ShowText"];
+            }
         }
 
         if(allowPermaLock==TRUE && isPermaLocked==FALSE && isLocked==TRUE && lockUser==user && ~llListFindList(owner, [(string)user]) && hardcore==TRUE && REZ_MODE==FALSE && RLV_READY){
@@ -250,6 +250,10 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.1.13 20260419
+    - 加入\NL不进行语言匹配功能。
+    - 优化ShowText的显示逻辑。
+
 - 1.1.12 20260416
     - 修复周围没有玩家时，无法弹出选择玩家对话框的bug。
     - 修复使用uuid作为声音时，无法播放的bug。
@@ -404,8 +408,11 @@ integer hasLanguage=FALSE;
 string lanLinkHeader="LAN_";
 string getLanguage(string k){
     if(!hasLanguage){
-        return k;
+        return llReplaceSubString(k, "\\NL", "", 0);
     }
+    if(llGetSubString(k, 0, 2)=="\\NL"){
+		return llReplaceSubString(k, "\\NL", "", 0);
+	}
     k=llReplaceSubString(llReplaceSubString(k,"\\n","\n",0),"\n","\\n",0); // 替换换行符\n。将转义的\\n替换回去再替换
     string curVal=llLinksetDataRead(lanLinkHeader+k);
     if(curVal){
