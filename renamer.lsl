@@ -20,6 +20,9 @@ Author: JMRY
 Description: A better RLV Renamer management system, use link_message to operate Renamer restraints.
 
 ***更新记录***
+- 1.1.10 20260427
+    - 加入自定义混淆替换文字功能。
+
 - 1.1.9 20260406
     - 优化REZ模式下，玩家UUID的识别效果。
 
@@ -563,10 +566,15 @@ showRenamerConfusionMenu(string parent, key user){
         "["+(string)(renamerConfusion=="None")+"]None", 
         "["+(string)(renamerConfusion=="Loose")+"]Loose", 
         "["+(string)(renamerConfusion=="Middle")+"]Middle", 
+
         "["+(string)(renamerConfusion=="Strict")+"]Strict", 
         "["+(string)(renamerConfusion=="Muffle")+"]Muffle",
         "["+(string)(renamerConfusionOOC==TRUE)+"]OOC",
+
         "["+(string)(renamerType==TRUE)+"]Whisper",
+        "ConfusionWords",
+        "ConfusionOthers",
+
         "MuffleText"
     ];
     if(allowHive==TRUE){
@@ -1004,6 +1012,16 @@ default{
                     else if(menuButton=="Whisper"){
                         renamerType=!renamerType;
                     }
+                    else if(menuButton=="ConfusionWords"){
+                        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.INPUT|RenamerConfusionWordsInput|Input Confusion words, separate with \";\", blank to off (Current: %1%):%%;"+llDumpList2String(confusionReplaceEn, ";"), user);
+                        // 后续交由RenamerMuffleTextInput处理
+                        return;
+                    }
+                    else if(menuButton=="ConfusionOthers"){
+                        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.INPUT|RenamerConfusionOthersInput|Input Confusion words for other languages, separate with \";\", blank to off (Current: %1%):%%;"+llDumpList2String(confusionReplaceCn, ";"), user);
+                        // 后续交由RenamerMuffleTextInput处理
+                        return;
+                    }
                     else if(menuButton=="MuffleText"){
                         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.INPUT|RenamerMuffleTextInput|Input Muffle text, blank to off (Current: %1%):%%;"+(string)renamerConfusionMuffleText, user);
                         // 后续交由RenamerMuffleTextInput处理
@@ -1037,6 +1055,14 @@ default{
                         renamerVoice=menuButton;
                     }
                     showRenamerVoiceMenu(curRenamerSubMenu, user);
+                }
+                else if(menuName=="RenamerConfusionWordsInput"){ // MENU.ACTIVE | RenamerConfusionWordsInput | Text1;Text2
+                    confusionReplaceEn=llParseStringKeepNulls(menuButton, ";");
+                    showRenamerConfusionMenu(curRenamerSubMenu, user);
+                }
+                else if(menuName=="RenamerConfusionOthersInput"){ // MENU.ACTIVE | RenamerConfusionOthersInput | Text1;Text2
+                    confusionReplaceCn=llParseStringKeepNulls(menuButton, ";");
+                    showRenamerConfusionMenu(curRenamerSubMenu, user);
                 }
                 else if(menuName=="RenamerMuffleTextInput"){ // MENU.ACTIVE | RenamerMuffleTextInput | Text
                     renamerConfusionMuffleText=menuButton;

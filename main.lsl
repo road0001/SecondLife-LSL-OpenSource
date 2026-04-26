@@ -10,6 +10,8 @@ initMain(){
     unlockSound="unlock";
     touchSound="touch";
     soundVolume=1.0;
+    touchSoundEnabled=TRUE;
+    lockSoundEnabled=TRUE;
     allowPermaLock=FALSE;
     // Init Config End
 
@@ -76,7 +78,7 @@ triggerFeature(string featureName, string text, key user){
     }
     else if(featureName=="TOUCH"){
         showMenu("mainMenu", llDetectedKey(0));
-        if(touchSound!="" && (llGetInventoryType(touchSound)==INVENTORY_SOUND || llStringLength(touchSound)==36)){
+        if(touchSoundEnabled==TRUE && touchSound!="" && (llGetInventoryType(touchSound)==INVENTORY_SOUND || llStringLength(touchSound)==36)){
             llPlaySound(touchSound, soundVolume);
         }
     }
@@ -99,7 +101,7 @@ triggerFeature(string featureName, string text, key user){
                         setLock(TRUE, captureByUser, FALSE);
                         captureByUser=NULL_KEY;
                     }else{
-                        setLock(TRUE, llList2Key(owner, 0), FALSE);
+                        setLock(TRUE, llList2Key(getRelationship("owner"), 0), FALSE);
                     }
                 }else{
                     llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.APPLY.ALL", NULL_KEY);
@@ -160,8 +162,30 @@ triggerListen(integer channel, string name, key id, string message){
 }
 triggerLinkMessage(integer sender_num, integer num, string str, key user){
 }
-list getMenuFeature(string menuName, key user){
-    list menuList;
+showMenu(string menuName, key user){
+    integer isAllow=allowOperate(user);
+    if(!isAllow){
+        return;
+    }
+    if(menuOperateLock==TRUE){
+        if(curMenuUser==NULL_KEY || curMenuUser==user || user==llGetOwner()){
+            curMenuUser=user;
+            timerFlag=1;
+            llSetTimerEvent(60);
+        }else{
+            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Sorry, the menu of %1% is using by %2%.%%;"+llGetObjectName()+";"+userInfo(curMenuUser)+"|0|"+(string)user, user);
+            return;
+        }
+    }else{
+        curMenuUser=user;
+    }
+    
+    string menuCmd="MENU.REG.OPEN";
+    string menuText;
+    string menuParent="";
+    list menuFeatureList=[];
+
+    // 主菜单
     if(menuName=="mainMenu"){
         integer curTime=llGetUnixTime();
         string lockTimeDist=getTimeDistStr(lockTime, curTime);
@@ -169,79 +193,130 @@ list getMenuFeature(string menuName, key user){
             lockTimeDist="\n"+getLanguageVar("Time: %1%%%;"+lockTimeDist);
         }
 
-        menuList=[
-            "Locked: %1% %2%\nOwner: %3%\nPublic: %b4%\nGroup: %b5%\nHardcore: %b6%%%;"+
+        menuText="Locked: %1% %2%\nOwner: %3%\nPublic: %b4%\nGroup: %b5%\nHardcore: %b6%%%;"+
             userInfo(lockUser)+";"+
             lockTimeDist+";"+
-            userInfo(llList2String(owner, 0))+";"+
+            userInfo(llList2String(getRelationship("owner"), 0))+";"+
             // llDumpList2String(getOwnerNameList(), ", ")+";"+
             (string)public+";"+
             (string)group+";"+
-            (string)hardcore
-        ];
+            (string)hardcore;
 
-        if(RLV_READY){
-            string lockStr="["+(string)isLocked+"]Lock";
-            if(allowPermaLock==TRUE && isPermaLocked==TRUE){
-                lockStr="PermaLocked";
-            }
-            if(REZ_MODE==TRUE){
-                string captureStr="Capture";
-                if(VICTIM_UUID!=NULL_KEY){
-                    captureStr="Unsit";
+        if(isAllow!=-1){
+            // 有权限时菜单内容
+            if(RLV_READY){
+                string lockStr="["+(string)isLocked+"]Lock";
+                if(allowPermaLock==TRUE && isPermaLocked==TRUE){
+                    lockStr="PermaLocked";
                 }
-                menuList+=[lockStr, captureStr, "RLV"];
-            }else{
-                menuList+=[lockStr, "RLV"];
+                if(REZ_MODE==TRUE){
+                    string captureStr="Capture";
+                    if(VICTIM_UUID!=NULL_KEY){
+                        captureStr="Unsit";
+                    }
+                    menuFeatureList+=[lockStr, captureStr, "RLV"];
+                }else{
+                    menuFeatureList+=[lockStr, "RLV"];
+                }
+            }
+            if(LEASH_READY && REZ_MODE==FALSE){
+                menuFeatureList=llListInsertList(menuFeatureList, ["Leash"], 2); // 0: desc, 1: Lock, 2: Leash
+            }
+            if(TIMER_READY){
+                menuFeatureList+=["Timer"];
+            }
+            if(RENAMER_READY){
+                menuFeatureList+=["Renamer"];
+            }
+            if(ANIM_READY){
+                menuFeatureList+=["Animation"];
+            }
+            if(ACCESS_READY){
+                menuFeatureList+=["Access"];
+            }
+            if(llGetListLength(featureList)>0 && ~llListFindList(featureList, ["appMenu"])){
+                menuFeatureList+=["Apps"];
+            }
+            menuFeatureList+=["Settings"];
+            if(llGetListLength(featureList)>0 && ~llListFindList(featureList, ["mainMenu"])){
+                menuFeatureList=applyFeatureList(menuName, menuFeatureList, featureList);
+            }
+        }else{
+            // 没权限时菜单内容
+            if(STRUGGLE_READY==TRUE && user==llGetOwner()){
+                menuFeatureList+=["Struggle"];
+            }
+            if(!hardcore && !REZ_MODE){ // 硬核模式未开启时，仅显示Escape按钮，菜单名使用AccessMenu以确保功能生效
+                menuFeatureList+=["Access"];
+            }else{ // 硬核模式开启时，不显示菜单。
+            }
+            if(llGetListLength(menuFeatureList)<1){
+                return;
             }
         }
-        if(LEASH_READY && REZ_MODE==FALSE){
-            menuList=llListInsertList(menuList, ["Leash"], 2); // 0: desc, 1: Lock, 2: Leash
-        }
-        if(TIMER_READY){
-            menuList+=["Timer"];
-        }
-        if(RENAMER_READY){
-            menuList+=["Renamer"];
-        }
-        if(ANIM_READY){
-            menuList+=["Animation"];
-        }
-        if(ACCESS_READY){
-            menuList+=["Access"];
-        }
-        if(llGetListLength(featureList)>0 && ~llListFindList(featureList, ["appMenu"])){
-            menuList+=["Apps"];
-        }
-        menuList+=["Settings"];
-        if(llGetListLength(featureList)>0 && ~llListFindList(featureList, ["mainMenu"])){
-            menuList=applyFeatureList(menuName, menuList, featureList);
-        }
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.CLEAR", user);
     }
-
+    // App菜单
     else if(menuName=="appMenu"){
-        menuList=applyFeatureList(menuName, ["This is apps menu."], featureList);
+        menuParent="mainMenu";
+        menuText="This is apps menu.";
+        menuFeatureList=applyFeatureList(menuName, [], featureList);
     }
-
+    // 设置菜单
     else if(menuName=="settingMenu"){
-        menuList=["This is settings menu."];
+        menuParent="mainMenu";
+        menuText="This is settings menu.";
         if(hasLanguage){
-            menuList+=["Language"];
+            menuFeatureList+=["Language"];
+        }
+        if(touchSound!=""){
+            menuFeatureList+=["["+(string)touchSoundEnabled+"]TouchSound"];
+        }
+        if(lockSound!="" || unlockSound!=""){
+            menuFeatureList+=["["+(string)lockSoundEnabled+"]LockSound"];
         }
         if(REZ_MODE==TRUE && RLV_READY){
-            menuList+=["["+(string)sitAutoLock+"]AutoLock", "["+(string)sitAutoTrap+"]AutoTrap"];
+            menuFeatureList+=["["+(string)sitAutoLock+"]AutoLock", "["+(string)sitAutoTrap+"]AutoTrap"];
             if(TEXT_READY){
-                menuList+=["["+(string)showText+"]ShowText"];
+                menuFeatureList+=["["+(string)showText+"]ShowText"];
             }
         }
-
-        if(allowPermaLock==TRUE && isPermaLocked==FALSE && isLocked==TRUE && lockUser==user && ~llListFindList(owner, [(string)user]) && hardcore==TRUE && REZ_MODE==FALSE && RLV_READY){
+        // 永久锁定功能
+        if(allowPermaLock==TRUE && isPermaLocked==FALSE && isLocked==TRUE && lockUser==user && ~llListFindList(getRelationship("owner"), [(string)user]) && hardcore==TRUE && REZ_MODE==FALSE && RLV_READY){
             // 允许永久锁定 && 未被永久锁定 && 已上锁 && 操作者为上锁者 && 操作者在主人列表中 && 非REZ模式 && RLV就绪
-            menuList+=["PermaLock"];
+            menuFeatureList+=["PermaLock"];
         }
-        menuList=applyFeatureList(menuName, menuList, featureList);
+        menuFeatureList=applyFeatureList(menuName, menuFeatureList, featureList);
     }
-    return menuList;
+    // 永久锁定菜单
+    else if(menuName=="permaLockMenu"){
+        menuParent="settingMenu";
+        menuText="%1% is requesting to PERMANENT LOCK your %2%, are you sure to be PERMANENT LOCKED?\nOnce confirmed, you will be permanently locked out and unable to unlock!%%;"+userInfo(user)+";"+llGetObjectName();
+        menuFeatureList=[
+            "YES", "NO"
+        ];
+        menuCmd="MENU.CONFIRM";
+        
+        user=llGetOwner(); // 必须重写user，让佩戴者弹出菜单，而不是操作者
+    }
+    // 检测玩家菜单
+    else if(menuName=="sensorMenu"){
+        if(curSensorType=="Capture"){
+            menuParent="mainMenu";
+        }
+        menuText="Select user to %1%.%%;"+curSensorType;
+        integer i;
+        for(i=0; i<llGetListLength(sensorUserList); i++){
+            key uk=llList2Key(sensorUserList, i);
+            if(uk){
+                menuFeatureList+=[llGetSubString((string)(i+1) + ". " + llGetUsername(uk), 0, 23)];
+            }
+        }
+        menuCmd="MENU.REG.OPEN.RESET";
+    }
+    
+    llMessageLinked(LINK_SET, MENU_MSG_NUM, menuCmd+"|"+menuName+"|"+menuText+"|"+llDumpList2String(menuFeatureList, ";")+"|"+menuParent, user);
+    return;
 }
 /*CONFIG END*/
 /*
@@ -250,7 +325,14 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.2 20260427
+    - 优化代码结构。
+    - 优化菜单生成逻辑。
+    - 优化菜单注册排序逻辑。
+    - 优化权限数据结构和判断逻辑。
+
 - 1.1.14 20260420
+    - 加入触摸、上锁、解锁的声音开关。
     - 修复主菜单主人显示不正常的bug。
 
 - 1.1.13 20260419
@@ -433,39 +515,8 @@ string getLanguageVar(string k){ // 拼接字符串方法，用于首尾拼接�
     for(i=0; i<llGetListLength(var); i++){
         integer vi=i+1;
         text=llReplaceSubString(text, "%"+(string)vi+"%", getLanguage(llList2String(var, i)), 0);
-        text=llReplaceSubString(text, "%b"+(string)vi+"%", getLanguageBool(llList2String(var, i)), 0);
     }
     return text;
-}
-
-string defaultBoolStrList="◇|◆";
-string boolStrList=defaultBoolStrList;
-string getLanguageBool(string k){ // 拼接字符串方法之开关，根据传入字符串来判断开关并显示。格式：[0/1]BUTTON_NAME，返回：◇ 按钮名 / ◆ 按钮名
-    //return getLanguageVar(k, LVPOS_BEFORE, llList2String(boolStrList,bool));
-    list boolList=strSplit(boolStrList, "|");
-    integer bool=FALSE;
-    if(includes(k, "[1]")){
-        bool=TRUE;
-    }else if(includes(k, "[0]")){
-        bool=FALSE;
-    }else{
-        bool=-1;
-    }
-    if(~bool){
-        return llList2String(boolList, bool) + " " + getLanguage(llReplaceSubString(llReplaceSubString(k, "[1]", "", 0), "[0]", "", 0));
-    }else{
-        return getLanguage(k);
-    }
-}
-
-integer applyLanguage(){
-    string switchStr=getLanguage("ButtonSwitch"); // 更改开关样式。格式：关|开
-    if(switchStr=="ButtonSwitch"){ // 如果返回的是buttonSwitch（即不存在此字段，则应用默认样式）
-        boolStrList=defaultBoolStrList;
-    }else{
-        boolStrList=switchStr;
-    }
-    return TRUE;
 }
 
 integer allowOperate(key user){
@@ -478,7 +529,6 @@ integer allowOperate(key user){
             user==llGetOwner() /*自己触摸*/
         ){
             llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You're locked by %1% and timer is running, not allow to operate it!%%;"+userInfo(lockUser), user);
-            // llRegionSayTo(user, 0, getLanguageVar("You're locked by %1% and timer is running, not allow to operate it!%%;"+userInfo(lockUser)));
             return FALSE;
         }
         else if(
@@ -487,7 +537,6 @@ integer allowOperate(key user){
             user==llGetOwner() /*自己触摸*/
         ){
             llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You're locked by %1% and not allow to operate it!%%;"+userInfo(lockUser), user);
-            // llRegionSayTo(user, 0, getLanguageVar("You're locked by %1% and not allow to operate it!%%;"+userInfo(lockUser)));
             return -1; // 为了让Escape功能有效，因此返回-1而不是FALSE
         }
     }
@@ -499,7 +548,6 @@ integer allowOperate(key user){
             user==VICTIM_UUID /*被困者触摸*/
         ){
             llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You're locked by %1% and timer is running, not allow to operate it!%%;"+userInfo(lockUser), user);
-            // llRegionSayTo(user, 0, getLanguageVar("You're locked and not allow to operate it!%%;"+userInfo(lockUser)));
             return FALSE;
         }
         else if(
@@ -508,7 +556,6 @@ integer allowOperate(key user){
             user==VICTIM_UUID /*被困者触摸*/
         ){
             llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You're locked by %1% and not allow to operate it!%%;"+userInfo(lockUser), user);
-            // llRegionSayTo(user, 0, getLanguageVar("You're locked and not allow to operate it!%%;"+userInfo(lockUser)));
             return -1; // 为了让Escape功能有效，因此返回-1而不是FALSE
         }
     }
@@ -523,7 +570,6 @@ integer allowOperate(key user){
     ){
         if(isLocked){
             llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|This %1% is locked by %2%, you don't have permission to operate it!%%;"+llGetObjectName()+";"+userInfo(lockUser), user);
-            // llRegionSayTo(user, 0, getLanguageVar("This %1% is locked by %2%, you don't have permission to operate it!%%;"+llGetObjectName()+";"+userInfo(lockUser)));
         }
         return FALSE;
     }
@@ -532,21 +578,77 @@ integer allowOperate(key user){
     }
 }
 
+// list owner=[];
+// list trust=[];
+// list black=[];
+integer public=1;
+integer group=0;
+integer hardcore=0;
+integer autoLock=0;
+list relationshipList=[];
+integer checkRelationship(key user, string type){
+    integer index=-1;
+    if(type=="owner" || type=="trust" || type=="black"){
+        index=llListFindList(getRelationship(type), [(string)user]); // 从link_message接收的list被直接转化为了string的list而没转成key，因此要将key转成string再判断。
+    }
+    // if(type=="owner"){
+    //     index=llListFindList(owner, [(string)user]); // 从link_message接收的list被直接转化为了string的list而没转成key，因此要将key转成string再判断。
+    // }
+    // else if(type=="trust"){
+    //     index=llListFindList(trust, [(string)user]);
+    // }
+    // else if(type=="black"){
+    //     index=llListFindList(black, [(string)user]);
+    // }
+    else if(type=="public"){
+        if(checkRelationship(user, "black")){
+            return FALSE;
+        }else if(public==TRUE){
+            return TRUE;
+        }else{
+            return FALSE;
+        }
+    }
+    else if(type=="group"){
+        if(checkRelationship(user, "black")){
+            return FALSE;
+        }else if(group==TRUE){
+            return llSameGroup(user);
+        }else{
+            return FALSE;
+        }
+    }
+    if(~index){
+        return TRUE;
+    }else{
+        return FALSE;
+    }
+}
+list getRelationship(string type){
+    integer rIndex=llListFindList(relationshipList, type);
+    if(~rIndex){
+        return strSplit(llList2String(relationshipList, rIndex+1), ";");
+    }else{
+        return [];
+    }
+}
+
 integer isLocked=FALSE;
 integer isPermaLocked=FALSE;
 key lockUser=NULL_KEY;
 key captureByUser=NULL_KEY;
 integer lockTime=0;
-string lockSound;
-string unlockSound;
-float soundVolume;
+string lockSound="";
+string unlockSound="";
+float soundVolume="";
+integer touchSoundEnabled=TRUE;
+integer lockSoundEnabled=TRUE;
 integer setLock(integer lock, key user, integer isShowMenu){
     // if(!allowOperate(user)){
     //     return isLocked;
     // }
     if(REZ_MODE==TRUE && VICTIM_UUID==NULL_KEY && (lock==TRUE || lock==-1)){
         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|No victims to lock!", user);
-        // llRegionSayTo(user, 0, getLanguageVar("No victims to lock!"));
         return FALSE;
     }
     if(lock<0){
@@ -578,56 +680,19 @@ integer setLock(integer lock, key user, integer isShowMenu){
         }
         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You're %1% by %2%. %3%%%;"+lockedStatus+";"+userInfo(user)+";"+usedTime, VICTIM_UUID);
         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You %1% %2%'s %3%. %4%%%;"+lockedStatus+";"+userInfo(llGetOwner())+";"+llGetObjectName()+";"+usedTime, user);
-
-        // llRegionSayTo(llGetOwner(), 0, getLanguageVar("You're %1% by %2%. %3%%%;"+lockedStatus+";"+userInfo(user)+";"+usedTime));
-        // llRegionSayTo(user, 0, getLanguageVar("You %1% %2%'s %3%. %4%%%;"+lockedStatus+";"+userInfo(llGetOwner())+";"+llGetObjectName()+";"+usedTime));
     }
     if(isShowMenu){
         showMenu("mainMenu", user); // 防止出现打开双重菜单的bug，无必要不showMenu，尤其在Access逃跑或RLV锁定变更时。
     }
-    if(isLocked==TRUE && lockSound!="" && (llGetInventoryType(lockSound)==INVENTORY_SOUND || llStringLength(lockSound)==36)){
+    if(isLocked==TRUE && lockSoundEnabled==TRUE && lockSound!="" && (llGetInventoryType(lockSound)==INVENTORY_SOUND || llStringLength(lockSound)==36)){
         llPlaySound(lockSound, soundVolume);
-    }else if(unlockSound!="" && (llGetInventoryType(unlockSound)==INVENTORY_SOUND || llStringLength(unlockSound)==36)){
+    }else if(lockSoundEnabled==TRUE && unlockSound!="" && (llGetInventoryType(unlockSound)==INVENTORY_SOUND || llStringLength(unlockSound)==36)){
         llPlaySound(unlockSound, soundVolume);
     }
     if(REZ_MODE==TRUE && showText==TRUE){
         llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.SET|Locked|%b1%Locked%%;"+(string)isLocked+"|1|Victim", NULL_KEY);
     }
     return isLocked;
-}
-
-integer checkRelationship(key user, string type){
-    integer index=-1;
-    if(type=="owner"){
-        index=llListFindList(owner, [(string)user]); // 从link_message接收的list被直接转化为了string的list而没转成key，因此要将key转成string再判断。
-    }
-    else if(type=="trust"){
-        index=llListFindList(trust, [(string)user]);
-    }
-    else if(type=="black"){
-        index=llListFindList(black, [(string)user]);
-    }
-    else if(type=="public"){
-        if(checkRelationship(user, "black")){
-            return FALSE;
-        }else if(public==TRUE){
-            return TRUE;
-        }else{
-            return FALSE;
-        }
-    }
-    else if(type=="group"){
-        if(group==TRUE){
-            return llSameGroup(user);
-        }else{
-            return FALSE;
-        }
-    }
-    if(~index){
-        return TRUE;
-    }else{
-        return FALSE;
-    }
 }
 
 // list getOwnerNameList(){
@@ -644,17 +709,39 @@ integer checkRelationship(key user, string type){
 //     return ownerNameList;
 // }
 
-list featureList=[]; // name, parent, menuName
+list featureList=[]; // name, parent, menuName 
 integer featureLen=3;
-list registFeature(string name, string parent, string menuName){
+registFeature(string name, string parent, string menuName){
+    if(name=="" || menuName==""){
+        // name或菜单名为空时，不允许添加
+        return;
+    }
     integer i;
     for(i=0; i<llGetListLength(featureList); i+=featureLen){
-        if(llList2String(featureList, i) == name){
-            return featureList; // 已存在时，直接返回list
+        if(llList2String(featureList, i) == name && llList2String(featureList, i+2) == menuName){
+            return; // 已存在时，直接终止
         }
     }
-    featureList+=[name, parent, menuName];
-    return featureList;
+
+    if(parent=="TOP"){
+        // TOP永远往前追加，置顶
+        featureList=[name, parent, menuName] + featureList;
+    }else if(parent==""){
+        // parent为空时，往后追加
+        featureList+=[name, parent, menuName];
+    }else{
+        // 三个参数都不为空时，查找对应的位置，并插入
+        for(i=0; i<llGetListLength(featureList); i+=featureLen){
+            // 遍历list查找，parent与name相同，且menuName相同的节点，将它插入到此段后面
+            if(parent == llList2String(featureList, i) && menuName == llList2String(featureList, i+2)){
+                featureList=llListInsertList(featureList, [name, parent, menuName], i+featureLen);
+                // 插入成功，则终止
+                return;
+            }
+        }
+        // 上述遍历未匹配到内容时，向尾部插入
+        featureList+=[name, parent, menuName];
+    }
 }
 
 list applyFeatureList(string menuName, list origin, list feature){
@@ -662,8 +749,7 @@ list applyFeatureList(string menuName, list origin, list feature){
     for(i=0; i<llGetListLength(feature); i+=featureLen){
         string featureName=llList2String(feature, i);
         string featureParent=llList2String(feature, i+1);
-        string featureMenuName=llList2String(feature, i+2);
-        if(featureMenuName == menuName){
+        if(llList2String(feature, i+2) == menuName){
             if(featureParent=="TOP"){
                 origin=[featureName]+origin;
             }else{
@@ -707,102 +793,116 @@ string getTimeDistStr(integer baseTime, integer curTime){
 
 integer menuOperateLock=FALSE;
 key curMenuUser=NULL_KEY;
-showMenu(string menuName, key user){
-    integer isAllow=allowOperate(user);
-    if(!isAllow){
-        return;
-    }
-    if(menuOperateLock==TRUE){
-        if(curMenuUser==NULL_KEY || curMenuUser==user || user==llGetOwner()){
-            curMenuUser=user;
-            timerFlag=1;
-            llSetTimerEvent(60);
-        }else{
-            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Sorry, the menu of %1% is using by %2%.%%;"+llGetObjectName()+";"+userInfo(curMenuUser)+"|0|"+(string)user, user);
-            return;
-        }
-    }else{
-        curMenuUser=user;
-    }
-    string menuCmd="MENU.REG.OPEN";
-    string menuText;
-    string menuParent;
-    list mainMenu=getMenuFeature(menuName, user);
-    if(menuName=="mainMenu"){
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.CLEAR", user);
-        // mainMenu=applyFeatureList(menuName, getMenuFeature(menuName, user), featureList);
-        if(isAllow==-1){ // 对于被锁住的情况，允许访问Escape逃跑功能
-            mainMenu=[llList2String(mainMenu, 0)];
-            if(STRUGGLE_READY==TRUE && user==llGetOwner()){
-                mainMenu+=["Struggle"];
-            }
-            if(!hardcore && !REZ_MODE){ // 硬核模式未开启时，仅显示Escape按钮，菜单名使用AccessMenu以确保功能生效
-                mainMenu+=["Access"];
-            }else{ // 硬核模式开启时，不显示菜单。
-            }
-            if(llGetListLength(mainMenu)<=1){
-                return;
-            }
-        }
-        menuParent="";
-    }
-    else if(menuName=="appMenu" || menuName=="settingMenu"){
-        menuParent="mainMenu";
-    }
-    else if(menuName=="permaLockMenu"){
-        mainMenu=[
-            "%1% is requesting to PERMANENT LOCK your %2%, are you sure to be PERMANENT LOCKED?\nOnce confirmed, you will be permanently locked out and unable to unlock!%%;"+userInfo(user)+";"+llGetObjectName(),
-            "YES", "NO"
-        ];
-        menuCmd="MENU.CONFIRM";
-        menuParent="settingMenu";
-        user=llGetOwner(); // 必须重写user，让佩戴者弹出菜单，而不是操作者
-    }
+// showMenu(string menuName, key user){
+//     integer isAllow=allowOperate(user);
+//     if(!isAllow){
+//         return;
+//     }
+//     if(menuOperateLock==TRUE){
+//         if(curMenuUser==NULL_KEY || curMenuUser==user || user==llGetOwner()){
+//             curMenuUser=user;
+//             timerFlag=1;
+//             llSetTimerEvent(60);
+//         }else{
+//             llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Sorry, the menu of %1% is using by %2%.%%;"+llGetObjectName()+";"+userInfo(curMenuUser)+"|0|"+(string)user, user);
+//             return;
+//         }
+//     }else{
+//         curMenuUser=user;
+//     }
+//     string menuCmd="MENU.REG.OPEN";
+//     string menuText;
+//     string menuParent;
+//     list mainMenu=getMenuFeature(menuName, user);
+//     if(menuName=="mainMenu"){
+//         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.CLEAR", user);
+//         // mainMenu=applyFeatureList(menuName, getMenuFeature(menuName, user), featureList);
+//         if(isAllow==-1){ // 对于被锁住的情况，允许访问Escape逃跑功能
+//             mainMenu=[llList2String(mainMenu, 0)];
+//             if(STRUGGLE_READY==TRUE && user==llGetOwner()){
+//                 mainMenu+=["Struggle"];
+//             }
+//             if(!hardcore && !REZ_MODE){ // 硬核模式未开启时，仅显示Escape按钮，菜单名使用AccessMenu以确保功能生效
+//                 mainMenu+=["Access"];
+//             }else{ // 硬核模式开启时，不显示菜单。
+//             }
+//             if(llGetListLength(mainMenu)<=1){
+//                 return;
+//             }
+//         }
+//         menuParent="";
+//     }
+//     else if(menuName=="appMenu" || menuName=="settingMenu"){
+//         menuParent="mainMenu";
+//     }
+//     else if(menuName=="permaLockMenu"){
+//         mainMenu=[
+//             "%1% is requesting to PERMANENT LOCK your %2%, are you sure to be PERMANENT LOCKED?\nOnce confirmed, you will be permanently locked out and unable to unlock!%%;"+userInfo(user)+";"+llGetObjectName(),
+//             "YES", "NO"
+//         ];
+//         menuCmd="MENU.CONFIRM";
+//         menuParent="settingMenu";
+//         user=llGetOwner(); // 必须重写user，让佩戴者弹出菜单，而不是操作者
+//     }
+//     else if(menuName=="sensorMenu"){
+//         menuCmd="MENU.REG.OPEN.RESET";
+//         mainMenu=["Select user to %1%.%%;"+curSensorType];
+//         integer i;
+//         for(i=0; i<llGetListLength(sensorUserList); i++){
+//             key uk=llList2Key(sensorUserList, i);
+//             if(uk){
+//                 mainMenu+=[llGetSubString((string)(i+1) + ". " + llGetUsername(uk), 0, 23)];
+//             }
+//         }
+//         if(curSensorType=="Capture"){
+//             menuParent="mainMenu";
+//         }
+//     }
     
-    // getMenuFeature第0位为菜单文本，从1~末尾是菜单按钮内容，因此要将它们分开
-    menuText=llList2String(mainMenu, 0);
-    mainMenu=llList2List(mainMenu, 1, -1);
-    llMessageLinked(LINK_SET, MENU_MSG_NUM, menuCmd+"|"+menuName+"|"+menuText+"|"+llDumpList2String(mainMenu, ";")+"|"+menuParent, user);
-    return;
-    // if( 
-    //     (checkOwner(user) || checkTrust(user) || checkPublic(user) || checkGroup(user)) && 
-    //     !checkBlack(user)
-    // ){
-    //     string menuText="This is main menu.\nLocked: %b1%\nOwner: %2%\nPublic: %b3%%%;"+(string)isLocked+";"+llDumpList2String(getOwnerNameList(), ", ")+";"+(string)public;
-    //     list mainMenu=["["+(string)isLocked+"]Lock","RLV","Access"];
-    //     list menuLink=[
-    //         "MENU.REG.OPEN.RESET",
-    //         "mainMenu",
-    //         menuText,
-    //         llDumpList2String(mainMenu,";")
-    //     ];
-    //     llMessageLinked(LINK_SET, 1000, llDumpList2String(menuLink,"|"), user);
-    // }else{
-    //     if(isLocked){
-    //         llRegionSayTo(user, 0, getLanguageVar("This %1% is locked by %2%.%%;"+llGetObjectName()+";"+userInfo(lockUser)));
-    //     }else{
-    //         llRegionSayTo(user, 0, getLanguageVar("You don't have permission to operate %1%!%%;"+llGetObjectName()));
-    //     }
-    // }
-}
+//     // getMenuFeature第0位为菜单文本，从1~末尾是菜单按钮内容，因此要将它们分开
+//     menuText=llList2String(mainMenu, 0);
+//     mainMenu=llList2List(mainMenu, 1, -1);
+//     llMessageLinked(LINK_SET, MENU_MSG_NUM, menuCmd+"|"+menuName+"|"+menuText+"|"+llDumpList2String(mainMenu, ";")+"|"+menuParent, user);
+//     return;
+//     // if( 
+//     //     (checkOwner(user) || checkTrust(user) || checkPublic(user) || checkGroup(user)) && 
+//     //     !checkBlack(user)
+//     // ){
+//     //     string menuText="This is main menu.\nLocked: %b1%\nOwner: %2%\nPublic: %b3%%%;"+(string)isLocked+";"+llDumpList2String(getOwnerNameList(), ", ")+";"+(string)public;
+//     //     list mainMenu=["["+(string)isLocked+"]Lock","RLV","Access"];
+//     //     list menuLink=[
+//     //         "MENU.REG.OPEN.RESET",
+//     //         "mainMenu",
+//     //         menuText,
+//     //         llDumpList2String(mainMenu,";")
+//     //     ];
+//     //     llMessageLinked(LINK_SET, 1000, llDumpList2String(menuLink,"|"), user);
+//     // }else{
+//     //     if(isLocked){
+//     //         llRegionSayTo(user, 0, getLanguageVar("This %1% is locked by %2%.%%;"+llGetObjectName()+";"+userInfo(lockUser)));
+//     //     }else{
+//     //         llRegionSayTo(user, 0, getLanguageVar("You don't have permission to operate %1%!%%;"+llGetObjectName()));
+//     //     }
+//     // }
+// }
 
 list sensorUserList;
-showSensorMenu(string type, key user){
-    string menuText="Select user to %1%.%%;"+type;
-    list buttonList=[];
-    integer i;
-    for(i=0; i<llGetListLength(sensorUserList); i++){
-        key uk=llList2Key(sensorUserList, i);
-        if(uk){
-            buttonList+=[llGetSubString((string)(i+1) + ". " + llGetUsername(uk), 0, 23)];
-        }
-    }
-    string parent="";
-    if(type=="Capture"){
-        parent="mainMenu";
-    }
-    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN.RESET|"+type+"Menu"+"|"+menuText+"|"+llDumpList2String(buttonList,";")+"|"+parent, user);
-}
+// showSensorMenu(string type, key user){
+//     string menuText="Select user to %1%.%%;"+type;
+//     list buttonList=[];
+//     integer i;
+//     for(i=0; i<llGetListLength(sensorUserList); i++){
+//         key uk=llList2Key(sensorUserList, i);
+//         if(uk){
+//             buttonList+=[llGetSubString((string)(i+1) + ". " + llGetUsername(uk), 0, 23)];
+//         }
+//     }
+//     string parent="";
+//     if(type=="Capture"){
+//         parent="mainMenu";
+//     }
+//     llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN.RESET|"+type+"Menu"+"|"+menuText+"|"+llDumpList2String(buttonList,";")+"|"+parent, user);
+// }
 
 integer MAIN_MSG_NUM=9000;
 integer CONF_MSG_NUM=8000;
@@ -827,25 +927,17 @@ integer ANIM_READY=FALSE;
 integer STRUGGLE_READY=FALSE;
 integer TEXT_READY=FALSE;
 
-list owner=[];
-list trust=[];
-list black=[];
-integer public=1;
-integer group=0;
-integer hardcore=0;
-integer autoLock=0;
+vector sitPos=<0.0, 0.0, -0.1>;
+rotation sitRot=ZERO_ROTATION;
+integer sitAutoLock=FALSE;
+integer sitAutoTrap=FALSE;
+string sitText="";
+integer showText=TRUE;
+string touchSound="";
 integer allowPermaLock=FALSE;
 
-vector sitPos;
-rotation sitRot;
-integer sitAutoLock;
-integer sitAutoTrap;
-string sitText="";
-integer showText;
-string touchSound;
-
 integer REZ_MODE=FALSE;
-key VICTIM_UUID;
+key VICTIM_UUID=NULL_KEY;
 
 integer attachFlag=TRUE;
 
@@ -856,6 +948,7 @@ integer cmdChannel=1;
 integer listenHandle;
 string curSensorType; // Capture
 integer maxSensor=18;
+
 default{
     state_entry(){
         initMain();
@@ -981,7 +1074,15 @@ default{
                     }
                 }
                 else if(menuName=="settingMenu"){
-                    if(menuText=="AutoLock"){
+                    if(menuText=="TouchSound"){
+                        touchSoundEnabled=!touchSoundEnabled;
+                        showMenu("settingMenu", user);
+                    }
+                    if(menuText=="LockSound"){
+                        lockSoundEnabled=!lockSoundEnabled;
+                        showMenu("settingMenu", user);
+                    }
+                    else if(menuText=="AutoLock"){
                         sitAutoLock=!sitAutoLock;
                         showMenu("settingMenu", user);
                     }
@@ -1012,16 +1113,28 @@ default{
                     }
                     return;
                 }
-                else if(menuName=="CaptureMenu"){
-                    list buList=llParseStringKeepNulls(menuText,[". "],[""]);
-                    integer buIndex=llList2Integer(buList,0);
-                    key buUser=llList2Key(sensorUserList, ((integer)(buIndex-1)));
-                    if(buUser!=NULL_KEY){
-                        llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.CAPTURE|"+(string)buUser+"|1", user);
-                        captureByUser=user;
+                else if(menuName=="sensorMenu"){
+                    if(curSensorType=="Capture"){
+                        list buList=llParseStringKeepNulls(menuText,[". "],[""]);
+                        integer buIndex=llList2Integer(buList,0);
+                        key buUser=llList2Key(sensorUserList, ((integer)(buIndex-1)));
+                        if(buUser!=NULL_KEY){
+                            llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.CAPTURE|"+(string)buUser+"|1", user);
+                            captureByUser=user;
+                        }
+                        sensorUserList=[];
                     }
-                    sensorUserList=[];
                 }
+                // else if(menuName=="CaptureMenu"){
+                //     list buList=llParseStringKeepNulls(menuText,[". "],[""]);
+                //     integer buIndex=llList2Integer(buList,0);
+                //     key buUser=llList2Key(sensorUserList, ((integer)(buIndex-1)));
+                //     if(buUser!=NULL_KEY){
+                //         llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.CAPTURE|"+(string)buUser+"|1", user);
+                //         captureByUser=user;
+                //     }
+                //     sensorUserList=[];
+                // }
                 triggerFeature(menuName, menuText, user);
             }
             else if(menuCmdStr=="MENU.CLOSE"){
@@ -1070,19 +1183,27 @@ default{
             list accessCmdList=strSplit(str, "|");
             string accessCmdStr=llList2String(accessCmdList, 0);
             string accessName=llList2String(accessCmdList, 1);
-            list accessData=strSplit(llList2String(accessCmdList, 2), ";");
 
             if(accessCmdStr=="ACCESS.NOTIFY"){
-                if(accessName=="OWNER"){ // ACCESS.NOTIFY | OWNER | UUID1; UUID2; UUID3; ...
-                    owner=accessData; // 接收到并写入的用户列表为string，判断时要将key转换为string再判断
+                if(accessName=="OWNER" || accessName=="TRUST" || accessName=="BLACK"){
+                    integer accessIndex=llListFindList(relationshipList, [llToLower(accessName)]);
+                    if(~accessIndex){
+                        relationshipList=llListReplaceList(relationshipList, [llList2String(accessCmdList, 2)], accessIndex+1, accessIndex+1);
+                    }else{
+                        relationshipList+=[llToLower(accessName), llList2String(accessCmdList, 2)]; // ["owner", "uuid1;uuid2;...", "trust", "uuid1;uuid2;...", "black", "uuid1;uuid2;..."]
+                    }
                 }
-                if(accessName=="TRUST"){ // ACCESS.NOTIFY | TRUST | UUID1; UUID2; UUID3; ...
-                    trust=accessData;
-                }
-                if(accessName=="BLACK"){ // ACCESS.NOTIFY | BLACK | UUID1; UUID2; UUID3; ...
-                    black=accessData;
-                }
-                if(accessName=="MODE"){ // ACCESS.NOTIFY | MODE | PUBLIC; GROUP; HARDCORE
+                // if(accessName=="OWNER"){ // ACCESS.NOTIFY | OWNER | UUID1; UUID2; UUID3; ...
+                //     owner=accessData; // 接收到并写入的用户列表为string，判断时要将key转换为string再判断
+                // }
+                // if(accessName=="TRUST"){ // ACCESS.NOTIFY | TRUST | UUID1; UUID2; UUID3; ...
+                //     trust=accessData;
+                // }
+                // if(accessName=="BLACK"){ // ACCESS.NOTIFY | BLACK | UUID1; UUID2; UUID3; ...
+                //     black=accessData;
+                // }
+                else if(accessName=="MODE"){ // ACCESS.NOTIFY | MODE | PUBLIC; GROUP; HARDCORE
+                    list accessData=strSplit(llList2String(accessCmdList, 2), ";");
                     public=llList2Integer(accessData, 0);
                     group=llList2Integer(accessData, 1);
                     hardcore=llList2Integer(accessData, 2);
@@ -1091,6 +1212,7 @@ default{
                 // llOwnerSay("Access updated. Owner: "+list2Data(owner)+" Trust: "+list2Data(trust)+" Black: "+list2Data(black)+" Public: "+(string)public+" Group: "+(string)group+" Hardcore: "+(string)hardcore);
             }else if(accessCmdStr=="ACCESS.EXEC"){
                 if(accessName=="ACCESS.RESET" && llList2Integer(accessData, 0)==TRUE){ // Access重置（逃跑）时，解锁
+                    relationshipList=[];
                     setLock(FALSE, NULL_KEY, FALSE);
                 }
             }else if(accessCmdStr=="ACCESS.LOAD.NOTECARD"){
@@ -1103,9 +1225,6 @@ default{
             // if (llGetSubString(str, 0, 2) == "LAN" && includes(str, "INIT")) { // 接收语言系统INIT回调，并启用语言功能
             if (includes(str, "LANGUAGE.EXEC") && includes(str, "INIT")) { // 接收语言系统INIT回调，并启用语言功能
                 hasLanguage=TRUE;
-            }
-            else if (llGetSubString(str, 0, 2) == "LAN" && includes(str, "ACTIVE")) { // 接收语言系统ACTIVE回调，并应用语言数据
-                applyLanguage();
             }
         }
         else if(num==TIMER_MSG_NUM){
@@ -1180,13 +1299,15 @@ default{
             key uuid = llDetectedKey(i);
             sensorUserList+=uuid;
         }
-        showSensorMenu(curSensorType, curMenuUser);
+        showMenu(sensorMenu, curMenuUser);
+        // showSensorMenu(curSensorType, curMenuUser);
     }
     no_sensor(){
         sensorUserList=[];
         if(REZ_MODE==FALSE){
             sensorUserList+=[llGetOwner()]; // 穿在身上时，添加自己
         }
-        showSensorMenu(curSensorType, curMenuUser);
+        showMenu(sensorMenu, curMenuUser);
+        // showSensorMenu(curSensorType, curMenuUser);
     }
 }
