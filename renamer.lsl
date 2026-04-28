@@ -20,6 +20,9 @@ Author: JMRY
 Description: A better RLV Renamer management system, use link_message to operate Renamer restraints.
 
 ***更新记录***
+- 1.1.11 20260428
+    - 修复报错。
+
 - 1.1.10 20260427
     - 加入自定义混淆替换文字功能。
 
@@ -1013,12 +1016,12 @@ default{
                         renamerType=!renamerType;
                     }
                     else if(menuButton=="ConfusionWords"){
-                        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.INPUT|RenamerConfusionWordsInput|Input Confusion words, separate with \";\", blank to off (Current: %1%):%%;"+llDumpList2String(confusionReplaceEn, ";"), user);
+                        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.INPUT|RenamerConfusionWordsInput|Input Confusion words, separate with \";\", blank to off (Current: %1%):%%;"+llDumpList2String(confusionReplaceEn, ","), user);
                         // 后续交由RenamerMuffleTextInput处理
                         return;
                     }
                     else if(menuButton=="ConfusionOthers"){
-                        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.INPUT|RenamerConfusionOthersInput|Input Confusion words for other languages, separate with \";\", blank to off (Current: %1%):%%;"+llDumpList2String(confusionReplaceCn, ";"), user);
+                        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.INPUT|RenamerConfusionOthersInput|Input Confusion words for other languages, separate with \";\", blank to off (Current: %1%):%%;"+llDumpList2String(confusionReplaceCn, ","), user);
                         // 后续交由RenamerMuffleTextInput处理
                         return;
                     }
@@ -1057,11 +1060,11 @@ default{
                     showRenamerVoiceMenu(curRenamerSubMenu, user);
                 }
                 else if(menuName=="RenamerConfusionWordsInput"){ // MENU.ACTIVE | RenamerConfusionWordsInput | Text1;Text2
-                    confusionReplaceEn=llParseStringKeepNulls(menuButton, ";");
+                    confusionReplaceEn=llParseStringKeepNulls(menuButton, [";"], [""]);
                     showRenamerConfusionMenu(curRenamerSubMenu, user);
                 }
                 else if(menuName=="RenamerConfusionOthersInput"){ // MENU.ACTIVE | RenamerConfusionOthersInput | Text1;Text2
-                    confusionReplaceCn=llParseStringKeepNulls(menuButton, ";");
+                    confusionReplaceCn=llParseStringKeepNulls(menuButton, [";"], [""]);
                     showRenamerConfusionMenu(curRenamerSubMenu, user);
                 }
                 else if(menuName=="RenamerMuffleTextInput"){ // MENU.ACTIVE | RenamerMuffleTextInput | Text

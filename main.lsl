@@ -1,10 +1,7 @@
 initMain(){
     // Init Config
-    sitPos=<0.0, 0.0, -0.2>;
-    sitRot=ZERO_ROTATION;
     sitAutoLock=FALSE;
     sitAutoTrap=FALSE;
-    sitText="";
     showText=TRUE;
     lockSound="lock";
     unlockSound="unlock";
@@ -13,6 +10,9 @@ initMain(){
     touchSoundEnabled=TRUE;
     lockSoundEnabled=TRUE;
     allowPermaLock=FALSE;
+
+    llSitTarget(<0.0, 0.0, -0.2>, ZERO_ROTATION);
+    llSetSitText("");
     // Init Config End
 
     RLV_READY=FALSE;
@@ -48,8 +48,6 @@ initMain(){
     if(llGetAttached()){
         llRequestPermissions(llGetOwner(), PERMISSION_ATTACH);
     }
-    llSitTarget(sitPos, sitRot);
-    llSetSitText(sitText);
     listenHandle=llListen(cmdChannel, "", NULL_KEY, "");
     // llSleep(0);
     // llOwnerSay("Initialize Complete, Enjoy!");
@@ -325,6 +323,10 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.2.1 20260428
+    - 加入其他脚本调用主菜单功能。
+    - 优化内存占用。
+
 - 1.2 20260427
     - 优化代码结构。
     - 优化菜单生成逻辑。
@@ -625,7 +627,7 @@ integer checkRelationship(key user, string type){
     }
 }
 list getRelationship(string type){
-    integer rIndex=llListFindList(relationshipList, type);
+    integer rIndex=llListFindList(relationshipList, [type]);
     if(~rIndex){
         return strSplit(llList2String(relationshipList, rIndex+1), ";");
     }else{
@@ -640,7 +642,7 @@ key captureByUser=NULL_KEY;
 integer lockTime=0;
 string lockSound="";
 string unlockSound="";
-float soundVolume="";
+float soundVolume=1.0;
 integer touchSoundEnabled=TRUE;
 integer lockSoundEnabled=TRUE;
 integer setLock(integer lock, key user, integer isShowMenu){
@@ -927,11 +929,8 @@ integer ANIM_READY=FALSE;
 integer STRUGGLE_READY=FALSE;
 integer TEXT_READY=FALSE;
 
-vector sitPos=<0.0, 0.0, -0.1>;
-rotation sitRot=ZERO_ROTATION;
 integer sitAutoLock=FALSE;
 integer sitAutoTrap=FALSE;
-string sitText="";
 integer showText=TRUE;
 string touchSound="";
 integer allowPermaLock=FALSE;
@@ -947,7 +946,7 @@ integer initRetryTimer=30;
 integer cmdChannel=1;
 integer listenHandle;
 string curSensorType; // Capture
-integer maxSensor=18;
+integer maxSensor=9;
 
 default{
     state_entry(){
@@ -1035,11 +1034,23 @@ default{
             string mainName=llList2String(mainCmdList, 1);
             string mainText=llList2String(mainCmdList, 2);
             string mainMenuName=llList2String(mainCmdList, 3);
+
             if(mainCmdStr=="FEATURE.REG"){ // FEATURE.REG | featureName | featureParent | featureMenuName
                 if(mainMenuName==""){
                     mainMenuName="appMenu";
                 }
                 registFeature(mainName, mainText, mainMenuName);
+            }
+            else if(allowOperate(user)){
+                if(mainCmdStr=="MAIN.LOCK"){
+                    if(mainName==""){
+                        mainName="-1";
+                    }
+                    setLock((integer)mainName, user, FALSE);
+                }
+                else if(mainCmdStr=="MAIN.MENU"){
+                    showMenu("mainMenu", user);
+                }
             }
         }
         else if(num==MENU_MSG_NUM){
@@ -1211,6 +1222,7 @@ default{
                 }
                 // llOwnerSay("Access updated. Owner: "+list2Data(owner)+" Trust: "+list2Data(trust)+" Black: "+list2Data(black)+" Public: "+(string)public+" Group: "+(string)group+" Hardcore: "+(string)hardcore);
             }else if(accessCmdStr=="ACCESS.EXEC"){
+                list accessData=strSplit(llList2String(accessCmdList, 2), ";");
                 if(accessName=="ACCESS.RESET" && llList2Integer(accessData, 0)==TRUE){ // Access重置（逃跑）时，解锁
                     relationshipList=[];
                     setLock(FALSE, NULL_KEY, FALSE);
@@ -1299,7 +1311,7 @@ default{
             key uuid = llDetectedKey(i);
             sensorUserList+=uuid;
         }
-        showMenu(sensorMenu, curMenuUser);
+        showMenu("sensorMenu", curMenuUser);
         // showSensorMenu(curSensorType, curMenuUser);
     }
     no_sensor(){
@@ -1307,7 +1319,7 @@ default{
         if(REZ_MODE==FALSE){
             sensorUserList+=[llGetOwner()]; // 穿在身上时，添加自己
         }
-        showMenu(sensorMenu, curMenuUser);
+        showMenu("sensorMenu", curMenuUser);
         // showSensorMenu(curSensorType, curMenuUser);
     }
 }
