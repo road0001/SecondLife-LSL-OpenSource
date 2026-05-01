@@ -1,4 +1,5 @@
 initMain(){
+	standalone=FALSE;
 	arousalAllowAnim=FALSE;
     arousalEdgeLower=20;
     arousalEdgeUpper=80;
@@ -19,6 +20,9 @@ Author: JMRY
 Description: A arousal controller for restraint items.
 
 ***更新记录***
+- 1.0.5 20260430
+	- 加入可独立使用功能。
+
 - 1.0.4 20260419
 	- 加入显示菜单的指令。
 
@@ -236,6 +240,7 @@ integer PA2_MSG_NUM=0;
 key VICTIM_UUID;
 integer timerTick=0;
 
+integer standalone=FALSE;
 default{
     state_entry(){
         initMain();
@@ -276,6 +281,11 @@ default{
 	object_rez(key user){
         VICTIM_UUID=NULL_KEY;
     }
+	touch_start(integer num_detected){
+		if(standalone==TRUE){
+			showArousalMenu("", llDetectedKey(0));
+		}
+	}
     link_message(integer sender_num, integer num, string msg, key user){
         if(num!=MAIN_MSG_NUM && num!=MENU_MSG_NUM && num!=AROUSAL_MSG_NUM && num!=PA2_MSG_NUM){
             return;
@@ -484,6 +494,7 @@ default{
             }
         }
         else if(headerMain=="MAIN" && headerSub=="INIT"){
+			standalone=FALSE;
             llMessageLinked(LINK_SET, MAIN_MSG_NUM, "FEATURE.REG|Arousal", user);
         }
         else if(headerMain=="MENU" && headerSub=="ACTIVE"){

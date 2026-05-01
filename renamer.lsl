@@ -1,4 +1,5 @@
 initConfig(){
+    standalone=FALSE;
     renamerBool=FALSE;
     renamerChannel=(integer)(99999999 - llFrand(10000000));
     renamerName=RENAMER_FULL_NAME;
@@ -20,6 +21,9 @@ Author: JMRY
 Description: A better RLV Renamer management system, use link_message to operate Renamer restraints.
 
 ***更新记录***
+- 1.1.12 20260430
+    - 加入可独立使用功能。
+
 - 1.1.11 20260428
     - 修复报错。
 
@@ -603,6 +607,8 @@ integer MENU_MSG_NUM=1000;
 integer RLV_MSG_NUM=1001;
 integer RENAMER_MSG_NUM=10011;
 key currentUser=NULL_KEY;
+
+integer standalone=FALSE;
 default{
     state_entry(){
         initConfig();
@@ -678,6 +684,11 @@ default{
     object_rez(key user){
         RLV_MODE=1;
     }
+    touch_start(integer num_detected){
+		if(standalone==TRUE){
+			showRenamerMenu("", llDetectedKey(0));
+		}
+	}
     link_message(integer sender_num, integer num, string msg, key user){
         if(num!=RENAMER_MSG_NUM && num!=RLV_MSG_NUM && num!=MENU_MSG_NUM){
             return;
@@ -799,6 +810,7 @@ default{
                         result=list2Data([renamerBool, renamerName, renamerConfusion, renamerVoice, renamerHive]);
                     }
                     else if(renamerMsgExt=="READY"){
+                        standalone=FALSE;
                         llMessageLinked(LINK_THIS, RENAMER_MSG_NUM, "RENAMER.READY", NULL_KEY);
                     }
                     /*
@@ -861,6 +873,7 @@ default{
                     返回：
                     RENAMER.EXEC | RENAMER.LOAD | renamer1 | 1
                     */
+                    standalone=FALSE;
                     if(renamerMsgExt==""){
                         // result=(string)readRLVNotecards(msgName);
                         readRenamerLine=0;

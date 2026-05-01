@@ -1,4 +1,5 @@
 initConfig(){
+    standalone=FALSE;
     rlvCmdList=[
         // Vision
         // Page 1
@@ -102,6 +103,9 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 2.0.23 20260430
+    - 加入可独立使用功能。
+
 - 2.0.22 20260419
     - 修复.开头的RLV类别仍然会显示的bug。
 
@@ -708,6 +712,8 @@ integer MENU_MSG_NUM=1000;
 integer RLV_MSG_NUM=1001;
 integer RENAMER_MSG_NUM=10011;
 integer RLVEXT_MSG_NUM=10012;
+
+integer standalone=FALSE;
 default{
     state_entry(){
         initConfig();
@@ -795,6 +801,11 @@ default{
     object_rez(key user){
         RLV_MODE=1;
     }
+    touch_start(integer num_detected){
+		if(standalone==TRUE){
+			showRLVMenu("", llDetectedKey(0));
+		}
+	}
     link_message(integer sender_num, integer num, string msg, key user){
         if(num!=RLV_MSG_NUM && num!=MENU_MSG_NUM){
             return;
@@ -923,6 +934,7 @@ default{
                     返回：
                     RLV.EXEC | RLV.LOAD | 1
                     */
+                    standalone=FALSE;
                     if(headerExt==""){
                         // result=(string)readRLVNotecards(msgName);
                         readRLVLine=0;
@@ -974,6 +986,7 @@ default{
                         result=list2Data(getRLVCmd(msgName, FALSE));
                     }
                     else if(headerExt=="READY"){
+                        standalone=FALSE;
                         llMessageLinked(LINK_THIS, RLV_MSG_NUM, "RLV.READY", NULL_KEY);
                     }
                     /*

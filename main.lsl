@@ -26,8 +26,9 @@ initMain(){
     hasLanguage=FALSE;
 
     llOwnerSay("Begin Initialize...");
+    llSleep(0.25);
     list initMessageLinkChain=[
-        MAIN_MSG_NUM, "MAIN.INIT", 0.25,
+        // MAIN_MSG_NUM, "MAIN.INIT", 0.25,
         RLV_MSG_NUM, "RLV.RUN.TEMP|detach=n", 0.25, // 首次初始化时，先将道具上锁，待初始化完（Access、RLV）后，根据结果更改上锁状态
         RLV_MSG_NUM, "RLV.LOAD|main", 0,
         RENAMER_MSG_NUM, "RENAMER.LOAD|main", 0,
@@ -48,6 +49,7 @@ initMain(){
     if(llGetAttached()){
         llRequestPermissions(llGetOwner(), PERMISSION_ATTACH);
     }
+    llMessageLinked(LINK_SET, MAIN_MSG_NUM, "MAIN.INIT", NULL_KEY);
     listenHandle=llListen(cmdChannel, "", NULL_KEY, "");
     // llSleep(0);
     // llOwnerSay("Initialize Complete, Enjoy!");
@@ -323,6 +325,10 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.2.2 20260501
+    - 优化App注册逻辑。
+    - 修复App概率性无法加载的bug。
+
 - 1.2.1 20260428
     - 加入其他脚本调用主菜单功能。
     - 优化内存占用。
@@ -721,17 +727,15 @@ registFeature(string name, string parent, string menuName){
     integer i;
     for(i=0; i<llGetListLength(featureList); i+=featureLen){
         if(llList2String(featureList, i) == name && llList2String(featureList, i+2) == menuName){
-            return; // 已存在时，直接终止
+            // featureList=llDeleteSubList(featureList, i, i+featureLen-1);
+            return;
         }
     }
 
     if(parent=="TOP"){
         // TOP永远往前追加，置顶
         featureList=[name, parent, menuName] + featureList;
-    }else if(parent==""){
-        // parent为空时，往后追加
-        featureList+=[name, parent, menuName];
-    }else{
+    }else if(parent!=""){
         // 三个参数都不为空时，查找对应的位置，并插入
         for(i=0; i<llGetListLength(featureList); i+=featureLen){
             // 遍历list查找，parent与name相同，且menuName相同的节点，将它插入到此段后面
@@ -742,6 +746,9 @@ registFeature(string name, string parent, string menuName){
             }
         }
         // 上述遍历未匹配到内容时，向尾部插入
+        featureList+=[name, parent, menuName];
+    }else{
+        // parent为空时，往后追加
         featureList+=[name, parent, menuName];
     }
 }
@@ -754,13 +761,15 @@ list applyFeatureList(string menuName, list origin, list feature){
         if(llList2String(feature, i+2) == menuName){
             if(featureParent=="TOP"){
                 origin=[featureName]+origin;
-            }else{
+            }else if(featureParent!=""){
                 integer parentIndex=llListFindList(origin, [featureParent]);
                 if(~parentIndex){
                     origin=llListInsertList(origin, [featureName], parentIndex+1);
                 }else{
                     origin+=[featureName];
                 }
+            }else{
+                origin+=[featureName];
             }
         }
     }
@@ -989,6 +998,7 @@ default{
             REZ_MODE=TRUE;
             VICTIM_UUID=NULL_KEY;
         }
+        llMessageLinked(LINK_SET, MAIN_MSG_NUM, "MAIN.INIT", NULL_KEY);
     }
     object_rez(key id){
         REZ_MODE=TRUE;

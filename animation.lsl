@@ -1,4 +1,5 @@
 initConfig(){
+    standalone=FALSE;
     animConfigList=[]; // name, animName;interval;floatHeight;Adjust;Ext2;..., class, auto
     integer count = llGetInventoryNumber(INVENTORY_ANIMATION);
     integer i;
@@ -21,6 +22,9 @@ Author: JMRY
 Description: A better animation control system, use link_message to operate animations.
 
 ***更新记录***
+- 1.2.4 20260430
+    - 加入可独立使用功能。
+
 - 1.2.3 20260419
     - 优化.开头的class和动画名的隐藏逻辑。
 
@@ -469,6 +473,9 @@ integer allowAutoAdjustHeight=TRUE;
 integer allowStopAnim=TRUE;
 integer allowRezAdjust=TRUE;
 string curAnimClass="";
+
+
+integer standalone=FALSE;
 default{
     state_entry(){
         initConfig();
@@ -530,6 +537,11 @@ default{
             animPlayer=NULL_KEY;
         }
     }
+    touch_start(integer num_detected){
+		if(standalone==TRUE){
+			showAnimMenu("", llDetectedKey(0));
+		}
+	}
     run_time_permissions(integer perm) {
         if(perm & PERMISSION_TRIGGER_ANIMATION){
             if(playAnimationFlag>=TRUE){
@@ -657,6 +669,7 @@ default{
                         result=llDumpList2String(animConfigList, "|");
                     }
                     else if(headerExt=="READY"){
+                        standalone=FALSE;
                         llMessageLinked(LINK_THIS, ANIM_MSG_NUM, "ANIM.READY", NULL_KEY);
                     }
                     else if(headerExt=="PLAYING"){
@@ -694,6 +707,7 @@ default{
                     读取记事卡成功后的回调
                     ANIM.LOAD.NOTECARD | file1 | 1
                     */
+                    standalone=FALSE;
                     if(headerExt==""){
                         result=(string)readNotecards(msgName);
                     }

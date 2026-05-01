@@ -1,4 +1,5 @@
 initConfig(){
+    standalone=FALSE;
     particleEnabled    = TRUE;
     particleFlags      = -1;
     particleSrcPattern = PSYS_SRC_PATTERN_DROP;
@@ -59,6 +60,9 @@ Author: JMRY
 Description: A better leash control system, use link_message to operate leashes.
 
 ***更新记录***
+- 1.1.11 20260430
+    - 加入可独立使用功能。
+
 - 1.1.10 20260416
     - 修复检测物体或玩家时，按钮文字会超长的bug。
     - 修复周围没有玩家时，无法弹出选择玩家对话框的bug。
@@ -825,6 +829,8 @@ integer CHANNEL_LOCK_GUARD   = -9119;
 integer REZ_MODE=FALSE;
 integer timerCount=0;
 integer maxSensor=18;
+
+integer standalone=FALSE;
 default{
     state_entry(){
         leashToTarget(NULL_KEY, TRUE);
@@ -861,6 +867,11 @@ default{
     object_rez(key user){
         REZ_MODE=TRUE;
     }
+    touch_start(integer num_detected){
+		if(standalone==TRUE){
+			showLeashMenu("", llDetectedKey(0));
+		}
+	}
     listen(integer channel, string name, key id, string msg){
         if(channel == CHANNEL_LOCK_MEISTER){
             /*
@@ -968,6 +979,7 @@ default{
                         result=getConfig(msgName);
                     }
                     else if(headerExt=="READY"){
+                        standalone=FALSE;
                         llMessageLinked(LINK_THIS, LEASH_MSG_NUM, "LEASH.READY", NULL_KEY);
                     }
                 }
@@ -1015,6 +1027,7 @@ default{
                     读取记事卡成功后的回调
                     LEASH.LOAD.NOTECARD | file1 | 1
                     */
+                    standalone=FALSE;
                     if(headerExt==""){
                         readLeashLine=0;
                         curLeashName=msgName;

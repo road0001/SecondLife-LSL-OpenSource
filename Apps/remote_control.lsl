@@ -5,8 +5,7 @@ initMain(){
 	textAlpha=1.0;
 	buttonAvailableBlackList=[
 		"Menu",
-		"Leash",
-		"Shock"
+		"Leash"
 	];
 }
 /*CONFIG END*/
@@ -17,6 +16,9 @@ Author: JMRY
 Description: A remote controller for restraint items.
 
 ***更新记录***
+- 1.0.1 20260501
+	- 优化消息发送逻辑。
+
 - 1.0 20260428
     - 完成主要功能。
 ***更新记录***
@@ -130,6 +132,20 @@ setButtonsAvailable(integer bool){
 	}
 }
 
+updateStatus(){
+	if(CONNECT_UUID!=NULL_KEY && CONNECT_USER!=NULL_KEY){
+		if(openCollarMode==TRUE){
+			llSetText(llKey2Name(CONNECT_UUID)+"\n"+llGetUsername(CONNECT_USER)+"\nOpenCollar", textColor, textAlpha);
+		}else{
+			llSetText(llKey2Name(CONNECT_UUID)+"\n"+llGetUsername(CONNECT_USER), textColor, textAlpha);
+		}
+		setButtonsAvailable(TRUE);
+	}else{
+		llSetText("", textColor, textAlpha);
+		setButtonsAvailable(FALSE);
+	}
+}
+
 
 integer REMOTE_CONTROL_CHANNEL=131793;
 integer REMOTE_OBJECT_CHANNEL=131794;
@@ -147,10 +163,15 @@ float textAlpha=1.0;
 default{
 	state_entry(){
 		initMain();
-		setButtonsAvailable(FALSE);
+		updateStatus();
 		llListen(REMOTE_CONTROL_CHANNEL, "", "", "");
 		llMessageLinked(LINK_SET, LAN_MSG_NUM, "LANGUAGE.INIT", NULL_KEY);
 	}
+	changed(integer change){
+        if(change & CHANGED_OWNER){
+            llResetScript();
+        }
+    }
 	timer(){
 		if(timerEventFlag=="scan"){
 			showScanMenu(llGetOwner());
@@ -182,14 +203,13 @@ default{
 					CONNECT_UUID=id;
 					CONNECT_USER=llGetOwnerKey(id);
 					llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You connected to %1% 's %2% .%%;"+userInfo(CONNECT_USER)+";"+userInfo(CONNECT_UUID), llGetOwner());
-					llSetText(llKey2Name(CONNECT_UUID)+"\n"+llGetUsername(CONNECT_USER), textColor, textAlpha);
-					setButtonsAvailable(TRUE);
+					updateStatus();
 				}
 				else if(headerSub=="DISCONNECTED"){
 					CONNECT_UUID=NULL_KEY;
 					CONNECT_USER=NULL_KEY;
-					llSetText("", textColor, textAlpha);
-					setButtonsAvailable(FALSE);
+					llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Disconnected.%%;", llGetOwner());
+					updateStatus();
 				}
 			}
 		}
@@ -213,7 +233,7 @@ default{
 					if(openCollarMode){
 						llSay(1, llGetSubString(llGetUsername(CONNECT_USER), 0, 1)+"menu");
 					}else{
-						llSay(REMOTE_OBJECT_CHANNEL, "REMOTE.MENU");
+						llRegionSayTo(CONNECT_USER, REMOTE_OBJECT_CHANNEL, "REMOTE.MENU");
 					}
 				}
 			}
@@ -231,19 +251,22 @@ default{
 		else if(headerMain=="FEATURE"){ // FEATURE | FEATER_MSG_NUM | FEATURE.NAME | FeaterParams1 | FeatureParams2 | ...
 			if(CONNECT_UUID!=NULL_KEY && CONNECT_USER!=NULL_KEY){
 				if(openCollarMode){
-					if(includes(msg, "LEASH")){
-						llSay(1, llGetSubString(llGetUsername(CONNECT_USER), 0, 1)+"leash");
+					if(includes(msg, "LEASH")){ // FEATURE | 1005 | LEASH.TO | UUID
+						if(msg3!=""){
+							llSay(1, llGetSubString(llGetUsername(CONNECT_USER), 0, 1)+"leash");
+						}else{
+							llSay(1, llGetSubString(llGetUsername(CONNECT_USER), 0, 1)+"unleash");
+						}
 					}
-				}else{
-					llSay(REMOTE_OBJECT_CHANNEL, "REMOTE.FEATURE|"+llDumpList2String(llList2List(msgList, 1, -1), "|"));
 				}
+				llRegionSayTo(CONNECT_USER, REMOTE_OBJECT_CHANNEL, "REMOTE.FEATURE|"+llDumpList2String(llList2List(msgList, 1, -1), "|"));
 			}
 		}
 		else if(headerMain=="MENU" && headerSub=="ACTIVE"){
 			if(msg1=="scanMenu"){
 				if(msg2=="[Disconnect]"){
-					llSay(REMOTE_OBJECT_CHANNEL, "REMOTE.DISCONNECT");
-					setButtonsAvailable(FALSE);
+					llRegionSayTo(CONNECT_USER, REMOTE_OBJECT_CHANNEL, "REMOTE.DISCONNECT");
+					updateStatus();
 				}else{
 					list buList=llParseStringKeepNulls(msg2,[". "],[""]);
 					integer buIndex=llList2Integer(buList,0);
@@ -255,20 +278,21 @@ default{
 			}
 			else if(msg1=="objectMenu"){
 				if(msg2=="[Disconnect]"){
-					llSay(REMOTE_OBJECT_CHANNEL, "REMOTE.DISCONNECT");
-					setButtonsAvailable(FALSE);
+					llRegionSayTo(CONNECT_USER, REMOTE_OBJECT_CHANNEL, "REMOTE.DISCONNECT");
+					updateStatus();
 				}else{
 					list buList=llParseStringKeepNulls(msg2,[". "],[""]);
 					integer buIndex=llList2Integer(buList,0);
 					key buObject=llList2Key(objectList, ((integer)(buIndex-1)));
 					if(buObject!=NULL_KEY){
-						llSay(REMOTE_OBJECT_CHANNEL, "REMOTE.CONNECT|"+(string)buObject);
+						llRegionSayTo(llGetOwnerKey(buObject), REMOTE_OBJECT_CHANNEL, "REMOTE.CONNECT|"+(string)buObject);
 					}
 				}
 			}
 			else if(msg1=="settingsMenu"){
 				if(msg2=="OpenCollarMode"){
 					openCollarMode=!openCollarMode;
+					updateStatus();
 					showSettingsMenu(user);
 				}
 			}

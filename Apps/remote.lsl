@@ -10,6 +10,9 @@ Author: JMRY
 Description: A remote controller for restraint items.
 
 ***更新记录***
+- 1.0.1 20260501
+    - 优化消息发送逻辑。
+
 - 1.0 20260428
     - 完成主要功能。
 ***更新记录***
@@ -271,11 +274,12 @@ default{
 				// Object <- Output connect target
 				else if(headerSub=="CONNECT"){
 					if((key)msg1 == llGetKey()){
+                        llRegionSayTo(CONNECT_UUID, REMOTE_CONTROL_CHANNEL, "REMOTE.DISCONNECTED");
 						CONTROL_UUID=id;
 						CONNECT_UUID=user;
 						if(user!=NULL_KEY){
 							llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You're controlled by %1% 's %2% .%%;"+userInfo(CONNECT_UUID)+";"+userInfo(CONTROL_UUID), VICTIM_UUID);
-							llSay(REMOTE_CONTROL_CHANNEL, "REMOTE.CONNECTED");
+							llRegionSayTo(CONNECT_UUID, REMOTE_CONTROL_CHANNEL, "REMOTE.CONNECTED");
 						}
 					}
 				}
@@ -283,9 +287,9 @@ default{
 				// Object <- Output connect target
 				else if(headerSub=="DISCONNECT"){
 					if(CONTROL_UUID == id && CONNECT_UUID == user){
+                        llRegionSayTo(CONNECT_UUID, REMOTE_CONTROL_CHANNEL, "REMOTE.DISCONNECTED");
 						CONTROL_UUID=NULL_KEY;
 						CONNECT_UUID=NULL_KEY;
-						llSay(REMOTE_CONTROL_CHANNEL, "REMOTE.DISCONNECTED");
 					}
 				}
 				// Remote Control -> REMOTE.MENU

@@ -1,4 +1,5 @@
 initMain(){
+	standalone=FALSE;
 	titleName="TitleText";
 	titleParent="TOP";
 	titleText="";
@@ -14,6 +15,9 @@ Author: JMRY
 Description: A title controller for restraint items.
 
 ***更新记录***
+- 1.0.2 20260501
+	- 加入可独立使用功能。
+
 - 1.0.1 20260420
 	- 优化菜单的部分细节。
 
@@ -74,6 +78,7 @@ integer TEXT_MSG_NUM=1008;
 integer MAIN_MSG_NUM=9000;
 integer TITLE_MSG_NUM=90002;
 
+integer standalone=FALSE;
 default{
     state_entry(){
         initMain();
@@ -83,6 +88,11 @@ default{
             llResetScript();
         }
     }
+	touch_start(integer num_detected){
+		if(standalone==TRUE){
+			showMenu("", llDetectedKey(0));
+		}
+	}
     link_message(integer sender_num, integer num, string msg, key user){
         if(num!=MAIN_MSG_NUM && num!=MENU_MSG_NUM && num!=TEXT_MSG_NUM){
             return;
@@ -195,6 +205,7 @@ default{
             }
         }
         else if(headerMain=="MAIN" && headerSub=="INIT"){
+			standalone=FALSE;
             llMessageLinked(LINK_THIS, MAIN_MSG_NUM, "FEATURE.REG|Title", user);
         }
         else if(headerMain=="MENU" && headerSub=="ACTIVE"){
