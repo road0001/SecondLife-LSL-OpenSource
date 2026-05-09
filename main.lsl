@@ -325,6 +325,9 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 1.2.3 20260510
+    - 加入可移除应用注册功能。
+
 - 1.2.2 20260501
     - 优化App注册逻辑。
     - 修复App概率性无法加载的bug。
@@ -750,6 +753,20 @@ registFeature(string name, string parent, string menuName){
     }else{
         // parent为空时，往后追加
         featureList+=[name, parent, menuName];
+    }
+}
+
+removeFeature(string name, string menuName){
+    if(name=="" || menuName==""){
+        // name或菜单名为空时，不允许添加
+        return;
+    }
+    integer i;
+    for(i=0; i<llGetListLength(featureList); i+=featureLen){
+        if(llList2String(featureList, i) == name && llList2String(featureList, i+2) == menuName){
+            featureList=llDeleteSubList(featureList, i, i+featureLen-1);
+            return;
+        }
     }
 }
 

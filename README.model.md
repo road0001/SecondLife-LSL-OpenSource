@@ -82,7 +82,7 @@ Renamer系统支持改名、混淆、触发各种效果等，自带Renamer管理
 
 ******config.lsl******
 
-# 开源LSL脚本扩展
+# 开源LSL脚本扩展应用
 
 ## PA2唤起系统
 PA2唤起系统支持配置、PA2唤起。
@@ -90,16 +90,26 @@ PA2唤起系统支持配置、PA2唤起。
 ******Apps/arousal.lsl******
 
 ## 标题文字系统文档
-标题文字系统文档支持配置显示悬浮文字。
+标题文字系统持配置显示悬浮文字。
 [标题文字系统文档](Apps/README.Title.md)
 ******Apps/title.lsl******
 
 ## 遥控系统文档
-遥控系统文档支持使用遥控器控制主系统。
+遥控系统支持使用遥控器控制主系统。
 [遥控系统文档](Apps/README.Remote.md)
 ******Apps/remote.lsl******
 
 ## 惩罚系统文档
-惩罚系统文档支持说话、主动触发惩罚功能。
+惩罚系统支持说话、主动触发惩罚功能。
 [惩罚系统文档](Apps/README.Punish.md)
 ******Apps/punish.lsl******
+
+## 声音系统文档
+声音系统支持配置触发各类声音功能。
+[声音系统文档](Apps/README.Sound.md)
+******Apps/sound.lsl******
+
+## 抓捕系统文档
+抓捕系统支持配置主动、被动捕获等功能。
+[抓捕系统文档](Apps/README.Capture.md)
+******Apps/capture.lsl******
