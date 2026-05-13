@@ -8,6 +8,7 @@ initMain(){
 	lockSoundEnabled=TRUE;
 	soundVolume=1.0;
 	standalone=FALSE;
+	soundActive=FALSE;
 }
 /*CONFIG END*/
 
@@ -17,6 +18,9 @@ Author: JMRY
 Description: A sound effects for restraint items.
 
 ***更新记录***
+- 1.0.1 20260514
+	- 加入声音初始化前禁用的功能。
+
 - 1.0 20260509
 	- 完成主要功能。
 ***更新记录***
@@ -61,7 +65,7 @@ integer checkSoundAvailable(string name){
 }
 
 playSound(string name, float volume, integer bool){
-	if(!bool){
+	if(!bool || !soundActive){
 		return;
 	}
 	if(checkSoundAvailable(name)){
@@ -77,13 +81,13 @@ showMenu(string parent, key user){
     string menuText="This is "+appName+" menu.";
     list menuList=[];
 	if(checkSoundAvailable(touchSound)==TRUE){
-		menuList+="["+touchSoundEnabled+"]S:TouchSound";
+		menuList+="["+(string)touchSoundEnabled+"]S:TouchSound";
 	}
 	if(checkSoundAvailable(menuSound)==TRUE){
-		menuList+="["+menuSoundEnabled+"]S:MenuSound";
+		menuList+="["+(string)menuSoundEnabled+"]S:MenuSound";
 	}
 	if(checkSoundAvailable(lockSound)==TRUE || checkSoundAvailable(unlockSound)==TRUE){
-		menuList+="["+lockSoundEnabled+"]S:LockSound";
+		menuList+="["+(string)lockSoundEnabled+"]S:LockSound";
 	}
     llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+menuName+"|"+menuText+"|"+llDumpList2String(menuList, ";")+"|"+parent, user);
 }
@@ -94,6 +98,7 @@ integer RLV_MSG_NUM=1001;
 integer MAIN_MSG_NUM=9000;
 integer SOUND_MSG_NUM=90005;
 integer standalone=FALSE;
+integer soundActive=FALSE;
 
 default{
 	state_entry(){
@@ -129,6 +134,7 @@ default{
 
 		if(headerMain=="MAIN" && headerSub=="INIT"){
 			standalone=FALSE;
+			soundActive=TRUE;
 			if(checkSoundAvailable(touchSound) || checkSoundAvailable(lockSound) || checkSoundAvailable(unlockSound) || checkSoundAvailable(menuSound)){
 				llMessageLinked(LINK_SET, MAIN_MSG_NUM, "FEATURE.REG|"+appName+"||settingMenu", user);
 			}

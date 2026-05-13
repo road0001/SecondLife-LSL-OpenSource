@@ -76,11 +76,10 @@ Renamer系统支持改名、混淆、触发各种效果等，自带Renamer管理
 
 ******text.lsl******
 
-## 配置系统
-支持向各脚本写入配置。
-[配置管理文档](README.Config.md)
-
-******config.lsl******
+## 抓捕系统文档
+抓捕系统支持配置主动、被动捕获等功能。
+[抓捕系统文档](README.Capture.md)
+******capture.lsl******
 
 # 开源LSL脚本扩展应用
 
@@ -108,8 +107,3 @@ PA2唤起系统支持配置、PA2唤起。
 声音系统支持配置触发各类声音功能。
 [声音系统文档](Apps/README.Sound.md)
 ******Apps/sound.lsl******
-
-## 抓捕系统文档
-抓捕系统支持配置主动、被动捕获等功能。
-[抓捕系统文档](Apps/README.Capture.md)
-******Apps/capture.lsl******

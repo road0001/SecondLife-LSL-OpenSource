@@ -16,6 +16,9 @@ Author: JMRY
 Description: A struggle system, use link_message to operate struggle things.
 
 ***更新记录***
+- 1.0.8 20260513
+    - 修复挣扎成功后，无法释放按键的bug。
+
 - 1.0.7 20260419
     - 加入\NL不进行语言匹配功能。
 
@@ -169,17 +172,22 @@ integer beginStruggle(integer bool){
         for(i=0; i<llGetListLength(struggleKeys); i++){
             controlVal = controlVal | llList2Integer(struggleKeys, i);
         }
+        timerFlag=1;
         llSetTimerEvent(struggleInterval);
         llMessageLinked(LINK_THIS, STRUGGLE_MSG_NUM, "STRUGGLE.APPLY.BEGIN", NULL_KEY);
     }
     else if(bool==2){ // Struggle success
-        llSetTimerEvent(0);
+        controlVal=0;
+        timerFlag=2;
+        llSetTimerEvent(1);
         stopStruggleAnim();
         applyStruggleText(FALSE);
         llMessageLinked(LINK_THIS, STRUGGLE_MSG_NUM, "STRUGGLE.APPLY.SUCCESS", NULL_KEY);
     }
     else{ // Struggle stop
-        llSetTimerEvent(0);
+        controlVal=0;
+        timerFlag=2;
+        llSetTimerEvent(1);
         stopStruggleAnim();
         applyStruggleText(FALSE);
         llMessageLinked(LINK_THIS, STRUGGLE_MSG_NUM, "STRUGGLE.APPLY.STOP", NULL_KEY);
@@ -200,7 +208,7 @@ playStruggleAnim(integer keyId, integer index){
     if(animName!=""){
         curPlayAnim=animName;
         playAnimFlag=TRUE;
-        llRequestPermissions(strugglePlayer,PERMISSION_TRIGGER_ANIMATION);
+        llRequestPermissions(strugglePlayer, PERMISSION_TRIGGER_ANIMATION);
     }
 }
 stopStruggleAnim(){
@@ -209,7 +217,7 @@ stopStruggleAnim(){
     }
     if(lastPlayAnim!=""){
         playAnimFlag=FALSE;
-        llRequestPermissions(strugglePlayer,PERMISSION_TRIGGER_ANIMATION);
+        llRequestPermissions(strugglePlayer, PERMISSION_TRIGGER_ANIMATION);
     }
 }
 
@@ -236,7 +244,7 @@ applyStruggleText(integer bool){
             }
         }
         if(TEXT_READY==TRUE){
-            llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.SET|Struggle|"+struggleDisplayText+"1|Timer", NULL_KEY);
+            llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.SET|Struggle|"+struggleDisplayText+"|1|Timer", NULL_KEY);
         }else{
             llSetText(struggleDisplayText, struggleTextColor, struggleTextAlpha);
         }
@@ -278,6 +286,7 @@ integer TEXT_MSG_NUM=1008;
 integer struggleLastKey=-1;
 integer struggleTimerCount=0;
 key strugglePlayer=NULL_KEY;
+integer timerFlag=0;
 default{
     state_entry(){
         initConfig();
@@ -318,23 +327,22 @@ default{
                 if(lastPlayAnim!=""){
                     llStopAnimation(lastPlayAnim);
                 }
-                if(curPlayAnim==""){
-                    return;
+                if(curPlayAnim!=""){
+                    lastPlayAnim=curPlayAnim;
+                    llStartAnimation(curPlayAnim);
                 }
-                lastPlayAnim=curPlayAnim;
-                llStartAnimation(curPlayAnim);
+                
             }
             else if(playAnimFlag==FALSE){
-                if(lastPlayAnim==""){
-                    return;
+                if(lastPlayAnim!=""){
+                    llStopAnimation(lastPlayAnim);
                 }
-                llStopAnimation(lastPlayAnim);
             }
         }
         if(perm & PERMISSION_TAKE_CONTROLS){
             if(controlVal==0){
                 llReleaseControls();
-				stopStruggleAnim();
+                stopStruggleAnim();
                 // if(strugglePlayer!=NULL_KEY){
                 //     llRequestPermissions(strugglePlayer,PERMISSION_TRIGGER_ANIMATION);
                 // }
@@ -390,15 +398,21 @@ default{
         llSleep(struggleInterval);
     }
     timer(){
-		applyStruggleText(TRUE);
-        if(struggleTimerCount>0 && struggleDebuff>0 && struggleTimerCount%struggleDebuff==0){
-            struggleProcess--;
-            if(struggleProcess<0){
-                struggleProcess=0;
-                beginStruggle(FALSE);
+        if(timerFlag==1){ // 挣扎超时
+            applyStruggleText(TRUE);
+            if(struggleTimerCount>0 && struggleDebuff>0 && struggleTimerCount%struggleDebuff==0){
+                struggleProcess--;
+                if(struggleProcess<0){
+                    struggleProcess=0;
+                    beginStruggle(FALSE);
+                }
             }
+            struggleTimerCount++;
         }
-        struggleTimerCount++;
+        else if(timerFlag==2){ // 挣扎成功，释放按键
+            llRequestPermissions(strugglePlayer, PERMISSION_TAKE_CONTROLS);
+            llSetTimerEvent(0);
+        }
     }
     link_message(integer sender_num, integer num, string msg, key user){
         if(num!=STRUGGLE_MSG_NUM && num!=MENU_MSG_NUM && num!=LAN_MSG_NUM && num!=TEXT_MSG_NUM){
