@@ -20,6 +20,7 @@ Description: A capture feature for restraint items.
 
 ***更新记录***
 - 1.0.2 20260514
+	- 优化接口规则。
 	- 优化抓捕功能流程。
 	- 修复无法抓捕玩家的bug。
 	- 修复抓捕流程处理错误的bug。
@@ -331,6 +332,7 @@ default{
 		string headerMain=llList2String(msgHeaderGroup, 0);
 		string headerSub=llList2String(msgHeaderGroup, 1);
 		string headerExt=llList2String(msgHeaderGroup, 2);
+		string headerExt2=llList2String(msgHeaderGroup, 3);
 
 		string msg1=llList2String(msgList, 1);
 		string msg2=llList2String(msgList, 2);
@@ -340,54 +342,172 @@ default{
 		if(headerMain=="CAPTURE" && headerSub!="EXEC"){
 			string result="";
 			if(headerSub=="GET"){
+				/*
+				CAPTURE.GET.READY
+				获取就绪状态
+				回调：
+				CAPTURE.READY
+				*/
 				if(headerExt=="READY"){
 					standalone=FALSE;
 					llMessageLinked(LINK_THIS, CAPTURE_MSG_NUM, "CAPTURE.READY", NULL_KEY);
 					registCaptureFeature();
 				}
+				/*
+				CAPTURE.GET.AUTOLOCK
+				获取自动锁定状态
+				*/
 				else if(headerExt=="AUTOLOCK"){
 					result=(string)sitAutoLock;
 				}
+				/*
+				CAPTURE.GET.AUTOTRAP
+				获取自动抓捕状态
+				*/
 				else if(headerExt=="AUTOTRAP"){
 					result=(string)sitAutoTrap;
 				}
+				/*
+				CAPTURE.GET.DISTANCE
+				获取扫描距离
+				*/
 				else if(headerExt=="DISTANCE"){
 					result=(string)scanDistance;
 				}
+				/*
+				CAPTURE.GET.SHOWTEXT
+				获取显示文字状态
+				*/
 				else if(headerExt=="SHOWTEXT"){
 					result=(string)showText;
 				}
+				/*
+				CAPTURE.GET.TIMEOUT
+				获取抓捕超时
+				*/
 				else if(headerExt=="TIMEOUT"){
 					result=(string)captureTimeout;
 				}
+				/*
+				CAPTURE.GET.MAXSENSOR
+				获取最多扫描数量
+				*/
 				else if(headerExt=="MAXSENSOR"){
 					result=(string)maxSensor;
 				}
+				else if(headerExt=="NOTICE"){
+					/*
+					CAPTURE.GET.NOTICE.SHOW
+					获取通知是否显示状态
+					*/
+					if(headerExt2=="SHOW"){
+						result=(string)showNoticeText;
+					}
+					/*
+					CAPTURE.GET.NOTICE.CAPTURE
+					获取抓捕通知文本
+					*/
+					else if(headerExt2=="CAPTURE"){
+						result=(string)captureTriggerText;
+					}
+					/*
+					CAPTURE.GET.NOTICE.CAPTURE
+					获取站立通知文本
+					*/
+					else if(headerExt2=="UNSIT"){
+						result=(string)captureUnsitText;
+					}
+					/*
+					CAPTURE.GET.NOTICE.CAPTURE
+					获取超时通知文本
+					*/
+					else if(headerExt2=="TIMEOUT"){
+						result=(string)captureTimeoutText;
+					}
+				}
 			}
 			else if(headerSub=="SET"){
+				/*
+				CAPTURE.SET.AUTOLOCK
+				设置自动锁定状态
+				*/
 				if(headerExt=="AUTOLOCK"){
 					sitAutoLock=(integer)msg1;
 					result=(string)sitAutoLock;
 				}
+				/*
+				CAPTURE.SET.AUTOTRAP
+				设置自动抓捕状态
+				*/
 				else if(headerExt=="AUTOTRAP"){
 					sitAutoTrap=(integer)msg1;
 					result=(string)sitAutoTrap;
 				}
+				/*
+				CAPTURE.SET.DISTANCE
+				设置扫描距离
+				*/
 				else if(headerExt=="DISTANCE"){
 					scanDistance=(float)msg1;
 					result=(string)scanDistance;
 				}
+				/*
+				CAPTURE.SET.SHOWTEXT
+				设置是否显示文字
+				*/
 				else if(headerExt=="SHOWTEXT"){
 					showText=(integer)msg1;
 					result=(string)showText;
 				}
+				/*
+				CAPTURE.SET.TIMEOUT
+				设置抓捕超时
+				*/
 				else if(headerExt=="TIMEOUT"){
 					captureTimeout=(float)msg1;
 					result=(string)captureTimeout;
 				}
+				/*
+				CAPTURE.SET.MAXSENSOR
+				设置最多扫描数量
+				*/
 				else if(headerExt=="MAXSENSOR"){
 					maxSensor=(integer)msg1;
 					result=(string)maxSensor;
+				}
+				else if(headerExt=="NOTICE"){
+					/*
+					CAPTURE.SET.NOTICE.SHOW
+					设置通知是否显示状态
+					*/
+					if(headerExt2=="SHOW"){
+						showNoticeText=(integer)msg1;
+						result=(string)showNoticeText;
+					}
+					/*
+					CAPTURE.SET.NOTICE.CAPTURE
+					设置抓捕通知文本
+					*/
+					else if(headerExt2=="CAPTURE"){
+						captureTriggerText=msg1;
+						result=(string)captureTriggerText;
+					}
+					/*
+					CAPTURE.SET.NOTICE.UNSIT
+					设置站立通知文本
+					*/
+					else if(headerExt2=="UNSIT"){
+						captureUnsitText=msg1;
+						result=(string)captureUnsitText;
+					}
+					/*
+					CAPTURE.SET.NOTICE.TIMEOUT
+					设置超时通知文本
+					*/
+					else if(headerExt2=="TIMEOUT"){
+						captureTimeoutText=msg1;
+						result=(string)captureTimeoutText;
+					}
 				}
 			}
 			else if(headerSub=="TRIGGER"){
@@ -444,9 +564,8 @@ default{
             STRUGGLE.MENU | 上级菜单名
             */
             else if(headerSub=="MENU"){
-				if(headerExt==""){
-					llSensor("", NULL_KEY, AGENT, scanDistance, PI);
-					// showMenu(msg1, user);
+				if(headerExt=="SETTING"){
+					showSettingMenu(msg1, user);
 				}
 				else if(headerExt=="SENSOR"){
 					curMenuUser=user;
@@ -502,13 +621,13 @@ default{
 					}
 					showSettingMenu(menuParent,user);
 				}
-				else if(msg2=="C:scanDistance"){
+				else if(msg2=="C:ScanDistance"){
 					llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.INPUT|CaptureInput_"+msg2+"|Input %1% (0.0~100.0), blank to return (Current: %2%):%%;"+msg2+";"+(string)scanDistance, user);
 				}
 			}
 			else if(includes(msg1, "CaptureInput")){
-				string punishInputType=llGetSubString(msg1, llStringLength("CaptureInput_"), -1);
-				if(punishInputType=="C:scanDistance"){
+				string inputType=llGetSubString(msg1, llStringLength("CaptureInput_"), -1);
+				if(inputType=="C:ScanDistance"){
 					if(msg2!=""){
 						scanDistance=(float)msg2;
 						if(scanDistance<0) scanDistance=0;
@@ -589,6 +708,10 @@ default{
                         else if(notecardName=="showText"){showText=(integer)notecardData;}
                         else if(notecardName=="captureTimeout"){captureTimeout=(float)notecardData;}
                         else if(notecardName=="maxSensor"){maxSensor=(integer)notecardData;}
+                        else if(notecardName=="showNoticeText"){showNoticeText=(integer)notecardData;}
+                        else if(notecardName=="captureTriggerText"){captureTriggerText=notecardData;}
+                        else if(notecardName=="captureUnsitText"){captureUnsitText=notecardData;}
+                        else if(notecardName=="captureTimeoutText"){captureTimeoutText=notecardData;}
                     }
 
                     // increment line count

@@ -20,6 +20,7 @@ Description: A sound effects for restraint items.
 ***更新记录***
 - 1.0.1 20260514
 	- 加入声音初始化前禁用的功能。
+	- 加入音量设置功能。
 
 - 1.0 20260509
 	- 完成主要功能。
@@ -78,7 +79,7 @@ string menuName="SoundMenu";
 string menuParent="";
 showMenu(string parent, key user){
     menuParent=parent;
-    string menuText="This is "+appName+" menu.";
+    string menuText="This is "+appName+" menu.\nVolume: %1%%%;"+(string)soundVolume;
     list menuList=[];
 	if(checkSoundAvailable(touchSound)==TRUE){
 		menuList+="["+(string)touchSoundEnabled+"]S:TouchSound";
@@ -89,6 +90,7 @@ showMenu(string parent, key user){
 	if(checkSoundAvailable(lockSound)==TRUE || checkSoundAvailable(unlockSound)==TRUE){
 		menuList+="["+(string)lockSoundEnabled+"]S:LockSound";
 	}
+	menuList+=["S:Volume"];
     llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+menuName+"|"+menuText+"|"+llDumpList2String(menuList, ";")+"|"+parent, user);
 }
 
@@ -158,6 +160,20 @@ default{
 					lockSoundEnabled=!lockSoundEnabled;
 					showMenu(menuParent,user);
 				}
+				else if(msg2=="S:Volume"){
+					llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.INPUT|SoundInput_"+msg2+"|Input %1% (0~1), blank to return (Current: %2%):%%;"+msg2+";"+(string)soundVolume, user);
+				}
+			}
+			else if(includes(msg1, "SoundInput")){
+				string inputType=llGetSubString(msg1, llStringLength("SoundInput_"), -1);
+				if(inputType=="S:Volume"){
+					if(msg2!=""){
+						soundVolume=(float)msg2;
+						if(soundVolume<0) soundVolume=0;
+						if(soundVolume>1) soundVolume=1;
+					}
+				}
+				showMenu(menuParent,user);
 			}
 		}
 		else if(headerMain=="RLV" && headerSub=="LOCK"){
