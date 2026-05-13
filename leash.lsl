@@ -60,6 +60,9 @@ Author: JMRY
 Description: A better leash control system, use link_message to operate leashes.
 
 ***更新记录***
+- 1.1.12 20260514
+    - 优化菜单用语。
+
 - 1.1.11 20260430
     - 加入可独立使用功能。
 
@@ -769,7 +772,7 @@ showLeashSubMenu(string menuName, string parent, key user, integer reset){
     else if(menuName=="Config"){
         menuText="Configs of leash.";
         buttonList=[
-            "["+(string)leashTurnMode+"]Turn", "["+(string)leashStrictMode+"]Strict"
+            "["+(string)leashTurnMode+"]AutoTurn", "["+(string)leashStrictMode+"]StrictMode"
         ];
     }
     string menuRegOpen="MENU.REG.OPEN";
@@ -1087,7 +1090,7 @@ default{
                     }
                     else if(msgSub=="Unleash" || msgSub=="Unfollow"){
                         if(leashStrictMode==TRUE && user==llGetOwner()){
-                            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|You can't %1% yourself in Strict mode!%%;"+msgSub, user);
+                            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You can't %1% yourself in Strict mode!%%;"+msgSub, user);
                         }else{
                             leashToTarget(NULL_KEY, FALSE);
                         }
@@ -1189,14 +1192,14 @@ default{
                         menuActiveFlag=3;
                     }
                     else if(leashSubMenuFlag=="Config"){
-                        if(msgSub=="Turn"){
+                        if(msgSub=="AutoTurn"){
                             if(leashTurnMode==TRUE){
                                 leashTurnMode=FALSE;
                             }else{
                                 leashTurnMode=TRUE;
                             }
                         }
-                        else if(msgSub=="Strict"){
+                        else if(msgSub=="StrictMode"){
                             if(leashStrictMode==TRUE){
                                 leashStrictMode=FALSE;
                             }else{

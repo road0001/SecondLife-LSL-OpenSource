@@ -26,7 +26,7 @@ initConfig(){
 		"World","touchworld","Touch",0,
 
 		"Me","touchme","Touch",0,
-		"Attach","touchattach","Touch",0,
+		"TouchAttach","touchattach","Touch",0,
 		"SelfAttach","touchattachself","Touch",0,
 
 		"OtherAttach","touchattachother","Touch",0,
@@ -103,6 +103,9 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 2.0.24 20260514
+    - 优化默认配置的用语。
+
 - 2.0.23 20260430
     - 加入可独立使用功能。
 

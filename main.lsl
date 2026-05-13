@@ -52,6 +52,7 @@ Description: A main controller for restraint items.
 
 ***更新记录***
 - 2.0.2 20260514
+    - 优化菜单用语。
     - 修复上锁后，会发出多次消息的bug。
 
 - 2.0.1 20260512
@@ -647,7 +648,7 @@ showMenu(string menuName, key user){
         menuParent="settingMenu";
         menuText="%1% is requesting to PERMANENT LOCK your %2%, are you sure to be PERMANENT LOCKED?\nOnce confirmed, you will be permanently locked out and unable to unlock!%%;"+userInfo(user)+";"+llGetObjectName();
         menuFeatureList=[
-            "YES", "NO"
+            "Yes", "No"
         ];
         menuCmd="MENU.CONFIRM";
         
@@ -895,13 +896,13 @@ default{
 					if(user != llGetOwner()){
 						return;
 					}
-					if(msg2=="YES"){
+					if(msg2=="Yes"){
 						isPermaLocked=TRUE;
 						llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You are permanent locked by %1%!%%;"+userInfo(lockUser), llGetOwner());
 						llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You permanent locked %1%!%%;"+userInfo(lockUser), lockUser);
 						llMessageLinked(LINK_SET, MAIN_MSG_NUM, "MAIN.SET.PERMALOCK|"+(string)isPermaLocked, lockUser);
 					}
-					else if(msg2=="NO"){
+					else if(msg2=="No"){
 						llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|%1% refused to accept your permanent lock request!%%;"+userInfo(lockUser), lockUser);
 					}
 					return;
