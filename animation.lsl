@@ -1,6 +1,6 @@
 initConfig(){
     standalone=FALSE;
-    animConfigList=[]; // name, animName;interval;floatHeight;Adjust;Ext2;..., class, auto
+    animConfigList=[]; // name, animName;interval;floatHeight;Adjust;MultiPlayer;Ext3..., class, auto
     integer count = llGetInventoryNumber(INVENTORY_ANIMATION);
     integer i;
     for (i=0; i<count; i++){
@@ -9,7 +9,7 @@ initConfig(){
         if(i==0){
             auto=TRUE;
         }
-        animConfigList+=[animName, animName+";10;0;<0.0,0.0,0.0>", "Animation", auto];
+        animConfigList+=[animName, animName+";10;0;<0.0,0.0,0.0>;0", "Animation", auto];
     }
     autoReload=TRUE;
     allowStopAnim=TRUE;
@@ -22,6 +22,12 @@ Author: JMRY
 Description: A better animation control system, use link_message to operate animations.
 
 ***更新记录***
+- 1.3.1 20260610
+    - 优化多人动画逻辑。
+
+- 1.3 20260527
+    - 加入多人动画功能。
+
 - 1.2.4 20260430
     - 加入可独立使用功能。
 
@@ -91,6 +97,7 @@ Description: A better animation control system, use link_message to operate anim
 
 /*
 TODO:
+- 多人交互动画
 - 随机动画切换
 - 动画播放列表
 */
@@ -174,13 +181,21 @@ integer playAnimationByName(string name){
     return FALSE;
 }
 
+list getAnimationParamsByName(string name){
+    integer rIndex=llListFindList(animConfigList, [name]);
+    if(~rIndex){
+        return strSplit(llList2String(animConfigList, rIndex+1), ";");
+    }
+    return [];
+}
+
 string curPlayingAnimParams="";
 integer playAnimationByParams(string params, string name){
     if(params){
         curPlayingAnimName=name;
         curPlayingAnimParams=params;
         list animParams=strSplit(params, ";");
-        // animName;interval;floatHeight;Adjust;Ext2;...
+        // animName;interval;floatHeight;Adjust;MultiPlayer;Ext3...
         playAnimInterval=(float)llList2String(animParams, 1);
         if(playAnimInterval<=0.0){ // 重播间隔小于等于0时，说明参数解析错误，因此将其修正。
             playAnimInterval=0.0;
@@ -190,7 +205,10 @@ integer playAnimationByParams(string params, string name){
         //     playAnimFloatHeight=0.0;
         // }
         playAnimAdjust=(vector)llList2String(animParams, 3);
-
+        playAnimMultiPlayer=llList2Integer(animParams, 4);
+        if(!playAnimMultiPlayer){ // 不允许多人的动画，将uuid置空防止bug
+            playAnimMultiPlayerId=NULL_KEY;
+        }
         // curPlayingAnimFileName=llList2String(animParams, 0);
         playAnimation(llList2String(animParams, 0), TRUE);
         // playAnimation(curPlayingAnimFileName, TRUE);
@@ -212,6 +230,10 @@ integer allowPlayAnim=FALSE;
 float playAnimInterval=10;
 float playAnimFloatHeight=0;
 vector playAnimAdjust=ZERO_VECTOR;
+integer playAnimMultiPlayer=FALSE;
+integer lastPlayAnimMultiPlayer=FALSE;
+key playAnimMultiPlayerId=NULL_KEY;
+key lastPlayAnimMultiPlayerId=NULL_KEY;
 integer playAnimationFlag=FALSE;
 integer playAnimation(string name, integer stop){
     curPlayingAnimFileName=name;
@@ -221,19 +243,34 @@ integer playAnimation(string name, integer stop){
     }else{
         playAnimationFlag=TRUE;
     }
-    llRequestPermissions(animPlayer,PERMISSION_TRIGGER_ANIMATION);
+    
+    /*
+    多人权限申请逻辑：先申请对方的权限，对方同意后，在回调中申请自己的权限，这样能做到动画的同步
+    多人权限不允许同时申请自己的和对方的权限
+    */
+    if(playAnimMultiPlayer==TRUE && playAnimMultiPlayerId!=NULL_KEY){
+        llRequestPermissions(playAnimMultiPlayerId,PERMISSION_TRIGGER_ANIMATION);
+    }else{
+        llRequestPermissions(animPlayer,PERMISSION_TRIGGER_ANIMATION);
+    }
+
     return playAnimationFlag;
 }
 
 integer stopAnimation(integer bool){
     if(animPlayer==NULL_KEY) return FALSE;
+    if(lastPlayAnimMultiPlayer==TRUE && lastPlayAnimMultiPlayerId!=NULL_KEY && playAnimationFlag>=TRUE){ // 多人动画必须先申请权限再重置flag
+        llRequestPermissions(animPlayer,PERMISSION_TRIGGER_ANIMATION);
+        llRequestPermissions(lastPlayAnimMultiPlayerId,PERMISSION_TRIGGER_ANIMATION);
+    }else{
+        llRequestPermissions(animPlayer,PERMISSION_TRIGGER_ANIMATION);
+    }
     playAnimationFlag=FALSE;
     if(bool==TRUE){
         curPlayingAnimName="";
         curPlayingAnimParams="";
         curPlayingAnimFileName="";
     }
-    llRequestPermissions(animPlayer,PERMISSION_TRIGGER_ANIMATION);
     return playAnimationFlag;
 }
 
@@ -462,6 +499,24 @@ showAdjustMenu(string parent, key user){
     llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+animAdjustMenuName+"|"+animAdjustDesc+"|"+list2Data(menuList)+"|"+parent, user);
 }
 
+string animSensorMenuName="AnimationSensorMenu";
+string animParentSensorMenuName="";
+string animSensorPlayName="";
+key curMenuUser=NULL_KEY;
+showSensorMenu(string parent, key user){
+    animParentSensorMenuName=parent;
+    string menuText="Select user to %1%.%%;Play animation";
+	list menuList=[];
+	integer i;
+	for(i=0; i<llGetListLength(sensorUserList); i++){
+		key uk=llList2Key(sensorUserList, i);
+		if(uk){
+			menuList+=[llGetSubString((string)(i+1) + ". " + llGetUsername(uk), 0, 23)];
+		}
+	}
+	llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+animSensorMenuName+"|"+menuText+"|"+llDumpList2String(menuList, ";")+"|"+parent, user);
+}
+
 integer REZ_MODE=FALSE;
 key animPlayer=NULL_KEY;
 integer autoReload=FALSE;
@@ -473,6 +528,9 @@ integer allowAutoAdjustHeight=TRUE;
 integer allowStopAnim=TRUE;
 integer allowRezAdjust=TRUE;
 string curAnimClass="";
+
+list sensorUserList;
+integer maxSensor=18;
 
 
 integer standalone=FALSE;
@@ -590,6 +648,20 @@ default{
                 };
                 llSleep(0.1);
                 llStartAnimation("stand");
+            }
+
+            if(playAnimMultiPlayer==TRUE){
+                lastPlayAnimMultiPlayer=playAnimMultiPlayer;
+                lastPlayAnimMultiPlayerId=playAnimMultiPlayerId;
+                if(llGetPermissionsKey()!=animPlayer && playAnimationFlag>=TRUE){ // 申请权限的id不为自己，且动画flag为播放时，向对方移动并申请自己的权限
+                    llMoveToTarget(llList2Vector(llGetObjectDetails(playAnimMultiPlayerId, [OBJECT_POS]), 0), 0.8);
+                    llSleep(1.0);
+                    llStopMoveToTarget();
+                    llRequestPermissions(animPlayer,PERMISSION_TRIGGER_ANIMATION); // 只有开始动画时，才在走向对方之后申请自己的权限。停止动画时，已同时申请自己和对方的权限。
+                }
+            }else{
+                lastPlayAnimMultiPlayer=FALSE;
+                lastPlayAnimMultiPlayerId=NULL_KEY;
             }
         }
     }
@@ -739,6 +811,9 @@ default{
                         if(msgName==""){
                             msgName=curPlayingAnimParams;
                         }
+                        if(user!=NULL_KEY){
+                            playAnimMultiPlayerId=user; // 此处需要传入多人动作的对方uuid，只有动画允许多人动画时才有效
+                        }
                         result=(string)playAnimationByParams(msgName, "");
                     }
                     else if(headerExt=="FILE"){
@@ -756,12 +831,18 @@ default{
                 停止播放动画：ANIM.STOP | 1
                 */
                 else if(headerSub=="STOP"){
+                    if(user!=NULL_KEY){
+                        playAnimMultiPlayerId=user;
+                    }
                     result=(string)stopAnimation((integer)msgName);
                 }
                 /*
                 停止播放所有动画：ANIM.STOPALL | 1
                 */
                 else if(headerSub=="STOPALL"){
+                    if(user!=NULL_KEY){
+                        playAnimMultiPlayerId=user;
+                    }
                     result=(string)stopAllAnimation((integer)msgName);
                 }
 
@@ -814,8 +895,35 @@ default{
                         showAdjustMenu(animSubMenuName, user);
                     }
                     else{
-                        playAnimationByName(msgSub);
-                        showAnimSubMenu(animParentSubMenuName, curAnimSubMenu, user);
+                        if(playAnimMultiPlayer==TRUE && playAnimationFlag>=TRUE){ // 多人正在播放动画时，不允许播放别的动画，必须先停止
+                            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Playing multiplayer animation, must STOP first!", user);
+                            // stopAnimation(FALSE);
+                            return;
+                        }
+                        // 检测动画多人状态，如果为多人且操作者为自己，则显示多人目标菜单
+                        list animParamsData=getAnimationParamsByName(msgSub);
+                        if(user==animPlayer && llList2Integer(animParamsData, 4)==TRUE){
+                            animSensorPlayName=msgSub;
+                            animParentSensorMenuName=animSubMenuName;
+                            curMenuUser=user;
+                            llSensor("", NULL_KEY, AGENT, 96, PI);
+                            // 后续内容交给Sensor菜单处理
+                        }else{
+                            playAnimMultiPlayerId=user; // 将操作菜单的玩家id赋给多人id，方便后续申请权限使用
+                            playAnimationByName(msgSub);
+                            if(llList2Integer(animParamsData, 4)!=TRUE){ // 多人动画时，不reshow菜单，为申请权限对话框留出空间
+                                showAnimSubMenu(animParentSubMenuName, curAnimSubMenu, user);
+                            }
+                        }
+                    }
+                }
+                else if(msgName==animSensorMenuName && msgSub!=""){
+                    list buList=llParseStringKeepNulls(msgSub,[". "],[""]);
+                    integer buIndex=llList2Integer(buList,0);
+                    key buUser=llList2Key(sensorUserList, ((integer)(buIndex-1)));
+                    if(buUser!=NULL_KEY){
+                        playAnimMultiPlayerId=buUser; // 将操作菜单的玩家id赋给多人id，方便后续申请权限使用
+                        playAnimationByName(animSensorPlayName);
                     }
                 }
                 // 动画定位菜单
@@ -888,6 +996,19 @@ default{
         }
         // llSleep(0.01);
         // llOwnerSay("Animation Memory Used: "+(string)llGetUsedMemory()+"/"+(string)(65536-llGetUsedMemory())+" Free: "+(string)llGetFreeMemory());
+    }
+    sensor(integer detected) {
+        sensorUserList=[];
+        integer i;
+        for (i = 0; i < detected && i<maxSensor; i++) {
+            key uuid = llDetectedKey(i);
+            sensorUserList+=uuid;
+        }
+        showSensorMenu(animParentSensorMenuName, curMenuUser);
+    }
+    no_sensor(){
+        sensorUserList=[];
+        showSensorMenu(animParentSensorMenuName, curMenuUser);
     }
     dataserver(key query_id, string data){
         if (query_id == readNotecardQuery) { // 通过readNotecardNotecards触发读取记事卡事件，按行读取配置并应用。
