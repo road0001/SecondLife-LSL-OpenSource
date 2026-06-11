@@ -1,6 +1,6 @@
 initConfig(){
     standalone=FALSE;
-    animConfigList=[]; // name, animName;interval;floatHeight;Adjust;MultiPlayer;Ext3..., class, auto
+    animConfigList=[]; // name, animName;interval;floatHeight;Adjust;MultiPlayer;MultiPlayerSelfAnim;Ext5..., class, auto
     integer count = llGetInventoryNumber(INVENTORY_ANIMATION);
     integer i;
     for (i=0; i<count; i++){
@@ -22,6 +22,10 @@ Author: JMRY
 Description: A better animation control system, use link_message to operate animations.
 
 ***更新记录***
+- 1.3.2 20260611
+    - 加入多人非对称动画功能。
+    - 优化多人动画逻辑。
+
 - 1.3.1 20260610
     - 优化多人动画逻辑。
 
@@ -209,6 +213,7 @@ integer playAnimationByParams(string params, string name){
         if(!playAnimMultiPlayer){ // 不允许多人的动画，将uuid置空防止bug
             playAnimMultiPlayerId=NULL_KEY;
         }
+        curPlayingAnimMultiFileName=llList2String(animParams, 5);
         // curPlayingAnimFileName=llList2String(animParams, 0);
         playAnimation(llList2String(animParams, 0), TRUE);
         // playAnimation(curPlayingAnimFileName, TRUE);
@@ -227,13 +232,19 @@ integer playAnimationByParams(string params, string name){
 string curPlayingAnimFileName="";
 string lastPlayingAnimFileName="";
 integer allowPlayAnim=FALSE;
+
 float playAnimInterval=10;
 float playAnimFloatHeight=0;
 vector playAnimAdjust=ZERO_VECTOR;
+
 integer playAnimMultiPlayer=FALSE;
 integer lastPlayAnimMultiPlayer=FALSE;
 key playAnimMultiPlayerId=NULL_KEY;
 key lastPlayAnimMultiPlayerId=NULL_KEY;
+
+string curPlayingAnimMultiFileName="";
+string lastPlayingAnimMultiFileName="";
+
 integer playAnimationFlag=FALSE;
 integer playAnimation(string name, integer stop){
     curPlayingAnimFileName=name;
@@ -602,15 +613,45 @@ default{
 	}
     run_time_permissions(integer perm) {
         if(perm & PERMISSION_TRIGGER_ANIMATION){
+            key curPermUser=llGetPermissionsKey();
+
             if(playAnimationFlag>=TRUE){
                 if(playAnimationFlag>TRUE && lastPlayingAnimFileName!=""){
-                    llStopAnimation(lastPlayingAnimFileName);
+                    if(!playAnimMultiPlayer){
+                        // 单人动画的情况，只需要停止自己的动画
+                        llStopAnimation(lastPlayingAnimFileName);
+                    }else{
+                        // 多人动画的情况，根据授权的id分情况调用动画逻辑
+                        if(curPermUser==animPlayer){ // 授权为自己时，停止自己的动画
+                            llStopAnimation(lastPlayingAnimFileName);
+                        }else if(lastPlayingAnimMultiFileName!="" && llGetInventoryType(lastPlayingAnimMultiFileName) == INVENTORY_ANIMATION){ // 授权为别人时，检测文件是否存在，如果存在则停止
+                            llStopAnimation(lastPlayingAnimMultiFileName);
+                        }
+                    }
                 }
                 if(curPlayingAnimFileName==""){
                     return;
                 }
-                lastPlayingAnimFileName=curPlayingAnimFileName;
-                llStartAnimation(curPlayingAnimFileName);
+
+                if(!playAnimMultiPlayer){
+                    // 单人动画时，只需要播放并更新last
+                    llStartAnimation(curPlayingAnimFileName);
+                    lastPlayingAnimFileName=curPlayingAnimFileName;
+                }else{
+                    // 多人动画时，根据授权的id分情况调用动画逻辑
+                    if(curPermUser==animPlayer){ // 授权为自己时，播放自己的动画
+                        llStartAnimation(curPlayingAnimFileName);
+                        lastPlayingAnimFileName=curPlayingAnimFileName;
+                    }else{ // 授权为别人时，播放参数中别人的动画
+                        if(curPlayingAnimMultiFileName=="" || llGetInventoryType(curPlayingAnimMultiFileName) != INVENTORY_ANIMATION){
+                            // 如果参数中的对方动画为空或不存在，则将其改为自己的动画，即播放相同动画，否则播放参数中配置的对方动画
+                            curPlayingAnimMultiFileName=curPlayingAnimFileName;
+                        }
+                        llStartAnimation(curPlayingAnimMultiFileName);
+                        lastPlayingAnimMultiFileName=curPlayingAnimMultiFileName;
+                    }
+                }
+                
                 llSetTimerEvent(playAnimInterval);
                 if(allowAutoAdjustHeight==TRUE && playAnimFloatHeight!=0 && REZ_MODE==FALSE){
                     llOwnerSay("@adjustheight:"+(string)playAnimFloatHeight+"=force");
@@ -631,7 +672,17 @@ default{
                 if(lastPlayingAnimFileName==""){
                     return;
                 }
-                llStopAnimation(lastPlayingAnimFileName);
+
+                if(!playAnimMultiPlayer){
+                    llStopAnimation(lastPlayingAnimFileName);
+                }else{
+                    if(curPermUser==animPlayer){ // 授权为自己时，停止自己的动画
+                        llStopAnimation(lastPlayingAnimFileName);
+                    }else if(lastPlayingAnimMultiFileName!="" && llGetInventoryType(lastPlayingAnimMultiFileName) == INVENTORY_ANIMATION){ // 授权为别人时，检测文件是否存在，如果存在则停止
+                        llStopAnimation(lastPlayingAnimMultiFileName);
+                    }
+                }
+                
                 llSetTimerEvent(0);
                 if(allowAutoAdjustHeight==TRUE && playAnimFloatHeight!=0 && REZ_MODE==FALSE){
                     llOwnerSay("@adjustheight:0=force");
@@ -653,15 +704,18 @@ default{
             if(playAnimMultiPlayer==TRUE){
                 lastPlayAnimMultiPlayer=playAnimMultiPlayer;
                 lastPlayAnimMultiPlayerId=playAnimMultiPlayerId;
-                if(llGetPermissionsKey()!=animPlayer && playAnimationFlag>=TRUE){ // 申请权限的id不为自己，且动画flag为播放时，向对方移动并申请自己的权限
+                lastPlayingAnimMultiFileName=curPlayingAnimMultiFileName;
+
+                if(curPermUser!=animPlayer && playAnimationFlag>=TRUE){ // 申请权限的id不为自己，且动画flag为播放时，向对方移动之后再申请自己的权限
                     llMoveToTarget(llList2Vector(llGetObjectDetails(playAnimMultiPlayerId, [OBJECT_POS]), 0), 0.8);
                     llSleep(1.0);
                     llStopMoveToTarget();
-                    llRequestPermissions(animPlayer,PERMISSION_TRIGGER_ANIMATION); // 只有开始动画时，才在走向对方之后申请自己的权限。停止动画时，已同时申请自己和对方的权限。
+                    llRequestPermissions(animPlayer,PERMISSION_TRIGGER_ANIMATION); // 只有开始动画时，才在走向对方之后申请自己的权限。停止动画时，前面的调用中已同时申请自己和对方的权限。
                 }
             }else{
                 lastPlayAnimMultiPlayer=FALSE;
                 lastPlayAnimMultiPlayerId=NULL_KEY;
+                lastPlayingAnimMultiFileName="";
             }
         }
     }
@@ -801,6 +855,9 @@ default{
                         */
                         if(msgName==""){
                             msgName=curPlayingAnimName;
+                        }
+                        if(user!=NULL_KEY){
+                            playAnimMultiPlayerId=user; // 此处需要传入多人动作的对方uuid，只有动画允许多人动画时才有效
                         }
                         result=(string)playAnimationByName(msgName);
                     }
