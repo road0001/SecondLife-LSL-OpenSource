@@ -14,7 +14,7 @@
 #### ANIM.SET
 - 添加动画。
 - 参数分别为动画名称、动画参数、动画所属类别、动画是否自动播放。
-- 动画参数格式：动画文件名;动画重播时长（小数）;悬浮高度（小数）
+- 动画参数格式：动画文件名;动画重播时长（小数）;悬浮高度（小数）;REZ模式下偏移位置（\<X轴,Y轴,Z轴\>）;是否为多人动画（1、0）;对方播放动画文件名
 - 动画类别如果不为空，将自动添加此类别，用于菜单中的分类显示。
 - 动画是否自动播放为1时，在添加此动画后，立即自动播放。
 - 动画已存在时，原有的数据将被覆盖。
@@ -49,7 +49,7 @@ ANIM.EXEC | ANIM.SET.ALLOWSTOP | 1
 ```lsl
 ANIM.GET
 // 回调：
-ANIM.EXEC | ANIM.GET | AnimName1 | AnimFile1;AnimInterval;AnimFloatHeight | AnimClassName1 | AnimAutoPlay1 | AnimName2 | ...
+ANIM.EXEC | ANIM.GET | AnimName1 | AnimFile1;AnimInterval;AnimFloatHeight;AnimAdjust;AnimMultiPlayer;AnimMultiFile | AnimClassName1 | AnimAutoPlay1 | AnimName2 | ...
 ```
 
 ### 获取正在播放的动画名称
@@ -69,7 +69,7 @@ ANIM.EXEC | ANIM.GET.PLAYING | AnimName1
 ```lsl
 ANIM.GET.PLAYING.PARAMS
 // 回调：
-ANIM.EXEC | ANIM.GET.PLAYING.PARAMS | AnimFile1;AnimInterval;AnimFloatHeight
+ANIM.EXEC | ANIM.GET.PLAYING.PARAMS | AnimFile1;AnimInterval;AnimFloatHeight;AnimAdjust;AnimMultiPlayer;AnimMultiFile
 ```
 
 ### 获取正在播放的动画文件名
@@ -94,6 +94,7 @@ ANIM.READY
 #### ANIM.PLAY
 - 开始播放动画。
 - 如果动画配置不存在，则无法播放。请先配置动画数据。
+- llMessageLinked第四个uuid参数为多人动画时对方的uuid。
 ```lsl
 ANIM.PLAY | AnimName1
 // 回调：
@@ -103,8 +104,9 @@ ANIM.EXEC | ANIM.PLAY | 1
 ### 开始播放动画（按参数）
 #### ANIM.PLAY.PARAMS
 - 按参数开始播放动画。
+- llMessageLinked第四个uuid参数为多人动画时对方的uuid。
 ```lsl
-ANIM.PLAY.PARAMS | AnimFile1;AnimInterval;AnimFloatHeight
+ANIM.PLAY.PARAMS | AnimFile1;AnimInterval;AnimFloatHeight;AnimAdjust;AnimMultiPlayer;AnimMultiFile
 // 回调：
 ANIM.EXEC | ANIM.PLAY.PARAMS | 1
 ```
@@ -176,8 +178,8 @@ ANIM.EXEC | ANIM.SET | 1 && ANIM.EXEC | ANIM.PLAY | 1
 anim_main
 ```lsl
 [Basics]
-Run=runanim1;10;0
-Walk=walkanim1;10;5
+Run=runanim1;10;0;<0.0,0.0,0.1>;0
+Walk=walkanim1;10;5<0.0,0.1,0.1>;1;OtherWalk
 [Fly]
 *Fly1=flyanim1;5;20
 Fly2=flyanim2
