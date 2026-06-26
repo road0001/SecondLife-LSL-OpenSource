@@ -6,6 +6,7 @@ initConfig(){
     groupMode=FALSE;
     hardcore=FALSE;
     autoLock=FALSE;
+    globalExceptions=TRUE;
 }
 /*CONFIG END*/
 /*
@@ -14,6 +15,9 @@ Author: JMRY
 Description: A better access permission control system, use link_message to operate permissions.
 
 ***更新记录***
+- 1.0.24 20260626
+    - 加入例外模式开关。
+
 - 1.0.23 20260416
     - 修复检测玩家时，按钮会超长的bug。
     - 修复周围没有玩家时，无法弹出选择玩家对话框的bug。
@@ -418,9 +422,13 @@ integer setAutoLockMode(integer bool){
 /*
 RLV例外
 */
+integer globalExceptions=TRUE;
 list rlvExcepts=["startim","sendim","recvim","recvchat","recvemote","tplure","accepttp"];
 applyRLVExcepts(integer bool, key user){
-    if(bool==TRUE){
+    if(!globalExceptions){
+        bool=FALSE;
+    }
+    if(bool==TRUE){ // 例外生效的情况
         integer i;
         integer r;
         for(i=0; i<llGetListLength(ownerList); i++){
@@ -432,9 +440,22 @@ applyRLVExcepts(integer bool, key user){
             }
         }
     }else{
-        integer r;
-        for(r=0; r<llGetListLength(rlvExcepts); r++){
-            llOwnerSay("@"+llList2String(rlvExcepts, r)+":"+(string)user+"=rem");
+        if(user!=NULL_KEY){ // 只移除一个主人的情况
+            integer r;
+            for(r=0; r<llGetListLength(rlvExcepts); r++){
+                llOwnerSay("@"+llList2String(rlvExcepts, r)+":"+(string)user+"=rem");
+            }
+        }else{ // 全局例外禁用的情况
+            integer i;
+            integer r;
+            for(i=0; i<llGetListLength(ownerList); i++){
+                for(r=0; r<llGetListLength(rlvExcepts); r++){
+                    string curOwner=llList2String(ownerList, i);
+                    if(curOwner!=llGetOwner()){ // 自己本人不需要例外，因此过滤掉
+                        llOwnerSay("@"+llList2String(rlvExcepts, r)+":"+curOwner+"=rem");
+                    }
+                }
+            }
         }
     }
 }
@@ -485,7 +506,7 @@ integer notifyAccess(){
     llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.NOTIFY|OWNER|"+list2Data(ownerList), "");
     llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.NOTIFY|TRUST|"+list2Data(trustList), "");
     llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.NOTIFY|BLACK|"+list2Data(blackList), "");
-    llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.NOTIFY|MODE|" +list2Data([publicMode, groupMode, hardcore, autoLock]),  "");
+    llMessageLinked(LINK_SET, ACCESS_MSG_NUM, "ACCESS.NOTIFY|MODE|" +list2Data([publicMode, groupMode, hardcore, autoLock, globalExceptions]),  "");
     applyRLVExcepts(TRUE, NULL_KEY);
     return TRUE;
 }
@@ -539,20 +560,24 @@ showAccessMenu(string parent, key user){
     Root        AccessList    Escape
     Owner        Trust        Black
     []Public    []Group        []Hardcore
+    []Exceptions
 
     ROOT OTHER:
     Root        AccessList    *
     Owner        Trust        Black
     []Public    []Group        []Hardcore
+    []Exceptions
 
     OWNER WEARER:
     *            AccessList    Escape
     Owner        Trust        Black
     []Public    []Group        []Hardcore
+    []Exceptions
 
     OWNER:
     Owner        Trust        Black
     []Public    []Group        []Hardcore
+    []Exceptions
 
     WEARER:
     *            AccessList    Escape
@@ -560,7 +585,7 @@ showAccessMenu(string parent, key user){
     if(userPerm==ACCESS_ROOT){
         buttonList+=["Root"];
     }else if(user==llGetOwner()){
-        buttonList+=[" "];
+        buttonList+=["*"];
     }
     if(userPerm==ACCESS_ROOT || user==llGetOwner()){
         buttonList+=["AccessList"];
@@ -569,7 +594,7 @@ showAccessMenu(string parent, key user){
         if(hardcore==FALSE){
             buttonList+=["Escape"];
         }else{
-            buttonList+=[" "];
+            buttonList+=["*"];
         }
     }
     
@@ -577,10 +602,11 @@ showAccessMenu(string parent, key user){
         string publicBu="["+(string)publicMode+"]Public";
         string groupBu="["+(string)groupMode+"]Group";
         string hardcoreBu="["+(string)hardcore+"]Hardcore";
+        string exceptionBu="["+(string)globalExceptions+"]Exceptions";
         if(userPerm>ACCESS_ROOT){
-            hardcoreBu=" "; // 只有root才能修改硬核模式
+            hardcoreBu="*"; // 只有root才能修改硬核模式
         }
-        buttonList+=["OwnerList", "TrustList", "BlackList", publicBu, groupBu, hardcoreBu];
+        buttonList+=["OwnerList", "TrustList", "BlackList", publicBu, groupBu, hardcoreBu, exceptionBu];
     }
 
     string menuText="This is access menu, you can manage who can access %1%'s %2%.\nPublic mode: %b3%\nGroup mode: %b4%\nHardcore mode: %b5%%%;"+
@@ -649,6 +675,13 @@ showAccessSubMenu(string button, key user){
         notifyAccess();
         // llOwnerSay("Your hardcore mode is set to "+(string)hardcore);
         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your hardcore mode is set to %b1%.%%;"+(string)hardcore, user);
+        showAccessMenu(accessParentMenuName, user);
+        return;
+    }
+    else if(button=="Exceptions"){
+        globalExceptions=!globalExceptions;
+        notifyAccess();
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Your exceptions mode is set to %b1%.%%;"+(string)globalExceptions, user);
         showAccessMenu(accessParentMenuName, user);
         return;
     }
@@ -918,7 +951,8 @@ default{
                                 publicMode,
                                 groupMode,
                                 hardcore,
-                                autoLock
+                                autoLock,
+                                globalExceptions
                             ];
                             result=list2Data(modes);
                         }
@@ -933,6 +967,9 @@ default{
                         }
                         else if(accessMsgName=="AUTOLOCK"){
                             result=(string)autoLock;
+                        }
+                        else if(accessMsgName=="EXCEPTIONS"){
+                            result=(string)globalExceptions;
                         }
                     }
                 }
@@ -967,6 +1004,10 @@ default{
                         }
                         if(accessMsgName=="AUTOLOCK"){
                             result=(string)setAutoLockMode((integer)accessMsgCmd);
+                        }
+                        if(accessMsgName=="EXCEPTIONS"){
+                            globalExceptions=(integer)accessMsgCmd;
+                            result=(string)globalExceptions;
                         }
                     }
                 }

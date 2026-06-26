@@ -162,16 +162,16 @@ ACCESS.EXEC | ACCESS.GET.TRUST | UUID1; UUID2; UUID3; ...
 ACCESS.EXEC | ACCESS.GET.BLACK | UUID1; UUID2; UUID3; ...
 ```
 
-### 获取公开/群组/硬核/自动上锁模式
+### 获取公开/群组/硬核/自动上锁/例外模式
 #### ACCESS.GET.MODE
-- 获取公开/群组/硬核/自动上锁模式的状态。
+- 获取公开/群组/硬核/自动上锁/例外模式的状态。
 - 1为启用，0为禁用。
 - 公开模式允许非授权用户访问。
 - 群组模式允许相同群组的用户访问。
 - 硬核模式禁用逃跑功能。
 - 自动上锁模式即穿戴时自动上锁。
 - 执行后，将回调当前设置的结果。
-	- 如果不指定参数，则按顺序回调公开、群组、硬核模式的状态。
+	- 如果不指定参数，则按顺序回调公开、群组、硬核模式、自动锁定、例外情况的状态。
 	- 如果指定参数，则回调指定模式的状态。
 ```lsl
 ACCESS.GET.MODE
@@ -179,11 +179,13 @@ ACCESS.GET.MODE | PUBLIC
 ACCESS.GET.MODE | GROUP
 ACCESS.GET.MODE | HARDCORE
 ACCESS.GET.MODE | AUTOLOCK
+ACCESS.GET.MODE | EXCEPTIONS
 // 回调：
-ACCESS.EXEC | ACCESS.GET.MODE | 1; 0; 0; 1
+ACCESS.EXEC | ACCESS.GET.MODE | 1; 0; 0; 1; 1
 ACCESS.EXEC | ACCESS.GET.MODE | 1
 ACCESS.EXEC | ACCESS.GET.MODE | 0
 ACCESS.EXEC | ACCESS.GET.MODE | 0
+ACCESS.EXEC | ACCESS.GET.MODE | 1
 ACCESS.EXEC | ACCESS.GET.MODE | 1
 ```
 
@@ -200,20 +202,28 @@ ACCESS.READY
 #### ACCESS.SET.PUBLIC
 #### ACCESS.SET.GROUP
 #### ACCESS.SET.HARDCORE
-- 设置公开/群组/硬核模式。
+#### ACCESS.SET.AUTOLOCK
+#### ACCESS.SET.EXCEPTIONS
+- 设置公开/群组/硬核/自动锁定/例外模式。
 - 1为启用，0为禁用。
 - 公开模式允许非授权用户访问。
 - 群组模式允许相同群组的用户访问。
 - 硬核模式禁用逃跑功能。
+- 自动锁定允许设置主人后自动上锁。
+- 例外情况允许在开启RLV限制后对主人例外。
 - 执行后，将回调设置更改之后的结果。
 ```lsl
 ACCESS.SET.PUBLIC | 1/0
 ACCESS.SET.GROUP | 1/0
 ACCESS.SET.HARDCORE | 1/0
+ACCESS.SET.AUTOLOCK | 1/0
+ACCESS.SET.EXCEPTIONS | 1/0
 // 回调：
 ACCESS.EXEC | ACCESS.SET.PUBLIC | 1/0
 ACCESS.EXEC | ACCESS.SET.GROUP | 1/0
 ACCESS.EXEC | ACCESS.SET.HARDCORE | 1/0
+ACCESS.EXEC | ACCESS.SET.AUTOLOCK | 1/0
+ACCESS.EXEC | ACCESS.SET.EXCEPTIONS | 1/0
 ```
 
 ### 逃跑（重置）
@@ -259,7 +269,7 @@ ACCESS.MENU | 上级菜单名
 
 ### 请求推送权限状态通知
 #### ACCESS.GET.NOTIFY
-- 将触发权限更新通知。权限通知将分别推送主人列表、信任列表、黑名单、公开/群组/硬核/自动上锁模式状态，其他脚本接收后，可自行进行处理。
+- 将触发权限更新通知。权限通知将分别推送主人列表、信任列表、黑名单、公开/群组/硬核/自动上锁/例外模式状态，其他脚本接收后，可自行进行处理。
 - 当脚本重置、读取记事卡、变更权限时，都会自动发送此通知。
 - 权限通知将只推送，不进行回调。
 ```lsl
@@ -276,7 +286,7 @@ ACCESS.NOTIFY | MODE | 1; 0; 0; 0
 ```lsl
 ACCESS.EXEC | ACCESS.ADD.OWNER | 1
 ACCESS.EXEC | ACCESS.SET.PUBLIC | 0
-ACCESS.EXEC | ACCESS.GET.MODE | 1; 0; 0; 0
+ACCESS.EXEC | ACCESS.GET.MODE | 1; 0; 0; 0; 1
 ```
 
 ## 扩展用法
