@@ -15,6 +15,11 @@ Author: JMRY
 Description: A better access permission control system, use link_message to operate permissions.
 
 ***更新记录***
+- 1.0.25 20260629
+    - 加入部分权限不足的提示。
+    - 加入硬核模式下，禁止逃跑的提示。
+    - 优化菜单显示内容和输出文本。
+
 - 1.0.24 20260626
     - 加入例外模式开关。
 
@@ -585,7 +590,7 @@ showAccessMenu(string parent, key user){
     if(userPerm==ACCESS_ROOT){
         buttonList+=["Root"];
     }else if(user==llGetOwner()){
-        buttonList+=["*"];
+        buttonList+=["×Root×"];
     }
     if(userPerm==ACCESS_ROOT || user==llGetOwner()){
         buttonList+=["AccessList"];
@@ -594,27 +599,27 @@ showAccessMenu(string parent, key user){
         if(hardcore==FALSE){
             buttonList+=["Escape"];
         }else{
-            buttonList+=["*"];
+            buttonList+=["×Escape×"];
         }
+    }else if(userPerm==ACCESS_ROOT){
+        buttonList+=[" "];
     }
     
     if(userPerm>=ACCESS_ROOT){
-        string publicBu="["+(string)publicMode+"]Public";
-        string groupBu="["+(string)groupMode+"]Group";
         string hardcoreBu="["+(string)hardcore+"]Hardcore";
-        string exceptionBu="["+(string)globalExceptions+"]Exceptions";
         if(userPerm>ACCESS_ROOT){
-            hardcoreBu="*"; // 只有root才能修改硬核模式
+            hardcoreBu="["+(string)hardcore+"]×Hardcore×"; // 只有root才能修改硬核模式
         }
-        buttonList+=["OwnerList", "TrustList", "BlackList", publicBu, groupBu, hardcoreBu, exceptionBu];
+        buttonList+=["OwnerList", "TrustList", "BlackList", "["+(string)publicMode+"]Public", "["+(string)groupMode+"]Group", hardcoreBu, "["+(string)globalExceptions+"]Exceptions"];
     }
 
-    string menuText="This is access menu, you can manage who can access %1%'s %2%.\nPublic mode: %b3%\nGroup mode: %b4%\nHardcore mode: %b5%%%;"+
+    string menuText="This is access menu, you can manage who can access %1%'s %2%.\nPublic mode: %b3%\nGroup mode: %b4%\nHardcore mode: %b5%\nExceptions mode: %b6%%%;"+
         userInfo(llGetOwner())+";"+
         llGetObjectName()+";"+
         (string)publicMode+";"+
         (string)groupMode+";"+
-        (string)hardcore;
+        (string)hardcore+";"+
+        (string)globalExceptions;
     llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+accessMenuName+"|"+menuText+"|"+list2Data(buttonList)+"|"+parent, user);
 }
 
@@ -627,8 +632,25 @@ showAccessSubMenu(string button, key user){
     string menuText="";
     list buttonList=[];
 
+    // 禁用选项的前置处理
+    if(button=="×Root×"){
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You don't have permission to set Root!", user);
+        showAccessMenu(accessParentMenuName, user);
+        return;
+    }
+    else if(button=="×Escape×"){
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You can't escape in Hardcore mode!", user);
+        showAccessMenu(accessParentMenuName, user);
+        return;
+    }
+    else if(button=="×Hardcore×"){
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|You don't have permission to set Hardcore mode!", user);
+        showAccessMenu(accessParentMenuName, user);
+        return;
+    }
+
     if(button=="Root" && userPerm==ACCESS_ROOT){
-        menuText="Current Root: %1%. Click SetRoot to set new Root owner, click Restore to reset Root owner to wearer.%%;"+userInfo(llList2Key(ownerList, 0));
+        menuText="Root owner has the highest permissions.\nCurrent Root: %1%. Click SetRoot to set new Root owner, click Restore to reset Root owner to wearer.%%;"+userInfo(llList2Key(ownerList, 0));
         buttonList+=["SetRoot", "Restore"];
     }
     else if(button=="OwnerList"){
@@ -699,26 +721,41 @@ showAccessSubMenu(string button, key user){
             if(i==0){
                 // llRegionSayTo(user, 0, "Owners:");
                 llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Owners:", user);
+                if(llGetListLength(ownerList)==1){
+                    llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|[Empty]", user);
+                }
             }
         }
+
         // llRegionSayTo(user, 0, "Trust:");
         llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|TrustList:", user);
-        for(i=0; i<llGetListLength(trustList); i++){
-            // llRegionSayTo(user, 0, userInfo(llList2Key(trustList, i)));
-            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|"+userInfo(llList2Key(trustList, i)), user);
+        if(llGetListLength(trustList)==0){
+            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|[Empty]", user);
+        }else{
+            for(i=0; i<llGetListLength(trustList); i++){
+                // llRegionSayTo(user, 0, userInfo(llList2Key(trustList, i)));
+                llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|"+userInfo(llList2Key(trustList, i)), user);
+            }
         }
+
         // llRegionSayTo(user, 0, "Black:");
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|BlackList:|0|"+(string)user, user);
-        for(i=0; i<llGetListLength(blackList); i++){
-            // llRegionSayTo(user, 0, userInfo(llList2Key(blackList, i)));
-            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|"+userInfo(llList2Key(blackList, i)), user);
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|BlackList", user);
+        if(llGetListLength(blackList)==0){
+            llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|[Empty]", user);
+        }else{
+            for(i=0; i<llGetListLength(blackList); i++){
+                // llRegionSayTo(user, 0, userInfo(llList2Key(blackList, i)));
+                llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|"+userInfo(llList2Key(blackList, i)), user);
+            }
         }
         // llRegionSayTo(user, 0, "Public mode: "+(string)publicMode);
         // llRegionSayTo(user, 0, "Group mode: "+(string)groupMode);
         // llRegionSayTo(user, 0, "Hardcore mode: "+(string)hardcore);
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Public mode: %b1%%%;"+(string)publicMode, user);
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Group mode: %b1%%%;"+(string)groupMode, user);
-        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Hardcore mode: %b1%%%;"+(string)hardcore, user);
+        llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Public mode: %b1%\nGroup mode: %b2%\nHardcore mode: %b3%\nExceptions mode: %b4%%%;"+(string)publicMode+";"+(string)groupMode+";"+(string)hardcore+";"+(string)globalExceptions, user);
+        // llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Public mode: %b1%%%;"+(string)publicMode, user);
+        // llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Group mode: %b1%%%;"+(string)groupMode, user);
+        // llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Hardcore mode: %b1%%%;"+(string)hardcore, user);
+        // llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Exceptions mode: %b1%%%;"+(string)globalExceptions, user);
         showAccessMenu(accessParentMenuName, user);
         return;
     }
