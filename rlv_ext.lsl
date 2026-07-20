@@ -5,6 +5,9 @@ Author: JMRY
 Description: A better RLV Extension management system, use link_message to operate RLV Extension restraints.
 
 ***更新记录***
+- 1.0.9 20260720
+    - 适配Sound脚本。
+
 - 1.0.8 20260406
     - 修复REZ模式下，起立时报错的bug。
 
@@ -383,7 +386,12 @@ default{
                 // controlVal=CONTROL_FWD | CONTROL_BACK | CONTROL_LEFT | CONTROL_RIGHT | CONTROL_UP | CONTROL_DOWN | CONTROL_ROT_LEFT | CONTROL_ROT_RIGHT | CONTROL_LBUTTON | CONTROL_ML_LBUTTON;
                 // llTakeControls(controlVal,TRUE,TRUE);
                 // llReleaseControls();
-                llTakeControls(CONTROL_FWD | CONTROL_BACK | CONTROL_LEFT | CONTROL_RIGHT | CONTROL_UP | CONTROL_DOWN | CONTROL_LBUTTON | CONTROL_ML_LBUTTON | CONTROL_ROT_LEFT | CONTROL_ROT_RIGHT,TRUE,TRUE);
+                if(moveSpeed==0){
+                    llReleaseControls();
+                    llMessageLinked(LINK_SET, 90005, "SOUND.WALK.RECOVER", NULL_KEY);
+                }else{
+                    llTakeControls(CONTROL_FWD | CONTROL_BACK | CONTROL_LEFT | CONTROL_RIGHT | CONTROL_UP | CONTROL_DOWN | CONTROL_LBUTTON | CONTROL_ML_LBUTTON | CONTROL_ROT_LEFT | CONTROL_ROT_RIGHT,TRUE,TRUE);
+                }
             }else{
                 llTakeControls(controlVal,TRUE,FALSE);
             }
@@ -406,6 +414,7 @@ default{
                 v.z = moveSpeed;
             llApplyImpulse(v, TRUE);
         }
+        llMessageLinked(LINK_SET, 90005, "SOUND.WALK.PLAY", NULL_KEY);
     }
 
     listen(integer channel, string name, key id, string message){

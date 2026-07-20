@@ -16,6 +16,9 @@ Author: JMRY
 Description: A struggle system, use link_message to operate struggle things.
 
 ***更新记录***
+- 1.0.9 20260720
+    - 适配Sound脚本。
+
 - 1.0.8 20260513
     - 修复挣扎成功后，无法释放按键的bug。
 
@@ -343,6 +346,7 @@ default{
             if(controlVal==0){
                 llReleaseControls();
                 stopStruggleAnim();
+                llMessageLinked(LINK_SET, 90005, "SOUND.WALK.RECOVER", NULL_KEY);
                 // if(strugglePlayer!=NULL_KEY){
                 //     llRequestPermissions(strugglePlayer,PERMISSION_TRIGGER_ANIMATION);
                 // }
