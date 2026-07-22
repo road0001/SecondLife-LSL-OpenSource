@@ -4,8 +4,7 @@ initMain(){
 	touchSound="touch";
 	menuSound="click";
 	walkSoundList=[];
-	walkSound=llList2String(walkSoundList, 0);
-	walkSoundCooldown=1.0;
+	walkSoundCooldown=2.0;
 	touchSoundEnabled=TRUE;
 	menuSoundEnabled=TRUE;
 	lockSoundEnabled=TRUE;
@@ -14,6 +13,7 @@ initMain(){
 	soundVolume_Walk=1.0;
 	standalone=FALSE;
 	soundActive=FALSE;
+	setWalkSound(llList2String(walkSoundList, 0));
 }
 /*CONFIG END*/
 
@@ -23,6 +23,10 @@ Author: JMRY
 Description: A sound effects for restraint items.
 
 ***更新记录***
+- 1.0.3 20260721
+	- 优化行走声音列表逻辑算法。
+	- 调整菜单排列。
+
 - 1.0.2 20260720
 	- 加入声音控制接口。
 	- 加入行走声音功能。
@@ -60,8 +64,6 @@ string lockSound;
 string unlockSound;
 string touchSound;
 string menuSound;
-string walkSound;
-list walkSoundList;
 
 integer touchSoundEnabled=FALSE;
 integer menuSoundEnabled=FALSE;
@@ -83,6 +85,7 @@ playSound(string name, float volume, integer bool, integer trigger){
 	if(!bool || !soundActive){
 		return;
 	}
+	name=translateSound(name);
 	if(checkSoundAvailable(name)){
 		if(trigger==0){
 			llPlaySound(name, volume);
@@ -103,6 +106,35 @@ playSound_Walk(){
 	}
 }
 
+string walkSound;
+list walkSoundList;
+integer walkSoundDataLength=3;
+setWalkSound(string name){
+	integer index=llListFindList(walkSoundList, [name]);
+	if(~index){
+		walkSound=llList2String(walkSoundList, index);
+		walkSoundCooldown=llList2Float(walkSoundList, index+2);
+	}else{
+		walkSound="";
+		walkSoundCooldown=0;
+	}
+	walkSoundLastTime=0;
+}
+
+string translateSound(string name){
+	integer index=llListFindList(walkSoundList, [name]);
+	if(~index){
+		string walkSoundFileName=llList2String(walkSoundList, index+1);
+		if(walkSoundFileName==""){
+			return name;
+		}else{
+			return walkSoundFileName;
+		}
+	}else{
+		return name;
+	}
+}
+
 string appName="Sound";
 string menuName="SoundMenu";
 string menuParent="";
@@ -120,19 +152,21 @@ showMenu(string type, string parent, key user){
 		if(checkSoundAvailable(lockSound)==TRUE || checkSoundAvailable(unlockSound)==TRUE){
 			menuList+="["+(string)lockSoundEnabled+"]S:LockSound";
 		}
+		menuList+=["S:Volume"];
+
 		if(llGetListLength(walkSoundList) > 0){
-			menuList+="["+(string)lockSoundEnabled+"]S:WalkSound";
+			menuList+="["+(string)walkSoundEnabled+"]S:WalkSound";
 			menuList+="S:SetWalkSound";
 			menuList+="S:VolumeWalkSound";
 		}
-		menuList+=["S:Volume"];
+
 		llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+menuName+"|"+menuText+"|"+llDumpList2String(menuList, ";")+"|"+parent, user);
 	}
 	else if(type=="Walk"){
-		string menuText="This is %1% menu.\nCurrent: %2%%%;"+"S:SetWalkSound"+";"+walkSound;
+		string menuText="This is %1% menu.\nCurrent: %2%%%;"+"S:SetWalkSound"+";"+"\\NL"+walkSound;
 		list menuList=[];
 		integer i;
-		for(i=0; i<llGetListLength(walkSoundList); i++){ // 处理声音列表，加\\NL标记，禁止匹配语言
+		for(i=0; i<llGetListLength(walkSoundList); i+=walkSoundDataLength){ // 处理声音列表，加\\NL标记，禁止匹配语言
 			menuList+="\\NL"+llList2String(walkSoundList, i);
 		}
 		llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+menuName+"_"+type+"|"+menuText+"|"+llDumpList2String(menuList, ";")+"|"+parent, user);
@@ -184,12 +218,16 @@ default{
 			playSound_Walk();
 		}
 		// 按住按键并奔跑时，触发声音
-		if(
-			(held & (CONTROL_FWD | CONTROL_BACK)) && 
-			(llGetAgentInfo(llGetOwner()) & AGENT_ALWAYS_RUN)
-		){
+		if(held & (CONTROL_FWD | CONTROL_BACK)){
 			playSound_Walk();
 		}
+		// 按住按键并奔跑时，触发声音
+		// if(
+		// 	(held & (CONTROL_FWD | CONTROL_BACK)) && 
+		// 	(llGetAgentInfo(llGetOwner()) & AGENT_ALWAYS_RUN)
+		// ){
+		// 	playSound_Walk();
+		// }
     }
 	collision_start(integer num) {
         if(walkSoundEnabled){
@@ -265,7 +303,7 @@ default{
 			}
 			// 行走声音菜单
 			else if(msg1==menuName+"_Walk" && msg2!=""){
-				walkSound=msg2;
+				setWalkSound(msg2);
 				showMenu("Walk",menuName,user);
 			}
 			// 修改音量输入框

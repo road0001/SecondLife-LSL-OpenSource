@@ -55,7 +55,7 @@ initConfig(){
 		"Fly","fly","Move",0,
 
 		"Sit","sit","Move",0,
-		"Jump","jump","Move",1,
+		"Jump","jump","Move",0,
 		"Slow","rext_speed:0","Move",0,
 
 		"Move","_move,rext_move","Move",0,
