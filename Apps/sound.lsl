@@ -23,6 +23,9 @@ Author: JMRY
 Description: A sound effects for restraint items.
 
 ***更新记录***
+- 1.0.4 20260806
+	- 优化行走声音权限申请逻辑，REZ模式时不申请权限。
+
 - 1.0.3 20260721
 	- 优化行走声音列表逻辑算法。
 	- 调整菜单排列。
@@ -180,21 +183,39 @@ integer MAIN_MSG_NUM=9000;
 integer SOUND_MSG_NUM=90005;
 integer standalone=FALSE;
 integer soundActive=FALSE;
+integer REZ_MODE=FALSE;
 
 default{
 	state_entry(){
 		initMain();
+		if(llGetAttached()){
+            REZ_MODE=FALSE;
+        }else{
+            REZ_MODE=TRUE;
+        }
 	}
 	changed(integer change){
         if(change & CHANGED_OWNER){ // 物品易主时，重置脚本
             llResetScript();
         }
     }
+	attach(key user){
+        REZ_MODE=FALSE;
+    }
+	object_rez(key user){
+        if(llGetAttached()){
+            REZ_MODE=FALSE;
+        }else{
+            REZ_MODE=TRUE;
+        }
+    }
 	on_rez(integer start_param) {
-		if(walkSoundEnabled){
-			llRequestPermissions(llGetOwner(),PERMISSION_TAKE_CONTROLS);
-		}else{
-			llReleaseControls();
+		if(REZ_MODE==FALSE){
+			if(walkSoundEnabled){
+				llRequestPermissions(llGetOwner(),PERMISSION_TAKE_CONTROLS);
+			}else{
+				llReleaseControls();
+			}
 		}
 	}
 	touch_start(integer num_detected){
@@ -258,7 +279,7 @@ default{
 			if(checkSoundAvailable(touchSound) || checkSoundAvailable(lockSound) || checkSoundAvailable(unlockSound) || checkSoundAvailable(menuSound)){
 				llMessageLinked(LINK_SET, MAIN_MSG_NUM, "FEATURE.REG|"+appName+"||settingMenu", user);
 			}
-			if(walkSoundEnabled){
+			if(walkSoundEnabled && !REZ_MODE){
 				llRequestPermissions(llGetOwner(),PERMISSION_TAKE_CONTROLS);
 			}
 		}
@@ -284,10 +305,12 @@ default{
 				}
 				else if(msg2=="S:WalkSound"){
 					walkSoundEnabled=!walkSoundEnabled;
-					if(walkSoundEnabled){
-						llRequestPermissions(llGetOwner(),PERMISSION_TAKE_CONTROLS);
-					}else{
-						llReleaseControls();
+					if(REZ_MODE==FALSE){
+						if(walkSoundEnabled){
+							llRequestPermissions(llGetOwner(),PERMISSION_TAKE_CONTROLS);
+						}else{
+							llReleaseControls();
+						}
 					}
 					showMenu("Main", menuParent,user);
 				}
@@ -386,7 +409,9 @@ default{
 				当其他脚本申请PERMISSION_TAKE_CONTROLS权限时，此处的权限会被覆盖。因此其他脚本处理完，需要主动通知Sound脚本重新申请权限。
 				*/
 				if(headerExt=="RECOVER"){
-					llRequestPermissions(llGetOwner(), PERMISSION_TAKE_CONTROLS);
+					if(REZ_MODE==FALSE){
+						llRequestPermissions(llGetOwner(), PERMISSION_TAKE_CONTROLS);
+					}
 				}
 				/*
 				SOUND.WALK.PLAY

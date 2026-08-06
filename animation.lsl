@@ -14,6 +14,7 @@ initConfig(){
     autoReload=TRUE;
     allowStopAnim=TRUE;
     allowRezAdjust=TRUE;
+    allowDefaultSitAnim=FALSE;
 }
 /*CONFIG END*/
 /*
@@ -22,6 +23,9 @@ Author: JMRY
 Description: A better animation control system, use link_message to operate animations.
 
 ***更新记录***
+- 1.3.3 20260806
+    - 优化REZ模式下播放动画的逻辑，禁止默认坐下动画时，先停止默认的坐下动画再播放新动画。
+
 - 1.3.2 20260611
     - 加入多人非对称动画功能。
     - 优化多人动画逻辑。
@@ -538,6 +542,7 @@ integer ANIM_MSG_NUM=1006;
 integer allowAutoAdjustHeight=TRUE;
 integer allowStopAnim=TRUE;
 integer allowRezAdjust=TRUE;
+integer allowDefaultSitAnim=FALSE;
 string curAnimClass="";
 
 list sensorUserList;
@@ -614,7 +619,15 @@ default{
     run_time_permissions(integer perm) {
         if(perm & PERMISSION_TRIGGER_ANIMATION){
             key curPermUser=llGetPermissionsKey();
-
+            if(REZ_MODE==TRUE && allowDefaultSitAnim==FALSE){
+                list allAnimList=llGetAnimationList(llGetOwner());
+                integer i;
+                for(i=0; i<llGetListLength(allAnimList); i++){
+                    llStopAnimation(llList2String(allAnimList, i));
+                }
+                llSleep(0.1);
+                llStartAnimation("stand");
+            }
             if(playAnimationFlag>=TRUE){
                 if(playAnimationFlag>TRUE && lastPlayingAnimFileName!=""){
                     if(!playAnimMultiPlayer){
