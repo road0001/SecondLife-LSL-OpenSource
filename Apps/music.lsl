@@ -177,10 +177,10 @@ showMenu(string parent, key user){
 	string typeBu="";
 	if(musicPlayType==-1){
 		playType="🔂 Single loop";
-		typeBu="1️⃣ Play once";
+		typeBu="❶ Play once";
 	}
 	else if(musicPlayType==0){
-		playType="1️⃣ Play once";
+		playType="❶ Play once";
 		typeBu="↪ Sequence";
 	}
 	else if(musicPlayType==1){
@@ -199,9 +199,9 @@ showMenu(string parent, key user){
 	string playBu="";
 	if(musicPlaying==TRUE){
 		playStatus="▶ Playing";
-		playBu="⏹ Stop";
+		playBu="■ Stop";
 	}else{
-		playStatus="⏹ Stopped";
+		playStatus="■ Stopped";
 		playBu="▶ Play";
 	}
 	string loopStatus="";
@@ -213,7 +213,7 @@ showMenu(string parent, key user){
 	string menuText="Current playing: %1%. %2%\nArtist: %3%\nAlbum: %4%\nDuration: %5%\nPlay mode: %6%\nLoop playback: %7%\nVolume: %8%\n%9%%%;"+(string)(musicCurrentIndex+1)+";"+musicRealName+";"+musicAuthor+";"+musicAlbum+";"+(string)musicLength+";"+playType+";"+loopStatus+";"+(string)musicVolume+";"+playStatus;
 	list menuList=[
 		"⏮ Prev", playBu, "Next ⏭",
-		typeBu, "["+(string)musicPlayLoop+"]🔁 Loop", "🔊 Volume"
+		typeBu, "["+(string)musicPlayLoop+"]🔁 Loop playback", "🔊 Volume"
 	];
 	integer i;
 	for(i=0; i<llGetListLength(musicRealNameList); i++){
@@ -457,7 +457,7 @@ default{
 					showMenuUser=user;
 				}
 				// 停止
-				else if(msg2=="⏹ Stop"){
+				else if(msg2=="■ Stop"){
 					playMusic("stop");
 					showMenu(menuParent,user);
 				}
@@ -472,7 +472,7 @@ default{
 					showMenuUser=user;
 				}
 				// 播放模式
-				else if(msg2=="1️⃣ Play once"){
+				else if(msg2=="❶ Play once"){
 					musicPlayType=0;
 					llMessageLinked(LINK_SET, MUSIC_MSG_NUM, "MUSIC.EXEC|MUSIC.SET.TYPE|"+(string)musicPlayType, NULL_KEY);
 					showMenu(menuParent,user);
@@ -498,7 +498,7 @@ default{
 					showMenu(menuParent,user);
 				}
 				// 循环模式
-				else if(msg2=="🔁 Loop"){
+				else if(msg2=="🔁 Loop playback"){
 					musicPlayLoop=!musicPlayLoop;
 					llMessageLinked(LINK_SET, MUSIC_MSG_NUM, "MUSIC.EXEC|MUSIC.SET.LOOP|"+(string)musicPlayLoop, NULL_KEY);
 					showMenu(menuParent,user);
