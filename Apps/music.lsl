@@ -1,5 +1,6 @@
 initMain(){
 	standalone=TRUE;
+	allowMusicPlaySlave=FALSE;
 	notecardHeader="music_";
 	musicReadFlag=1;
 	playMusic("stop");
@@ -59,6 +60,7 @@ playMusicByName(string name){
 float musicVolume=1.0;
 integer musicPlaying=FALSE;
 integer musicPlayLoop=TRUE;
+integer allowMusicPlaySlave=TRUE;
 integer musicPlayType=1; // -1：单曲循环  0：播放一次  1：顺序播放  2：倒序播放  3：随机播放
 list musicAlreadyPlayedList=[];
 playMusic(string type){
@@ -101,18 +103,24 @@ playMusic(string type){
 		}
 
 		llPlaySound(soundMaster, musicVolume);
-		// 如果有，就预载下一段声音
-		if(soundSlave!="" && soundSlaveLength>0){
-			llSetSoundQueueing(TRUE);
-			llPreloadSound(soundSlave);
-			llPlaySound(soundSlave, musicVolume);
-			soundSlaveLength-=1; // llPreloadSound有1秒延迟，因此减掉
-			llSetTimerEvent(soundMasterLength + soundSlaveLength);
+		if(allowMusicPlaySlave==TRUE){
+			// 如果有，就预载下一段声音
+			if(soundSlave!="" && soundSlaveLength>0){
+				llSetSoundQueueing(TRUE);
+				llPreloadSound(soundSlave);
+				llPlaySound(soundSlave, musicVolume);
+				soundSlaveLength-=1; // llPreloadSound有1秒延迟，因此减掉
+				llSetTimerEvent(soundMasterLength + soundSlaveLength);
+			}else{
+				llSetSoundQueueing(FALSE);
+				llSetTimerEvent(soundMasterLength);
+			}
+			musicSoundIndex+=2;
 		}else{
 			llSetSoundQueueing(FALSE);
 			llSetTimerEvent(soundMasterLength);
+			musicSoundIndex+=1;
 		}
-		musicSoundIndex+=2;
 		// 后续片段播放交给timer
 		
 	}
@@ -547,8 +555,8 @@ default{
 					Author Name
 					Album Name
 					Music Length
-					Music File 1//25
-					Music File 2//16
+					Music File 1|25
+					Music File 2|16
 					Music_UUID_1
 					Music_UUID_2
                     */
