@@ -19,6 +19,9 @@ Author: JMRY
 Description: A capture feature for restraint items.
 
 ***更新记录***
+- 1.0.3 20260807
+	- 修复读取记事卡列表错误的bug。
+
 - 1.0.2 20260514
 	- 优化接口规则。
 	- 优化抓捕功能流程。
@@ -552,8 +555,8 @@ default{
                     integer i;
                     for (i=0; i<count; i++){
                         string notecardName = llGetInventoryName(INVENTORY_NOTECARD, i);
-                        if(llGetSubString(notecardName, 0, 9)==notecardHeader){
-                            notecardList+=[llGetSubString(notecardName, 10, -1)];
+                        if(llGetSubString(notecardName, 0, llStringLength(notecardHeader)-1)==notecardHeader){
+                            notecardList+=[llGetSubString(notecardName, llStringLength(notecardHeader), -1)];
                         }
                     }
                     result=(string)llDumpList2String(notecardList, ";");

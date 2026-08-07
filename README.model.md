@@ -107,3 +107,8 @@ PA2唤起系统支持配置、PA2唤起。
 声音系统支持配置触发各类声音功能。
 [声音系统文档](Apps/README.Sound.md)
 ******Apps/sound.lsl******
+
+## 音乐播放系统文档
+音乐播放系统支持配置各种音乐播放。
+[音乐播放系统文档](Apps/README.Music.md)
+******Apps/music.lsl******

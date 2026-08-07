@@ -21,6 +21,9 @@ Author: JMRY
 Description: A better RLV Renamer management system, use link_message to operate Renamer restraints.
 
 ***更新记录***
+- 1.1.13 20260807
+    - 修复读取记事卡列表错误的bug。
+
 - 1.1.12 20260430
     - 加入可独立使用功能。
 
@@ -904,8 +907,8 @@ default{
                         integer i;
                         for (i=0; i<count; i++){
                             string notecardName = llGetInventoryName(INVENTORY_NOTECARD, i);
-                            if(llGetSubString(notecardName, 0, 7)==renamerHeader){
-                                renamerNotecardList+=[llGetSubString(notecardName, 8, -1)];
+                            if(llGetSubString(notecardName, 0, llStringLength(renamerHeader)-1)==renamerHeader){
+                                renamerNotecardList+=[llGetSubString(notecardName, llStringLength(renamerHeader), -1)];
                             }
                         }
                         result=(string)list2Data(renamerNotecardList);

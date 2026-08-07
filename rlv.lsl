@@ -103,6 +103,9 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 2.0.25 20260807
+    - 修复读取记事卡列表错误的bug。
+
 - 2.0.24 20260514
     - 优化默认配置的用语。
 
@@ -971,8 +974,8 @@ default{
                         integer i;
                         for (i=0; i<count; i++){
                             string notecardName = llGetInventoryName(INVENTORY_NOTECARD, i);
-                            if(llGetSubString(notecardName, 0, 3)==rlvHeader){
-                                rlvList+=[llGetSubString(notecardName, 4, -1)];
+                            if(llGetSubString(notecardName, 0, llStringLength(rlvHeader)-1)==rlvHeader){
+                                rlvList+=[llGetSubString(notecardName, llStringLength(rlvHeader), -1)];
                             }
                         }
                         result=(string)list2Data(rlvList);

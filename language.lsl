@@ -8,6 +8,9 @@ Author: JMRY
 Description: A better language management system, use link_message to operate languages.
 
 ***更新记录***
+- 1.0.12 20260807
+    - 修复读取记事卡列表错误的bug。
+
 - 1.0.11 20260428
     - 加入记录当前语言的名字的功能。
 
@@ -224,8 +227,8 @@ list getLanguageNotecards(){
     integer i;
     for (i=0; i<count; i++){
         string notecardName = llGetInventoryName(INVENTORY_NOTECARD, i);
-        if(llGetSubString(notecardName, 0, 3)==lanHeader){
-            lanList+=[llGetSubString(notecardName, 4, -1)];
+        if(llGetSubString(notecardName, 0, llStringLength(lanHeader)-1)==lanHeader){
+            lanList+=[llGetSubString(notecardName, llStringLength(lanHeader), -1)];
         }
     }
     return lanList;

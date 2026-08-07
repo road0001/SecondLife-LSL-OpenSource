@@ -11,6 +11,9 @@ Author: JMRY
 Description: A better timer control system, use link_message to operate timers.
 
 ***更新记录***
+- 1.0.13 20260807
+    - 修复读取记事卡列表错误的bug。
+
 - 1.0.12 20260419
     - 加入\NL不进行语言匹配功能。
 
@@ -538,8 +541,8 @@ default{
                         integer i;
                         for (i=0; i<count; i++){
                             string notecardName = llGetInventoryName(INVENTORY_NOTECARD, i);
-                            if(llGetSubString(notecardName, 0, 9)==notecardHeader){
-                                notecardList+=[llGetSubString(notecardName, 10, -1)];
+                            if(llGetSubString(notecardName, 0, llStringLength(notecardHeader)-1)==notecardHeader){
+                                notecardList+=[llGetSubString(notecardName, llStringLength(notecardHeader), -1)];
                             }
                         }
                         result=(string)list2Data(notecardList);

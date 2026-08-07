@@ -16,6 +16,9 @@ Author: JMRY
 Description: A struggle system, use link_message to operate struggle things.
 
 ***更新记录***
+- 1.0.10 20260807
+    - 修复读取记事卡列表错误的bug。
+
 - 1.0.9 20260720
     - 适配Sound脚本。
 
@@ -591,8 +594,8 @@ default{
                     integer i;
                     for (i=0; i<count; i++){
                         string notecardName = llGetInventoryName(INVENTORY_NOTECARD, i);
-                        if(llGetSubString(notecardName, 0, 9)==notecardHeader){
-                            notecardList+=[llGetSubString(notecardName, 10, -1)];
+                        if(llGetSubString(notecardName, 0, llStringLength(notecardHeader)-1)==notecardHeader){
+                            notecardList+=[llGetSubString(notecardName, llStringLength(notecardHeader), -1)];
                         }
                     }
                     result=(string)list2Data(notecardList);
