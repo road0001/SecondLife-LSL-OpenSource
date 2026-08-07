@@ -1,6 +1,6 @@
 initMain(){
 	standalone=TRUE;
-	allowMusicPlaySlave=FALSE;
+	allowMusicPlaySlave=TRUE;
 	notecardHeader="music_";
 	musicReadFlag=1;
 	playMusic("stop");
