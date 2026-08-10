@@ -1,6 +1,7 @@
 initMain(){
 	standalone=TRUE;
 	allowMusicPlaySlave=TRUE;
+	showText=TRUE;
 	notecardHeader="music_";
 	musicReadFlag=1;
 	playMusic("stop");
@@ -18,6 +19,13 @@ Author: JMRY
 Description: A music player.
 
 ***更新记录***
+- 1.0.1 20260811
+	- 加入歌曲列表功能。
+	- 加入设置功能。
+	- 加入文字显示功能。
+	- 加入语言功能。
+	- 优化播放逻辑。
+
 - 1.0 20260807
     - 完成主要功能。
 ***更新记录***
@@ -34,6 +42,7 @@ list musicNotecardList=[];
 list musicRealNameList=[];
 integer musicCurrentIndex=0;
 integer musicReadFlag=0; // 0: Normal; 1: Read all music notecards; 2: Play current music
+integer showText=TRUE;
 
 string musicRealName="";
 string musicAuthor="";
@@ -62,6 +71,7 @@ integer musicPlaying=FALSE;
 integer musicPlayLoop=TRUE;
 integer allowMusicPlaySlave=TRUE;
 integer musicPlayType=1; // -1：单曲循环  0：播放一次  1：顺序播放  2：倒序播放  3：随机播放
+string playType="";
 list musicAlreadyPlayedList=[];
 playMusic(string type){
 	llSetTimerEvent(0);
@@ -73,7 +83,7 @@ playMusic(string type){
 		llMessageLinked(LINK_SET, MUSIC_MSG_NUM, "MUSIC.EXEC|MUSIC.PLAYING|"+musicRealName+"|"+musicAuthor+"|"+musicAlbum+"|"+(string)musicLength+"|"+(string)musicSoundIndex, NULL_KEY);
 		musicPlaying=TRUE;
 		if(showMenuUser!=NULL_KEY){
-			showMenu(menuParent,showMenuUser);
+			showMenu(menuNameCurrent,menuParentCurrent,showMenuUser);
 			showMenuUser=NULL_KEY;
 		}
 
@@ -174,60 +184,95 @@ playMusic(string type){
 		musicPlaying=FALSE;
 		llMessageLinked(LINK_SET, MUSIC_MSG_NUM, "MUSIC.EXEC|MUSIC.STOP|1", NULL_KEY);
 		llMessageLinked(LINK_SET, TIMER_MSG_NUM, "TIMER.CLEAR", NULL_KEY);
+		llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.REM|SongName", NULL_KEY);
+		llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.REM|SongPlayType", NULL_KEY);
 	}
 }
 
+integer hasLanguage=FALSE;
 string menuName="MusicMenu";
+string menuNameCurrent="";
 string menuParent="";
-showMenu(string parent, key user){
-	menuParent=parent;
-	string playType="";
-	string typeBu="";
-	if(musicPlayType==-1){
-		playType="🔂 Single loop";
-		typeBu="❶ Play once";
+string menuParentCurrent="";
+showMenu(string type, string parent, key user){
+	menuNameCurrent=type;
+	menuParentCurrent=parent;
+	string menuText;
+	integer menuType=1;
+	list menuList;
+	if(type==menuName){
+		menuParent=parent;
+		// string playType="";
+		string typeBu="";
+		if(musicPlayType==-1){
+			playType="🔂 Single loop";
+			typeBu="❶ Play once";
+		}
+		else if(musicPlayType==0){
+			playType="❶ Play once";
+			typeBu="↪ Sequence";
+		}
+		else if(musicPlayType==1){
+			playType="↪ Play in sequence";
+			typeBu="↩ Backwards";
+		}
+		else if(musicPlayType==2){
+			playType="↩ Play in backwards";
+			typeBu="🔀 Randomize";
+		}
+		else if(musicPlayType==3){
+			playType="🔀 Play in randomize";
+			typeBu="🔂 Single loop";
+		}
+		string playStatus="";
+		string playBu="";
+		if(musicPlaying==TRUE){
+			playStatus="▶ Playing";
+			playBu="■ Stop";
+		}else{
+			playStatus="■ Stopped";
+			playBu="▶ Play";
+		}
+		string loopStatus="";
+		if(musicPlayLoop==TRUE){
+			loopStatus="🔁 Loop playback";
+		}else{
+			loopStatus="➡ Playlist once";
+		}
+		menuText="Current playing: %1%. %2%\nArtist: %3%\nAlbum: %4%\nDuration: %5%\nPlay mode: %6%\nLoop playback: %7%\nVolume: %8%\n%9%%%;"+(string)(musicCurrentIndex+1)+";"+musicRealName+";"+musicAuthor+";"+musicAlbum+";"+(string)musicLength+";"+playType+";"+loopStatus+";"+(string)musicVolume+";"+playStatus;
+		menuList=[
+			"⏮ Prev", playBu, "Next ⏭",
+			typeBu, "["+(string)musicPlayLoop+"]🔁 Loop playback", "🎶 Playlist",
+			"🔊 Volume +", "🔉 Volume -", "⚙ Settings"
+		];
+		if(musicPlaying){
+			llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.SET|SongName|\\NL▶ "+musicRealName+"|1|TOP", NULL_KEY);
+			if(musicPlayLoop){
+				llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.SET|SongPlayType|%1% %2%%%;🔁;"+playType+"|1|SongName", NULL_KEY);
+			}else{
+				llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.SET|SongPlayType|"+playType+"|1|SongName", NULL_KEY);
+			}
+		}
 	}
-	else if(musicPlayType==0){
-		playType="❶ Play once";
-		typeBu="↪ Sequence";
+	else if(type=="MusicPlaylistMenu"){
+		menuType=2;
+		menuText="Current playing: %1%. %2%%%;"+(string)(musicCurrentIndex+1)+";"+musicRealName;
+		integer i;
+		for(i=0; i<llGetListLength(musicRealNameList); i++){
+			// menuList+=["\\NL["+(string)(i==musicCurrentIndex)+"]"+llList2String(musicRealNameList, i)];
+			menuList+=["\\NL["+(string)(i==musicCurrentIndex)+"]"+llList2String(musicRealNameList, i)];
+		}
 	}
-	else if(musicPlayType==1){
-		playType="↪ Play in sequence";
-		typeBu="↩ Backwards";
+	else if(type=="MusicSettingsMenu"){
+		menuText="This is %1%.%%;"+type;
+		menuList=["["+(string)showText+"]ShowText"];
+		if(standalone==TRUE){
+			if(hasLanguage){
+				menuList+=["Language"];
+			}
+		}
 	}
-	else if(musicPlayType==2){
-		playType="↩ Play in backwards";
-		typeBu="🔀 Randomize";
-	}
-	else if(musicPlayType==3){
-		playType="🔀 Play in randomize";
-		typeBu="🔂 Single loop";
-	}
-	string playStatus="";
-	string playBu="";
-	if(musicPlaying==TRUE){
-		playStatus="▶ Playing";
-		playBu="■ Stop";
-	}else{
-		playStatus="■ Stopped";
-		playBu="▶ Play";
-	}
-	string loopStatus="";
-	if(musicPlayLoop==TRUE){
-		loopStatus="🔁 Loop playback";
-	}else{
-		loopStatus="➡ Playlist once";
-	}
-	string menuText="Current playing: %1%. %2%\nArtist: %3%\nAlbum: %4%\nDuration: %5%\nPlay mode: %6%\nLoop playback: %7%\nVolume: %8%\n%9%%%;"+(string)(musicCurrentIndex+1)+";"+musicRealName+";"+musicAuthor+";"+musicAlbum+";"+(string)musicLength+";"+playType+";"+loopStatus+";"+(string)musicVolume+";"+playStatus;
-	list menuList=[
-		"⏮ Prev", playBu, "Next ⏭",
-		typeBu, "["+(string)musicPlayLoop+"]🔁 Loop playback", "🔊 Volume"
-	];
-	integer i;
-	for(i=0; i<llGetListLength(musicRealNameList); i++){
-		menuList+=["\\NL"+llList2String(musicRealNameList, i)];
-	}
-	llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+menuName+"|"+menuText+"|"+llDumpList2String(menuList, ";")+"|"+parent, user);
+	llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+menuNameCurrent+"|"+menuText+"|"+llDumpList2String(menuList, ";")+"|"+parent+"|"+(string)menuType, user);
 }
 
 string notecardHeader="music_";
@@ -301,6 +346,12 @@ readNotecardEnd(){
 			llTriggerSound(llList2String(musicSoundList, i), 0); // llTriggerSound可叠加，因此可预载每一段声音
 			llSleep(0.1);
 		}
+		llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.SET|SongName|\\NL▶ "+musicRealName+"|1|TOP", NULL_KEY);
+			if(musicPlayLoop){
+				llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.SET|SongPlayType|%1% %2%%%;🔁;"+playType+"|1|SongName", NULL_KEY);
+			}else{
+				llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.SET|SongPlayType|"+playType+"|1|SongName", NULL_KEY);
+			}
 		llMessageLinked(LINK_SET, TIMER_MSG_NUM, "TIMER.ADD|"+(string)musicLength, NULL_KEY);
 		llMessageLinked(LINK_SET, TIMER_MSG_NUM, "TIMER.RUN", NULL_KEY);
 		llMessageLinked(LINK_SET, MUSIC_MSG_NUM, "MUSIC.EXEC|MUSIC.PLAY|"+musicRealName+"|"+musicAuthor+"|"+musicAlbum+"|"+(string)musicLength, NULL_KEY);
@@ -324,7 +375,9 @@ list getNotecardList(){
 
 integer standalone=FALSE;
 integer MENU_MSG_NUM=1000;
+integer LAN_MSG_NUM=1003;
 integer TIMER_MSG_NUM=1004;
+integer TEXT_MSG_NUM=1008;
 integer MAIN_MSG_NUM=9000;
 integer MUSIC_MSG_NUM=90006;
 key showMenuUser=NULL_KEY;
@@ -332,6 +385,9 @@ key showMenuUser=NULL_KEY;
 default{
 	state_entry() {
 		initMain();
+		hasLanguage=FALSE;
+        llMessageLinked(LINK_SET, LAN_MSG_NUM, "LANGUAGE.INIT", llGetOwner());
+        llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.GET.READY", llGetOwner());
 	}
 	changed(integer change){
 		if(change & CHANGED_OWNER){ // 物品易主时，重置脚本
@@ -339,6 +395,9 @@ default{
 		}
         if(change & CHANGED_INVENTORY){
             initMain();
+			hasLanguage=FALSE;
+			llMessageLinked(LINK_SET, LAN_MSG_NUM, "LANGUAGE.INIT", llGetOwner());
+			llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.GET.READY", llGetOwner());
         }
 	}
 	timer(){
@@ -346,11 +405,11 @@ default{
 	}
 	touch_start(integer num_detected){
 		if(standalone==TRUE){
-			showMenu("", llDetectedKey(0));
+			showMenu(menuName, "", llDetectedKey(0));
 		}
 	}
 	link_message(integer sender_num, integer num, string msg, key user){
-        if(num!=MAIN_MSG_NUM && num!=MENU_MSG_NUM && num!=MUSIC_MSG_NUM){
+        if(num!=MAIN_MSG_NUM && num!=MENU_MSG_NUM && num!=MUSIC_MSG_NUM && num!=LAN_MSG_NUM && num!=TEXT_MSG_NUM){
             return;
         }
         list msgList=llParseStringKeepNulls(msg,["|"],[""]);
@@ -443,7 +502,7 @@ default{
 				显示菜单
 				PUNISH.MENU | Parent
 				*/
-				showMenu(msg1,user);
+				showMenu(menuName,msg1,user);
 			}
 			if(result!=""){
                 llMessageLinked(LINK_THIS, MUSIC_MSG_NUM, "MUSIC.EXEC|"+msgHeader+"|"+result, user);
@@ -456,69 +515,101 @@ default{
 		else if(headerMain=="MENU" && headerSub=="ACTIVE"){
             // MENU.ACTIVE | MenuName | MenuButton
             if(msg1=="appMenu" && msg2=="Music"){
-                showMenu(msg1,user);
+                showMenu(menuName,msg1,user);
             }
 			else if(msg1==menuName && msg2!=""){
 				// 播放
 				if(msg2=="▶ Play"){
 					playMusic("current");
+					menuNameCurrent=menuName;
+					menuParentCurrent=menuParent;
 					showMenuUser=user;
 				}
 				// 停止
 				else if(msg2=="■ Stop"){
 					playMusic("stop");
-					showMenu(menuParent,user);
+					showMenu(menuName,menuParent,user);
 				}
 				// 上一曲
 				else if(msg2=="⏮ Prev"){
 					playMusic("prev");
+					menuNameCurrent=menuName;
+					menuParentCurrent=menuParent;
 					showMenuUser=user;
 				}
 				// 下一曲
 				else if(msg2=="Next ⏭"){
 					playMusic("next");
+					menuNameCurrent=menuName;
+					menuParentCurrent=menuParent;
 					showMenuUser=user;
 				}
 				// 播放模式
 				else if(msg2=="❶ Play once"){
 					musicPlayType=0;
 					llMessageLinked(LINK_SET, MUSIC_MSG_NUM, "MUSIC.EXEC|MUSIC.SET.TYPE|"+(string)musicPlayType, NULL_KEY);
-					showMenu(menuParent,user);
+					showMenu(menuName,menuParent,user);
 				}
 				else if(msg2=="↪ Sequence"){
 					musicPlayType=1;
 					llMessageLinked(LINK_SET, MUSIC_MSG_NUM, "MUSIC.EXEC|MUSIC.SET.TYPE|"+(string)musicPlayType, NULL_KEY);
-					showMenu(menuParent,user);
+					showMenu(menuName,menuParent,user);
 				}
 				else if(msg2=="↩ Backwards"){
 					musicPlayType=2;
 					llMessageLinked(LINK_SET, MUSIC_MSG_NUM, "MUSIC.EXEC|MUSIC.SET.TYPE|"+(string)musicPlayType, NULL_KEY);
-					showMenu(menuParent,user);
+					showMenu(menuName,menuParent,user);
 				}
 				else if(msg2=="🔀 Randomize"){
 					musicPlayType=3;
 					llMessageLinked(LINK_SET, MUSIC_MSG_NUM, "MUSIC.EXEC|MUSIC.SET.TYPE|"+(string)musicPlayType, NULL_KEY);
-					showMenu(menuParent,user);
+					showMenu(menuName,menuParent,user);
 				}
 				else if(msg2=="🔂 Single loop"){
 					musicPlayType=-1;
 					llMessageLinked(LINK_SET, MUSIC_MSG_NUM, "MUSIC.EXEC|MUSIC.SET.TYPE|"+(string)musicPlayType, NULL_KEY);
-					showMenu(menuParent,user);
+					showMenu(menuName,menuParent,user);
 				}
 				// 循环模式
 				else if(msg2=="🔁 Loop playback"){
 					musicPlayLoop=!musicPlayLoop;
 					llMessageLinked(LINK_SET, MUSIC_MSG_NUM, "MUSIC.EXEC|MUSIC.SET.LOOP|"+(string)musicPlayLoop, NULL_KEY);
-					showMenu(menuParent,user);
+					showMenu(menuName,menuParent,user);
 				}
 				// 音量
 				else if(msg2=="🔊 Volume"){
 					llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.INPUT|MusicInput_"+msg2+"|Input %1% (0~1), blank to return (Current: %2%):%%;"+msg2+";"+(string)musicVolume, user);
 				}
-				// 歌曲选择
-				else{
-					playMusicByName(msg2);
-					showMenuUser=user;
+				else if(msg2=="🔊 Volume +"){
+					musicVolume+=0.1;
+					if(musicVolume<0) musicVolume=0;
+					if(musicVolume>1) musicVolume=1;
+					llAdjustSoundVolume(musicVolume);
+					showMenu(menuName,menuParent,user);
+				}
+				else if(msg2=="🔉 Volume -"){
+					musicVolume-=0.1;
+					if(musicVolume<0) musicVolume=0;
+					if(musicVolume>1) musicVolume=1;
+					llAdjustSoundVolume(musicVolume);
+					showMenu(menuName,menuParent,user);
+				}
+				else if(msg2=="🎶 Playlist"){
+					showMenu("MusicPlaylistMenu",menuName,user);
+				}
+				else if(msg2=="⚙ Settings"){
+					showMenu("MusicSettingsMenu",menuName,user);
+				}
+			}
+			else if(msg1=="MusicPlaylistMenu" && msg2!=""){
+				playMusicByName(msg2);
+				showMenuUser=user;
+			}
+			else if(msg1=="MusicSettingsMenu" && msg2!=""){
+				if(msg2=="ShowText"){
+					showText=!showText;
+					llMessageLinked(LINK_SET, TEXT_MSG_NUM, "TEXT.SET.DISPLAY|"+(string)showText, NULL_KEY);
+					showMenu("MusicSettingsMenu",menuName,user);
 				}
 			}
 			else if(~llSubStringIndex(msg1, "MusicInput")){
@@ -532,8 +623,11 @@ default{
 					llAdjustSoundVolume(musicVolume);
 					llMessageLinked(LINK_SET, MUSIC_MSG_NUM, "MUSIC.EXEC|MUSIC.SET.VOLUME|"+(string)musicVolume, NULL_KEY);
 				}
-				showMenu(menuParent,user);
+				showMenu(menuName,menuParent,user);
 			}
+        }
+		else if (msgHeader == "LANGUAGE.EXEC") { // 接收语言系统INIT回调，并启用语言功能
+            hasLanguage=TRUE;
         }
 	}
 	dataserver(key query_id, string data){

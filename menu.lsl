@@ -4,6 +4,11 @@ Author: JMRY
 Description: A better menu management system, use link_message to operate menus.
 
 ***更新记录***
+- 1.3 20260811
+    - 加入选项式菜单功能（菜单描述中显示条目，数字按钮选择）。
+    - 优化部分函数逻辑算法。
+    - 优化内存占用。
+
 - 1.2.1 20260419
     - 加入\NL不进行语言匹配功能。
 
@@ -199,10 +204,10 @@ list strSplit(string m, string sp){
 获取语言（文字KEY），返回：当前语言的KEY对应文字
 */
 integer hasLanguage=FALSE;
-initLanguage(){
-    hasLanguage=FALSE;
-    llMessageLinked(LINK_SET, LAN_MSG_NUM, "LANGUAGE.INIT", llGetOwner()); // 得到语言系统初始化确认时，将hasLanguage置为TRUE。
-}
+// initLanguage(){
+//     hasLanguage=FALSE;
+//     llMessageLinked(LINK_SET, LAN_MSG_NUM, "LANGUAGE.INIT", llGetOwner()); // 得到语言系统初始化确认时，将hasLanguage置为TRUE。
+// }
 
 string lanLinkHeader="LAN_";
 string getLanguage(string k){
@@ -272,40 +277,40 @@ string getLanguageBool(string k){ // 拼接字符串方法之开关，根据传�
     }
 }
 
-integer applyLanguage(){
-    string switchStr=getLanguage("ButtonSwitch"); // 更改开关样式。格式：关|开
-    if(switchStr=="ButtonSwitch"){ // 如果返回的是buttonSwitch（即不存在此字段，则应用默认样式）
-        boolList=strSplit(defaultBoolStrList, "|");
-        // boolStrList=defaultBoolStrList;
-    }else{
-        boolList=strSplit(switchStr, "|");
-        // boolStrList=switchStr;
-    }
-    return TRUE;
-}
+// integer applyLanguage(){
+//     string switchStr=getLanguage("ButtonSwitch"); // 更改开关样式。格式：关|开
+//     if(switchStr=="ButtonSwitch"){ // 如果返回的是buttonSwitch（即不存在此字段，则应用默认样式）
+//         boolList=strSplit(defaultBoolStrList, "|");
+//         // boolStrList=defaultBoolStrList;
+//     }else{
+//         boolList=strSplit(switchStr, "|");
+//         // boolStrList=switchStr;
+//     }
+//     return TRUE;
+// }
 
 /*
 注册菜单通用方法。
 参数：菜单名，菜单文字，菜单按钮表，父级菜单名（顶层菜单用空字符串）
 */
 string parentHeader="P::";
-list menuRegistList=[]; // mname, mtext, mlist, mparent, mpage。由于list里不能嵌套list，因此mlist保持字符串原形
-integer menuRegistLength=5;
+list menuRegistList=[]; // mname, mtext, mlist, mparent, mtype, mpage。由于list里不能嵌套list，因此mlist保持字符串原形
+integer menuRegistLength=6;
 integer findMenu(string mname){
     integer menuIndex=llListFindList(menuRegistList, [mname]);
-    if(menuIndex%5==0){
+    if(menuIndex%menuRegistLength==0){
         return menuIndex;
     }else{
         return -1;
     }
 }
-integer registMenu(string mname, string mtext, string mlist, string mparent){
+integer registMenu(string mname, string mtext, string mlist, string mparent, integer mtype){
     integer menuIndex=findMenu(mname);
     // string menuItem=list2Data(mlist);
     if(~menuIndex){ // 菜单名存在时，覆盖 ~menuIndex等价于menuIndex!=-1，速度更快
-        menuRegistList = llListReplaceList(menuRegistList, [mtext, mlist, parentHeader+mparent], menuIndex+1, menuIndex+menuRegistLength-2);
+        menuRegistList = llListReplaceList(menuRegistList, [mtext, mlist, parentHeader+mparent, mtype], menuIndex+1, menuIndex+menuRegistLength-2); // 此处更新的list长度比正常短一个，此位置是翻页的保留位，不覆盖
     }else{ // 菜单名不存在时，插入
-        menuRegistList+=[mname, mtext, mlist, parentHeader+mparent, 1];
+        menuRegistList+=[mname, mtext, mlist, parentHeader+mparent, mtype, 1];
     }
     return TRUE;
 }
@@ -338,7 +343,8 @@ integer executeMenu(string mname, integer reset, key user){
                 setShowMenuPageList(mname, showMenuPage);
             }
         }
-        showMenu(mname, llList2String(menuRegistList, menuIndex+1), llList2String(menuRegistList, menuIndex+2), llList2String(menuRegistList, menuIndex+3), TRUE, user); // menuType必须传TRUE，不然会回到原生菜单
+        // showMenuName, showMenuText, showMenuListStr, showMenuParent, showMenuType, showMenuUser
+        showMenu(mname, llList2String(menuRegistList, menuIndex+1), llList2String(menuRegistList, menuIndex+2), llList2String(menuRegistList, menuIndex+3), llList2Integer(menuRegistList, menuIndex+4), user); // menuType必须传TRUE，不然会回到原生菜单
         return TRUE;
     }else{
         return FALSE;
@@ -349,7 +355,7 @@ integer executeMenu(string mname, integer reset, key user){
 integer setShowMenuPageList(string mname, integer mpage){
     integer menuIndex=findMenu(mname);
     if(~menuIndex){
-        menuRegistList=llListReplaceList(menuRegistList, [mpage], menuIndex+4, menuIndex+4); // 页数大于0时，修改
+        menuRegistList=llListReplaceList(menuRegistList, [mpage], menuIndex+menuRegistLength-1, menuIndex+menuRegistLength-1); // 页数大于0时，修改
         return mpage;
     }else{
         return -1;
@@ -398,7 +404,7 @@ integer showMenu(string mname, string mtext, string mlist, string mparent, integ
         // 初始化菜单列表，根据页数载入9个
         list menuItems=[];
         // 正常菜单，处理翻页情况
-        if(mtype==1){
+        if(mtype==1 || mtype==2){
             list showMenuList=strSplit(mlist, ";");
             // 计算总页数（向上取整）和偏移数（从0开始计算（0~8，9~17……）
             integer buttonsPerPage=9;
@@ -425,7 +431,7 @@ integer showMenu(string mname, string mtext, string mlist, string mparent, integ
             }
 
             // 按钮数量为10~11时，限制在一页内
-            if(llGetListLength(showMenuList)>=buttonsPerPage+1 && llGetListLength(showMenuList)<=buttonsPerPage+2){
+            if(mtype==1 && llGetListLength(showMenuList)>=buttonsPerPage+1 && llGetListLength(showMenuList)<=buttonsPerPage+2){
                 prev=llList2String(showMenuList, buttonsPerPage);
                 next=llList2String(showMenuList, buttonsPerPage+1);
                 totalPages=1;
@@ -436,20 +442,36 @@ integer showMenu(string mname, string mtext, string mlist, string mparent, integ
                     next=" ";
                 }
             }
-
-            if(totalPages>1){
-                showMenuTextInner=showMenuTextInner+"\n"+(string)showMenuPage+" / "+(string)totalPages;
-            }
             
             integer i;
             for(i=0; i<buttonsPerPage; i++){
                 string curMenu=llList2String(showMenuList,i+offset);
                 if(curMenu!=""){
-                    menuItems+=curMenu;
+                    // 普通菜单的处理
+                    if(mtype==1){
+                        menuItems+=curMenu;
+                    }
+                    // 选项式菜单的处理
+                    else if(mtype==2){
+                        showMenuTextInner+="\n"+(string)(i+offset+1)+". "+getLanguageBool(curMenu);
+                        if(includes(curMenu,"[1]")){
+                            menuItems+=[getLanguageBool("\\NL[1]"+(string)(i+offset+1))]; // 纯数字按钮，不得匹配语言
+                        }else if(includes(curMenu,"[0]")){
+                            menuItems+=[getLanguageBool("\\NL[0]"+(string)(i+offset+1))]; // 纯数字按钮，不得匹配语言
+                        }else{
+                            menuItems+=["\\NL"+(string)(i+offset+1)]; // 纯数字按钮，不得匹配语言
+                        }
+                    }
                 }else{
                     menuItems+=[" "]; // 对于超出索引的部分，返回空字符串，但在对话框中需要加一个空格
                 }
             }
+
+            // 有多页时，描述中显示页数
+            if(totalPages>1){
+                showMenuTextInner=showMenuTextInner+"\n"+(string)showMenuPage+" / "+(string)totalPages;
+            }
+
             // 根据菜单按钮规则重新排序并添加翻页和返回按钮
             menuItems=[
                 getLanguageBool(prev), getLanguageBool(back), getLanguageBool(next), // 第四行
@@ -462,7 +484,7 @@ integer showMenu(string mname, string mtext, string mlist, string mparent, integ
             // }
         }
         // 简易菜单，只处理按钮的语言
-        else if(mtype==2){
+        else if(mtype==3){
             menuItems=strSplit(mlist, ";");
             integer menuCount=llGetListLength(menuItems);
             if(menuCount==1 && llList2String(menuItems,0)==""){
@@ -485,14 +507,16 @@ integer MENU_MSG_NUM=1000;
 integer LAN_MSG_NUM=1003;
 default{
     state_entry(){
-        initLanguage();
+        hasLanguage=FALSE;
+        llMessageLinked(LINK_SET, LAN_MSG_NUM, "LANGUAGE.INIT", llGetOwner()); // 得到语言系统初始化确认时，将hasLanguage置为TRUE。
     }
     changed(integer change){
         if(change & CHANGED_OWNER){
             llResetScript();
         }
         if(change & CHANGED_INVENTORY){
-            initLanguage();
+            hasLanguage=FALSE;
+            llMessageLinked(LINK_SET, LAN_MSG_NUM, "LANGUAGE.INIT", llGetOwner()); // 得到语言系统初始化确认时，将hasLanguage置为TRUE。
         }
     }
 
@@ -509,6 +533,11 @@ default{
             }
             if(showMenuType>0){
                 message=getLanguageKey(trim(message));
+                if(showMenuType==2 && !~llListFindList(pageBu, [message])){ // 选项菜单，无须反查语言，直接根据messageIndex查找菜单按钮文本并返回
+                    integer messageIndex=(integer)message;
+                    list showMenuList=strSplit(llList2String(showMenuData,2), ";");
+                    message=llReplaceSubString(llReplaceSubString(llReplaceSubString(llList2String(showMenuList, messageIndex-1), "[0]", "", 0), "[1]", "", 0), "\\NL", "", 0);
+                }
             }else{
                 message=llStringTrim(message,STRING_TRIM); // trim会做一些别的事情，因此使用LL函数trim字符串
             }
@@ -579,13 +608,18 @@ default{
         string menuText=llList2String(msgList, 2);
         string menuButtons=llList2String(msgList, 3);
         string menuParent=llList2String(msgList, 4);
+        integer menuType=llList2Integer(msgList, 5);
+
+        if(llList2String(msgList, 5)==""){
+            menuType=TRUE;
+        }
 
         if (menuCmd == "MENU" && menuCmdSub != "EXEC") {
             string result="";
             /*
-            注册菜单，格式：标头 | 菜单名 | 菜单文本 | 菜单按钮1; 菜单按钮2; ... | 上级菜单（可选）
+            注册菜单，格式：标头 | 菜单名 | 菜单文本 | 菜单按钮1; 菜单按钮2; ... | 上级菜单（可选） | 菜单类型（可选，0为输入，1为正常，2为选项，3为原生）
             MENU.REGIST | mainMenu | Main menu desc | Button 1; Button 2; Button 3
-            MENU.REG | subMenu | Sub menu desc | Button 1; Button 2; Button 3 | mainMenu
+            MENU.REG | subMenu | Sub menu desc | Button 1; Button 2; Button 3 | mainMenu | 1
             注册并显示菜单，格式和上面相同
             MENU.REGIST.OPEN | mainMenu | Main menu desc | Button 1; Button 2; Button 3
             MENU.REG.OPEN | subMenu | Sub menu desc | Button 1; Button 2; Button 3 | mainMenu
@@ -595,7 +629,7 @@ default{
             MENU.REG.OPEN | subMenu | Sub menu desc %1% %2% %%;val1;val2 | Button 1; Button 2; Button 3 | mainMenu
             */
             if(menuCmdSub=="REG" || menuCmdSub=="REGIST"){
-                result=(string)registMenu(menuName, menuText, menuButtons, menuParent);
+                result=(string)registMenu(menuName, menuText, menuButtons, menuParent, menuType);
                 if(menuCmdExt=="OPEN"){
                     integer reset=FALSE;
                     if(menuCmdExt2!=""){
@@ -615,7 +649,7 @@ default{
             MENU.CONFIRM | confirmMenu | Are you confirm desc %1% %2% %%;val1;val2 | OK; Wait; Cancel; BACK | mainMenu
             */
             else if(menuCmdSub=="CONFIRM"){
-                result=(string)showMenu(menuName, menuText, menuButtons, menuParent, 2, user);
+                result=(string)showMenu(menuName, menuText, menuButtons, menuParent, 3, user);
             }
             /*
             文本输入，格式：标头 | 菜单名 | 菜单文本
@@ -705,7 +739,15 @@ default{
             hasLanguage=TRUE;
         }
         else if (msgHeader == "LANGUAGE.ACTIVE") { // 接收语言系统ACTIVE回调，并应用语言数据
-            applyLanguage();
+            // applyLanguage();
+            string switchStr=getLanguage("ButtonSwitch"); // 更改开关样式。格式：关|开
+            if(switchStr=="ButtonSwitch"){ // 如果返回的是buttonSwitch（即不存在此字段，则应用默认样式）
+                boolList=strSplit(defaultBoolStrList, "|");
+                // boolStrList=defaultBoolStrList;
+            }else{
+                boolList=strSplit(switchStr, "|");
+                // boolStrList=switchStr;
+            }
         }
         // llSleep(0.01);
         // llOwnerSay("Menu Memory Used: "+(string)llGetUsedMemory()+"/"+(string)(65536-llGetUsedMemory())+" Free: "+(string)llGetFreeMemory());
