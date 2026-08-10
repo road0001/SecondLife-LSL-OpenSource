@@ -51,6 +51,9 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 2.0.3 20260808
+	- 加入主人和信任的分层权限控制。
+
 - 2.0.2 20260514
     - 优化菜单用语。
     - 修复上锁后，会发出多次消息的bug。
@@ -422,17 +425,27 @@ integer allowOperate(key user, integer output){
 	}
 	// 再判断授权关系，主人、信任、黑名单、公开、群组
 	if(
-		user!=llGetOwner() /*非自己触摸*/ && 
-		!checkRelationship(user, "owner") /*非主人*/ && 
-		!checkRelationship(user, "trust") /*非信任*/ && 
-		!checkRelationship(user, "public") /*非公开*/ && 
-		!checkRelationship(user, "group") /*群组模式下，非同群组*/ || 
+		user!=llGetOwner() && /*非自己触摸*/
+		!checkRelationship(user, "owner") && /*非主人*/
+		!checkRelationship(user, "trust") && /*非信任*/
+		!checkRelationship(user, "public") && /*非公开*/
+		!checkRelationship(user, "group") || /*群组模式下，非同群组*/
 		checkRelationship(user, "black") /*在黑名单中，优先级高*/
 	){
 		if(isLocked && output==TRUE){
 			llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|This %1% is locked by %2%, you don't have permission to operate it!%%;"+llGetObjectName()+";"+userInfo(lockUser), user);
 		}
 		return FALSE;
+	}
+	else if( // 分层权限：信任
+		user!=llGetOwner() && // 非自己触摸
+		checkRelationship(user, "trust") &&  // 在信任列表
+		!checkRelationship(user, "owner") && // 非主人
+		!checkRelationship(user, "black") &&  // 不在黑名单
+		!checkRelationship(user, "public") && // 非公开模式
+		!checkRelationship(user, "group") // 群组模式下，非同群组
+	){
+		return 2; // trust的权限返回2，分层管理
 	}
 	else{
 		return TRUE;
@@ -575,13 +588,14 @@ showMenu(string menuName, key user){
             (string)hardcore
         ;
 
-        if(isAllow!=-1){
+        if(isAllow!=-1){ // 权限不为-1，即未上锁时的状态
+			// 锁定按钮
             string lockStr="["+(string)isLocked+"]Lock";
             if(allowPermaLock==TRUE && isPermaLocked==TRUE){
                 lockStr="PermaLocked";
             }
             menuFeatureList+=[lockStr];
-
+			// 主功能按钮
             integer i;
             for(i=0; i<llGetListLength(initMenuList); i+=initMenuListLength){
                 string mName=llList2String(initMenuList, i);
@@ -591,16 +605,19 @@ showMenu(string menuName, key user){
                     menuFeatureList+=[mName];
                 }
             }
-
+			// 应用按钮
             if(llGetListLength(featureList)>0 && ~llListFindList(featureList, ["appMenu"])){
                 menuFeatureList+=["Apps"];
             }
-
-            menuFeatureList+=["Settings"];
-            if(llGetListLength(featureList)>0 && ~llListFindList(featureList, ["mainMenu"])){
-                menuFeatureList=applyFeatureList(menuName, menuFeatureList, featureList);
-            }
-        }else{
+			// 设置按钮
+			if(isAllow!=2){ // 只允许物主、主人才能访问设置菜单，2为信任，不允许访问
+				menuFeatureList+=["Settings"];
+			}
+			// 注册的扩展按钮
+			if(llGetListLength(featureList)>0 && ~llListFindList(featureList, ["mainMenu"])){
+				menuFeatureList=applyFeatureList(menuName, menuFeatureList, featureList);
+			}
+        }else{ // 上锁时的状态
             list struggleMData=getInitMenuData(STRUGGLE_MSG_NUM);
             if(llGetListLength(struggleMData)>0){
                 string sName=llList2String(struggleMData, 0);
@@ -611,7 +628,7 @@ showMenu(string menuName, key user){
                     menuFeatureList+=[sName];
                 }
             }
-            if(!hardcore && !REZ_MODE){ // 硬核模式未开启时，仅显示Escape按钮，菜单名使用AccessMenu以确保功能生效
+            if(!hardcore && !REZ_MODE){ // 硬核模式未开启时，显示Access菜单
                 list accessMData=getInitMenuData(ACCESS_MSG_NUM);
                 if(llGetListLength(accessMData)>0){
                     menuFeatureList+=[llList2String(accessMData, 0)];
@@ -875,7 +892,17 @@ default{
 			if(msgHeader=="MENU.ACTIVE"){
 				if(msg1=="mainMenu"){
 					if(msg2 == "Lock"){
-						setLock(!isLocked, user, TRUE);
+						if(allowOperate(user, FALSE)==2){ // 信任玩家不能上锁、解锁
+							string lockOptText=msg2;
+							if(isLocked){
+								lockOptText="Unlock";
+								llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|This %1% is locked by %2%, you don't have permission to %3% it!%%;"+llGetObjectName()+";"+userInfo(lockUser)+";"+lockOptText, user);
+							}else{
+								llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.TO|Sorry, you don't have permission to %1% it!%%;"+lockOptText, user);
+							}
+						}else{
+							setLock(!isLocked, user, TRUE);
+						}
 					}
 					else if(msg2=="PermaLocked"){
 						llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.SAY|%1% is PERMANENT LOCKED by %2%!%%;"+userInfo(llGetOwner())+";"+userInfo(lockUser), NULL_KEY);
