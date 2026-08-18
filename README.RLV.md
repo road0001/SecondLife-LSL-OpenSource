@@ -259,6 +259,7 @@ RLV.MENU | 上级菜单名
 - 当执行RLV指令时，将回调执行结果。根据不同情况，结果的格式也有所不同。
 - 当应用RLV组、应用全部RLV组、清空RLV限制时，会有相应回调。
   - RLV.APPLY的回调仅限主动调用时触发。
+- RLV.EXECUTE仅用于REZ模式，Relay的回调结果。如果为1，则Relay执行成功；如果为0，则Relay执行失败（如Relay未开启、Ask模式拒绝等）。
 ```lsl
 RLV.EXEC | RLV.REG.CLASS | 1
 RLV.EXEC | RLV.LOAD | 0
@@ -266,6 +267,7 @@ RLV.EXEC | RLV.CLEAR | 1
 RLV.EXEC | RLV.APPLY | RLVName | 0
 RLV.EXEC | RLV.APPLY | RLVName | 1
 RLV.EXEC | RLV.APPLY.ALL | 1
+RLV.EXEC | RLV.EXECUTE | RLVCommand | 1
 ```
 
 ## RLV扩展指令

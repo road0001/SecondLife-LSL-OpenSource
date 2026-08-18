@@ -103,6 +103,10 @@ Author: JMRY
 Description: A better RLV management system, use link_message to operate RLV restraints.
 
 ***更新记录***
+- 2.0.26 20260817
+    - 加入REZ模式，RLV指令被Relay拒绝后的回调。
+    - 修复Relay拒绝后，仍然会反复执行RLV指令的bug。
+
 - 2.0.25 20260807
     - 修复读取记事卡列表错误的bug。
 
@@ -776,8 +780,14 @@ default{
             // Object: BunchoCommands,VICTIM_UUID,@remoutfit:shoes=force
             // Relay:  BunchoCommands,OBJECT_UUID,@remoutfit:shoes=force,ko
             // Object: BunchoCommands,VICTIM_UUID,@remoutfit:shoes=force
-            else if(cmdExt=="ko"){ // Relay发送RLV执行结果为ko，则重新执行一次RLV指令
-                executeRLV(cmdMain, FALSE);
+            // else if(cmdExt=="ko"){ // Relay发送RLV执行结果为ko，则重新执行一次RLV指令
+            //     executeRLV(cmdMain, FALSE);
+            // }
+            else if(cmdExt=="ko"){ // Relay发送RLV执行结果为ko，则发送失败回调，否则发送成功回调
+                llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.EXEC|RLV.EXECUTE|"+message+"|0", NULL_KEY);
+            }
+            else if(cmdExt=="ok"){
+                llMessageLinked(LINK_SET, RLV_MSG_NUM, "RLV.EXEC|RLV.EXECUTE|"+message+"|1", NULL_KEY);
             }
 
             if(llGetListLength(replyList)>0){

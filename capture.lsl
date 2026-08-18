@@ -7,7 +7,8 @@ initMain(){
 	captureTimeout=10;
 	maxSensor=18;
 	showNoticeText=2;
-	captureTriggerText="%1% %2% captured by %3%!";
+	captureTriggerTextSelf="You're captured by %1%!";
+	captureTriggerText="%1% is captured by %2%!";
 	captureUnsitText="You have %1% seconds to escape!";
 	captureTimeoutText="%1% timed out in %2% seconds. Waiting for the next capture.";
 }
@@ -19,6 +20,9 @@ Author: JMRY
 Description: A capture feature for restraint items.
 
 ***更新记录***
+- 1.0.4 20260815
+	- 优化文本输出。
+
 - 1.0.3 20260807
 	- 修复读取记事卡列表错误的bug。
 
@@ -149,6 +153,7 @@ applyCaptureText(integer captured){
 }
 
 integer showNoticeText=FALSE;
+string captureTriggerTextSelf="";
 string captureTriggerText="";
 string captureUnsitText="";
 string captureTimeoutText="";
@@ -163,9 +168,9 @@ applyCaptureNotice(integer captured){
 	string noticeStr="";
 	if(captured==TRUE){
 		if(showNoticeText==1){
-			noticeStr=captureTriggerText+"%%;You;are";
+			noticeStr=captureTriggerTextSelf+"%%";
 		}else if(showNoticeText==2){
-			noticeStr=captureTriggerText+"%%;"+userInfo(VICTIM_UUID)+";is";
+			noticeStr=captureTriggerText+"%%;"+userInfo(VICTIM_UUID);
 		}
 
 		if(captureByUser!=NULL_KEY){
