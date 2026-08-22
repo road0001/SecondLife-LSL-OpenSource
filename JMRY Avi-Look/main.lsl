@@ -165,14 +165,27 @@ showUserMenu(string username, key user){
     llMessageLinked(LINK_SET, 1000, menuStr, llGetOwner());
 }
 
+integer listenHandle;
+
 default{
     state_entry(){
         // llSetTimerEvent(1);
     }
     attach(key user){
-        // if(user!=NULL_KEY){
-        //     llSetTimerEvent(1);
-        // }
+        if(user!=NULL_KEY){
+            // llSetTimerEvent(1);
+            listenHandle=llListen(1, "", NULL_KEY, "");
+        }
+        
+    }
+    listen(integer channel, string name, key id, string msg){
+        if(channel == 1){
+            if(llGetOwnerKey(id) == llGetOwner() && msg=="look"){
+                scanAvatar();
+                string menuStr="MENU.REG.OPEN.RESET|aviLookMenu|Version: "+version+"\nChecked "+(string)g_numberOfKeys+" users.|"+llDumpList2String(g_allUserNames,";");
+                llMessageLinked(LINK_SET, 1000, menuStr, llGetOwner());
+            }
+        }
     }
     timer(){
         scanAvatar();

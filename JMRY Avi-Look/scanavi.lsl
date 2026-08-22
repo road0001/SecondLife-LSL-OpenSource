@@ -1,6 +1,7 @@
 integer SCAN_TYPE_OBJECT=1100;
 integer SCAN_TYPE_AGENT=1101;
 integer g_outputType=SCAN_TYPE_AGENT;
+string scanText="looka";
 
 vector  g_camPos;
 vector  g_camDir;
@@ -103,6 +104,49 @@ list updateCastRay(){
     return g_castRayRs;
 }
 
+triggerTouch(){
+    key user=llDetectedKey(0);
+    key this=llGetKey();
+    // updateCastRay();
+    
+    string name=llList2String(g_objDetails, 0);
+    string desc=llList2String(g_objDetails, 1);
+    key creater=llList2String(g_objDetails, 2);
+    key owner=llList2String(g_objDetails, 3);
+    key group=llList2String(g_objDetails, 5);
+    integer perm=llList2Integer(g_objDetails, -1);
+    
+    list msg=[
+        name, "\n",
+        "Desc: ", desc, "\n",
+        "Creater: ", "secondlife:///app/agent/"+(string)creater+"/about", " ("+(string)creater+")", "\n",
+        "Owner: ", "secondlife:///app/agent/"+(string)owner+"/about", " ("+(string)owner+")", "\n",
+        "Group: ", "secondlife:///app/group/"+(string)group+"/about", " ("+(string)group+")", "\n",
+        "Permission: ", getAttachPerm(perm)
+    ];
+    list buttons=["OK"];
+    
+    if(name!="" && creater==NULL_KEY){
+        msg=[
+            "Name: ", "secondlife:///app/agent/"+(string)owner+"/about"
+        ];
+        buttons=["Attachments"]+buttons;
+    }
+    
+    if(g_outputInChat==FALSE){
+        llDialog(user, llDumpList2String(msg,""), buttons, g_menuChannel);
+        g_listenHandle=llListen(g_menuChannel,"",llGetOwner(),"");
+    }else{
+        if(name!="" && creater==NULL_KEY){
+            getUserAttachments(g_targetObjKey);
+        }else if(creater!=NULL_KEY){
+            getObjectInfo(msg);
+        }
+    }
+}
+
+integer listenHandle;
+
 default{
     state_entry(){
         llRequestPermissions(llGetOwner(), PERMISSION_TRACK_CAMERA);
@@ -114,50 +158,18 @@ default{
         if(user!=NULL_KEY){
             llRequestPermissions(llGetOwner(), PERMISSION_TRACK_CAMERA);
             llSetTimerEvent(1);
+            listenHandle=llListen(1, "", NULL_KEY, "");
         }
     }
-
     touch_start(integer total_number){
-        key user=llDetectedKey(0);
-        key this=llGetKey();
-        // updateCastRay();
-        
-        string name=llList2String(g_objDetails, 0);
-        string desc=llList2String(g_objDetails, 1);
-        key creater=llList2String(g_objDetails, 2);
-        key owner=llList2String(g_objDetails, 3);
-        key group=llList2String(g_objDetails, 5);
-        integer perm=llList2Integer(g_objDetails, -1);
-        
-        list msg=[
-            name, "\n",
-            "Desc: ", desc, "\n",
-            "Creater: ", "secondlife:///app/agent/"+(string)creater+"/about", " ("+(string)creater+")", "\n",
-            "Owner: ", "secondlife:///app/agent/"+(string)owner+"/about", " ("+(string)owner+")", "\n",
-            "Group: ", "secondlife:///app/group/"+(string)group+"/about", " ("+(string)group+")", "\n",
-            "Permission: ", getAttachPerm(perm)
-        ];
-        list buttons=["OK"];
-        
-        if(name!="" && creater==NULL_KEY){
-            msg=[
-                "Name: ", "secondlife:///app/agent/"+(string)owner+"/about"
-            ];
-            buttons=["Attachments"]+buttons;
-        }
-        
-        if(g_outputInChat==FALSE){
-            llDialog(user, llDumpList2String(msg,""), buttons, g_menuChannel);
-            g_listenHandle=llListen(g_menuChannel,"",llGetOwner(),"");
-        }else{
-            if(name!="" && creater==NULL_KEY){
-                getUserAttachments(g_targetObjKey);
-            }else if(creater!=NULL_KEY){
-                getObjectInfo(msg);
-            }
-        }
+        triggerTouch();
     }
     listen(integer channel, string name, key id, string message){
+        if(channel == 1){
+            if(llGetOwnerKey(id) == llGetOwner() && message==scanText){
+                triggerTouch();
+            }
+        }
         if(channel==g_menuChannel){
             if(message=="Attachments"){
                 getUserAttachments(g_targetObjKey);
