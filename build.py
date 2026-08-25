@@ -53,7 +53,7 @@ def buildLsl(lsl):
 			srcLslContent=loadFile(srcPath)
 			if srcLslContent:
 				if lslConfig.strip()=='' and lslPre.strip()=='':
-					writeFile(f'{buildPath}/{srcName}', srcLslContent.replace(buildSrcPreSplit, '').replace(buildSrcConfigSplit, '').strip())
+					writeFile(f'{buildPath}/{srcName}', srcLslContent.replace(buildPreTag, '').replace(buildSrcPreSplit, '').replace(buildSrcConfigSplit, '').strip())
 					return True
 				elif lslConfig.strip()=='' and lslPre.strip()!='':
 					srcLslLines=srcLslContent.split(buildSrcPreSplit)
@@ -65,7 +65,7 @@ def buildLsl(lsl):
 					srcLslLines=srcLslContent.split(buildSrcConfigSplit)
 					srcLslLines[0]=lslConfig
 					lslBuild=''.join(srcLslLines)
-					writeFile(f'{buildPath}/{srcName}', lslBuild)
+					writeFile(f'{buildPath}/{srcName}', lslBuild.replace(buildPreTag, '').replace(buildSrcPreSplit, '').replace(buildSrcConfigSplit, '').strip())
 					return True
 			else:
 				writeFile(f'{buildPath}/{srcName}', lslConfig.strip())
