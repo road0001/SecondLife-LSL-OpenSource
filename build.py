@@ -8,8 +8,10 @@ appPath='Apps'
 cfgPath='./Config'
 lanPath='./Language'
 buildConfigTag='//SRC_PATH'
+buildPreTag='//PRE'
 buildConfigTail='_config'
-buildSrcSplit='/*CONFIG END*/'
+buildSrcConfigSplit='/*CONFIG END*/'
+buildSrcPreSplit='/*PRE END*/'
 bulidLanHeader='lan_'
 
 def loadFile(file,tp='r'):
@@ -33,19 +35,34 @@ def writeFile(file,data,tp='w'):
 def buildLsl(lsl):
 	lslContent=loadFile(lsl)
 	if lslContent:
+		hasPre=False
+		if buildPreTag in lslContent:
+			hasPre=True
+
 		lslLines=lslContent.replace('\r\n','\n').split('\n')
 		if buildConfigTag in lslLines[0]:
 			srcPath=lslLines[0].split('=')[1]
 			srcName=lsl.replace(buildConfigTail, '')
-			lslConfig='\n'.join(lslLines[1:]).strip()
+			lslConfig=''
+			lslPre=''
+			if not hasPre:
+				lslConfig='\n'.join(lslLines[1:]).strip()
+			else:
+				lslPre='\n'.join(lslLines[1:]).strip()
 
 			srcLslContent=loadFile(srcPath)
 			if srcLslContent:
-				if lslConfig.strip()=='':
-					writeFile(f'{buildPath}/{srcName}', srcLslContent.replace(buildSrcSplit, '').strip())
+				if lslConfig.strip()=='' and lslPre.strip()=='':
+					writeFile(f'{buildPath}/{srcName}', srcLslContent.replace(buildSrcPreSplit, '').replace(buildSrcConfigSplit, '').strip())
+					return True
+				elif lslConfig.strip()=='' and lslPre.strip()!='':
+					srcLslLines=srcLslContent.split(buildSrcPreSplit)
+					srcLslLines[0]=lslPre
+					lslBuild=''.join(srcLslLines)
+					writeFile(f'{buildPath}/{srcName}', lslBuild.replace(buildPreTag, '').replace(buildSrcPreSplit, '').replace(buildSrcConfigSplit, '').strip())
 					return True
 				else:
-					srcLslLines=srcLslContent.split(buildSrcSplit)
+					srcLslLines=srcLslContent.split(buildSrcConfigSplit)
 					srcLslLines[0]=lslConfig
 					lslBuild=''.join(srcLslLines)
 					writeFile(f'{buildPath}/{srcName}', lslBuild)
