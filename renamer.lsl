@@ -10,6 +10,7 @@ initConfig(){
     renamerConfusionOOC=TRUE;
     allowHive=FALSE;
     renamerHive=FALSE;
+    renamerPrimary=TRUE;
     renamerVoice="";
     renamerVolume=1.0;
     renamerType=0; // 0: Say; 1: Whisper; 2: Shour; 3: RegionSay
@@ -21,6 +22,10 @@ Author: JMRY
 Description: A better RLV Renamer management system, use link_message to operate Renamer restraints.
 
 ***更新记录***
+- 1.1.14 20260828
+    - 加入为其他Renamer让步的机制。
+    - 加入Renamer优先级功能。
+
 - 1.1.13 20260807
     - 修复读取记事卡列表错误的bug。
 
@@ -307,7 +312,11 @@ Renamer功能
 */
 integer renamerChannel;
 integer renamerListenHandle;
+integer renamerNotifyListenHandle;
+integer renamerStatusListenHandle;
 integer renamerBool;
+integer renamerOverlap=FALSE;
+integer renamerPrimary=FALSE;
 integer renamerEnabled(integer bool, key user){
     if(bool==-1){
         if(renamerBool==FALSE){
@@ -316,18 +325,26 @@ integer renamerEnabled(integer bool, key user){
             bool=FALSE;
         }
     }
+    renamerOverlap=FALSE;
     if(bool==TRUE){
         renamerListenHandle=llListen(renamerChannel, "", NULL_KEY, "");
+        renamerNotifyListenHandle=llListen(renamerChannel+1, "", NULL_KEY, "");
+        renamerStatusListenHandle=llListen(renamerChannel+2, "", NULL_KEY, "");
         setRLV("redirchat:"+(string)renamerChannel,"add");
         setRLV("rediremote:"+(string)renamerChannel,"add");
+        setRLV("notify:"+(string)(renamerChannel+1)+";redir","add");
         setRLV("emote","add");
     }else{
         setRLV("redirchat:"+(string)renamerChannel,"rem");
         setRLV("rediremote:"+(string)renamerChannel,"rem");
+        setRLV("notify:"+(string)(renamerChannel+1)+";redir","rem");
         setRLV("emote","rem");
         llListenRemove(renamerListenHandle);
+        llListenRemove(renamerNotifyListenHandle);
+        llListenRemove(renamerStatusListenHandle);
     }
     renamerBool=bool;
+    // llOwnerSay("@getstatus:redir="+(string)(renamerChannel+2));
     return bool;
 }
 
@@ -350,6 +367,9 @@ string renamerVoice="";
 float renamerVolume=1.0;
 integer renamerType=0; // 0: Say; 1: Whisper; 2: Shour; 3: RegionSay
 integer renamerSay(string name, string msg, integer type) {
+    if(renamerPrimary<= TRUE && renamerOverlap==TRUE){ // 优先级为低或高时，renamer被其他脚本覆盖时，不执行操作，直接返回FALSE。优先级最高（>=2）时，忽略此设定
+        return FALSE;
+    }
     string omsg=msg;
     // Renamer voice
     if(renamerVoice!="" && !includes(omsg, "/me")){
@@ -659,6 +679,29 @@ default{
                 llSetObjectName(oname);
             }
         }
+        // Renamer notify
+        else if(channel==renamerChannel+1){
+            if(includes(message, "redirchat") || includes(message, "rediremote")){
+                if(includes(message, (string)renamerChannel)){ // 检测到自己的频道，根据优先级处理
+                    if(renamerPrimary>=TRUE){ // 优先模式时，视为高优先级，主动恢复Overlap。否则视为低优先级，不主动恢复Overlap（如果其他道具未发出rem，可能会无法恢复，重新开关Renamer可重置）
+                        renamerOverlap=FALSE;
+                    }
+                }else if(includes(message, "add")){ // 检测到add，禁用Renamer
+                    renamerOverlap=TRUE;
+                }else if(includes(message, "rem")){ // 检测到rem，启用Renamer
+                    renamerOverlap=FALSE;
+                }
+            }
+        }
+        // get status
+        else if(channel==renamerChannel+2){
+            llOwnerSay("STATUS: "+message);
+            if(includes(message, "redirchat") || includes(message, "rediremote")){
+                renamerOverlap=TRUE;
+            }else{
+                renamerOverlap=FALSE;
+            }
+        }
     }
 
     timer(){ // 超时关闭RLV监听并重置
@@ -671,6 +714,9 @@ default{
         if(user!=NULL_KEY){
             runRLV();
         }else{
+            executeRLV("@redirchat:"+(string)renamerChannel+"=rem"); // 脱下时，重复声明redirchat等rem，让其他脚本的Renamer恢复运行
+            executeRLV("@rediremote:"+(string)renamerChannel+"=rem");
+            executeRLV("@notify:"+(string)(renamerChannel+1)+";redir"+"=rem");
             executeRLV("@clear"); // 脱下时，仅清除RLV状态，不清空列表，下次穿戴时重新应用
         }
     }

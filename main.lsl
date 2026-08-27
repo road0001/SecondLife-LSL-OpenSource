@@ -1,3 +1,5 @@
+string VERSION="2.0.5";
+/*PRE END*/
 initMain(){
     // Main Config
 	initMenuList=[
@@ -25,6 +27,7 @@ initMain(){
     cmdChannel=1;
     allowPermaLock=TRUE;
     allowSit=TRUE;
+	allowPublicInit=TRUE;
 
     // Main Init
     llOwnerSay("Begin Initialize...");
@@ -51,6 +54,14 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 2.0.5 20260826
+	- 加入移除App指令。
+	- 优化消息指令传递逻辑。
+
+- 2.0.4 20260825
+	- 加入版本输出和显示功能。
+	- 优化菜单注册和排序逻辑。
+
 - 2.0.3 20260808
 	- 加入主人和信任的分层权限控制。
 
@@ -317,6 +328,11 @@ registFeature(string name, string prev, string menuName, integer bool){
 		// TOP永远往前追加，置顶
 		featureList=[name, prev, menuName, bool] + featureList;
 	}else if(prev!=""){
+		if(prev=="0" || (integer)prev>0){
+			// prev为正整数时，即指定插入的位置。prev*4，表示乘以单条数据的长度（4）作为偏移
+			featureList=llListInsertList(featureList, [name, prev, menuName, bool], (integer)prev * 4);
+			return;
+		}
 		// 三个参数都不为空时，查找对应的位置，并插入
 		for(i=0; i<llGetListLength(featureList); i+=featureLen){
 			// 遍历list查找，prev与name相同，且menuName相同的节点，将它插入到此段后面
@@ -361,11 +377,17 @@ list applyFeatureList(string menuName, list origin, list feature){
 			if(featurePrev=="TOP"){
 				origin=[featureName]+origin;
 			}else if(featurePrev!=""){
-				integer prevIndex=llListFindList(origin, [featurePrev]);
-				if(~prevIndex){
-					origin=llListInsertList(origin, [featureName], prevIndex+1);
+				integer prevIndex;
+				if(featurePrev=="0" || (integer)featurePrev>0){
+					prevIndex=(integer)featurePrev;
+					origin=llListInsertList(origin, [featureName], prevIndex);
 				}else{
-					origin+=[featureName];
+					prevIndex=llListFindList(origin, [featurePrev]);
+					if(~prevIndex){
+						origin=llListInsertList(origin, [featureName], prevIndex+1);
+					}else{
+						origin+=[featureName];
+					}
 				}
 			}else{
 				origin+=[featureName];
@@ -578,14 +600,15 @@ showMenu(string menuName, key user){
             lockTimeDist="\n"+getLanguageVar("Time: %1%%%;"+lockTimeDist);
         }
 
-        menuText="Locked: %1% %2%\nOwner: %3%\nPublic: %b4%\nGroup: %b5%\nHardcore: %b6%%%;"+
+        menuText="Version: %7%\nLocked: %1% %2%\nOwner: %3%\nPublic: %b4%\nGroup: %b5%\nHardcore: %b6%%%;"+
             userInfo(lockUser)+";"+
             lockTimeDist+";"+
             userInfo(llList2Key(getRelationship("owner"), 0))+";"+
             // llDumpList2String(getOwnerNameList(), ", ")+";"+
             (string)public+";"+
             (string)group+";"+
-            (string)hardcore
+            (string)hardcore+";"+
+			(string)VERSION
         ;
 
         if(isAllow!=-1){ // 权限不为-1，即未上锁时的状态
@@ -714,6 +737,7 @@ integer CAPTURE_MSG_NUM=1009;
 
 integer allowPermaLock=FALSE;
 integer allowSit=TRUE;
+integer allowPublicInit=TRUE;
 
 integer REZ_MODE=FALSE;
 key VICTIM_UUID=NULL_KEY;
@@ -728,6 +752,7 @@ integer timerFlag=0; // 0: None; 1: Menu timeout flag; 2: Init timeout flag
 integer listenHandle;
 integer initIndex=0;
 float initTimer=0.1;
+integer initSuccess=FALSE;
 
 default{
 	state_entry(){
@@ -762,6 +787,9 @@ default{
 		REZ_MODE=FALSE;
 		VICTIM_UUID=llGetOwner();
 		llMessageLinked(LINK_SET, MAIN_MSG_NUM, "MAIN.ATTACH|"+(string)user, VICTIM_UUID);
+		if(user!=NULL_KEY && initSuccess==TRUE && allowPublicInit==TRUE){
+			llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.SAY|Initialize successful! Version: %1%%%;"+VERSION, NULL_KEY);
+		}
 		// llMessageLinked(LINK_SET, STRUGGLE_MSG_NUM, "STRUGGLE.GET.READY", NULL_KEY);
 	}
 	on_rez(integer start_param){
@@ -795,7 +823,13 @@ default{
                 initIndex+=initMenuListLength;
             }else{
                 initIndex=0;
+				initSuccess=TRUE;
                 llMessageLinked(LINK_SET, MAIN_MSG_NUM, "MAIN.INIT", NULL_KEY);
+				if(allowPublicInit==TRUE){
+					llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT.SAY|Initialize successful! Version: %1%%%;"+VERSION, NULL_KEY);
+				}else{
+					llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.OUT|Initialize successful! Version: %1%%%;"+VERSION, NULL_KEY);
+				}
                 llSetTimerEvent(0);
             }
         }
@@ -833,6 +867,7 @@ default{
             }
             // llOwnerSay("NAME: "+name+" MSG: "+message);
         }
+		llMessageLinked(LINK_SET, MAIN_MSG_NUM, "MAIN.LISTEN|"+(string)channel+"|"+name+"|"+message, id);
 	}
 	link_message(integer sender_num, integer num, string msg, key user){
 		list msgList=strSplit(msg, "|");
@@ -843,6 +878,11 @@ default{
 		string msg4=llList2String(msgList, 4);
 
 		if(num==MAIN_MSG_NUM){
+			/*
+			功能注册与卸载
+			FEATURE.REG | featureName | featurePrev | featureMenuName | featureBool
+			FEATURE.REM | featureName | featureMenuName
+			*/
 			if(msgHeader=="FEATURE.REG"){ // FEATURE.REG | featureName | featurePrev | featureMenuName | featureBool
 				if(msg3==""){
 					msg3="appMenu";
@@ -851,6 +891,12 @@ default{
 					msg4="-1";
 				}
 				registFeature(msg1, msg2, msg3, (integer)msg4);
+			}
+			else if(msgHeader=="FEATURE.REM"){ // FEATURE.REM | featureName | featureMenuName
+				if(msg2==""){
+					msg2=="appMenu";
+				}
+				removeFeature(msg1, msg2);
 			}
 			/*
 			更改主菜单条目名称
@@ -878,14 +924,36 @@ default{
 					}
 				}
 			}
-			if(msgHeader=="MAIN.LOCK"){ // MAIN.LOCK | 1
+			/*
+			获取主脚本就绪状态
+			MAIN.GET.READY
+			回调：
+			MAIN.READY
+			*/
+			else if(msgHeader=="MAIN.GET.READY"){
+				if(initSuccess==TRUE){
+					llMessageLinked(LINK_SET, MAIN_MSG_NUM, "MAIN.READY", user);
+				}
+			}
+			/*
+			上锁与解锁
+			MAIN.LOCK | 1
+			*/
+			else if(msgHeader=="MAIN.LOCK"){ // MAIN.LOCK | 1
                 if(msg1==""){
                     msg1="-1";
                 }
                 setLock((integer)msg1, user, FALSE);
             }
-            else if(msgHeader=="MAIN.MENU"){ // MAIN.MENU | 1
-                showMenu("mainMenu", user);
+			/*
+			显示菜单
+			MAIN.MENU | menuName
+			*/
+            else if(msgHeader=="MAIN.MENU"){ // MAIN.MENU
+				if(msg1==""){
+					msg1="mainMenu";
+				}
+                showMenu(msg1, user);
             }
 		}
 		else if(num==MENU_MSG_NUM){
