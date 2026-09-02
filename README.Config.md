@@ -3,10 +3,10 @@
 目前开源LSL脚本的配置数据支持三种模式：
 - 使用记事卡
 - 使用配置脚本
-- 使用配置+构建脚本
+- 使用配置文件+构建脚本
 下面将分别说明各配置模式的使用方法和优缺点。
 
-### 记事卡配置
+## 记事卡配置
 记事卡是最方便的配置方式，按各脚本的命名规则将配置记事卡放入物品库存中，并在主控脚本中主动调用各脚本的读取记事卡的指令即可。
 - 优点：管理方便，不受权限限制，各脚本读取各自不同的记事卡，可并行读取。
 - 缺点：读取记事卡速度极慢，根据记事卡内容，读取时间约3～15秒；解析记事卡内容占用内存较高。
@@ -15,7 +15,7 @@
 - 根据不同脚本的记事卡文档，将正确命名与格式的记事卡放入物品库存即可。
 - 主控脚本在初始化时，主动发送llMessageLinked调用各脚本的读取记事卡指令。
 
-### 配置脚本
+## 配置脚本
 使用配置脚本，将所有配置数据写在脚本的CONFIG中，由脚本控制调用各脚本的写入配置指令，将配置写入各脚本中。使用时，只需主控脚本调用一次读取配置的指令即可。
 - 优点：写入速度快，平均时间能比记事卡快5秒，配置较少的情况下甚至可以在1秒内完成；格式与记事卡一致，且所有配置由一个脚本统一管理。
 - 缺点：link_message有并发队列限制，配置过多时有可能写入失败，必须添加一定延迟，但延迟太大又和记事卡模式拉不开差距；会受到脚本权限的限制，如果允许修改，则必须单独处理其权限；由于大量使用link_message，占用内存可能比记事卡模式更高。
@@ -34,15 +34,75 @@
   - 在写入配置期间，请勿发送其他的llMessageLinked，以免造成队列阻塞、丢弃。
 
 
-### 配置+构建脚本
+## 配置文件+构建脚本（推荐）
 使用单独的配置文件+构建脚本，将配置与脚本合并。脚本在初始化时，会自动应用配置，无须主动读取。
+您需要安装Python 3.10或以上版本来运行构建脚本。
 - 优点：无写入延迟，脚本初始化时自动应用；所有配置均在脚本内部处理，占用内存更小。
 - 缺点：必须使用构建脚本将配置与脚本合并；会受到脚本权限的限制，如果允许修改配置，则必须开源整个脚本；各脚本的配置格式不同，会有更高的使用门槛。
 
-#### 使用方法：
-- 在您自己的项目目录编写配置，如：rlv_config.lsl
-- 配置文件内容的第一行为【//SRC_PATH=原脚本的路径】，如：//SRC_PATH=/git/SecondLife-LSL-OpenSource/rlv.lsl
+#### 配置构建使用方法：
+- 在您自己的项目目录编写配置，如：renamer_config.lsl
+- 配置文件内容的第一行为【```//SRC_PATH=原脚本的路径```】，如：```//SRC_PATH=/git/SecondLife-LSL-OpenSource/renamer.lsl```
   - 如果没有此内容，则脚本会将此文件内容原封不动复制到build目录中。
-- 配置内容请写到initConfig函数中。格式请遵从各脚本的要求。
+- 配置内容请写到initConfig、initMain函数中。格式请遵从各脚本的要求。
+- 配置内容中包含PRE预处理部分，因此无须使用PRE前置预处理。
 - 将构建脚本【build.py】复制到您的项目目录，运行它以进行构建，脚本会将配置文件的内容插入到原脚本的起始位置，并去除文件名中的_config，生成的文件位于build目录中。
   - 构建脚本会删除build目录下的所有文件并生成新的文件，因此请勿在其中放入无关文件！
+示例：
+配置文件：renamer_config.lsl
+原文件：renamer.lsl
+```lsl
+//SRC_PATH=/git/SecondLife-LSL-OpenSource/renamer.lsl
+initConfig(){
+    renamerBool=TRUE;
+    renamerChannel=(integer)(99999999 - llFrand(10000000));
+    renamerName=RENAMER_FULL_NAME;
+    confusionReplaceEn=["d", "i", "n", "g"];
+    confusionReplaceCn=["叮", "咚"];
+    renamerConfusion="Strict"; // None, Loose, Middle, Strict, Muffle
+    renamerConfusionMuffleText="";
+    renamerConfusionOOC=TRUE;
+    allowHive=FALSE;
+    renamerHive=FALSE;
+    renamerVoice="renamer_crystal1,renamer_crystal2";
+    renamerVolume=0.5;
+    renamerType=1; // 0: Say; 1: Whisper; 2: Shour; 3: RegionSay
+}
+```
+上述示例将覆盖renamer.lsl中【```/*CONFIG END*/```】前面的部分。
+
+#### PRE前置处理使用方法
+- 此方法仅限脚本支持PRE前置处理区段。
+- 在您自己的项目目录编写配置，如：main_config.lsl
+- 配置文件内容的第一行为【```//SRC_PATH=原脚本的路径```】，如：```//SRC_PATH=/git/SecondLife-LSL-OpenSource/main.lsl```
+- 配置文件内容的第二行为【```//PRE```】，对应原脚本【```/*PRE END*/```】前的预处理区段。
+- 在这里写入预处理的内容，按照上方的使用方法进行构建。
+- 注意：PRE预处理与配置构建互斥，且配置构建包含PRE预处理的内容，因此无须同时使用两者。
+示例：
+配置文件：main_config.lsl
+原文件：main.lsl
+```lsl
+//SRC_PATH=/git/SecondLife-LSL-OpenSource/main.lsl
+//PRE
+string VERSION="2.0";
+```
+上述示例将覆盖main.lsl中【```/*PRE END*/```】前的部分。
+
+
+#### 语言构建使用方法
+- 在您自己的项目目录创建文件夹【Language】，并根据对应语言创建txt文件，如Chinese.txt，English.txt。
+- 配置文件内容第一行为【```//SRC_PATH=原语言路径```】，如：```//SRC_PATH=/git/SecondLife-LSL-OpenSource/Language```
+- 从第二行起，为追加的语言内容，这些内容将被追加到原脚本语言的最后面。
+- 按照上方配置构建方法进行构建。
+示例：
+语言文件：Chinese.txt
+原语言文件：Chinese.txt
+```lsl
+//SRC_PATH=/git/SecondLife-LSL-OpenSource/Language
+Cover=遮罩
+Show=显示
+BlackCover=黑色遮罩
+CameraFar=镜头：远
+CameraNear=镜头：近
+CameraLock=镜头锁定
+```
