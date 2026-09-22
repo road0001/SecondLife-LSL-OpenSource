@@ -1,4 +1,4 @@
-string VERSION="2.0.5";
+string VERSION="2.0.6 20260921";
 /*PRE END*/
 initMain(){
     // Main Config
@@ -29,6 +29,12 @@ initMain(){
     allowSit=TRUE;
 	allowPublicInit=TRUE;
 
+	list objDescList=llParseString2List(llGetObjectDesc(), [" "], [""]);
+	integer versionStrIndex=llListFindList(objDescList, ["VERSION"]);
+	if(~versionStrIndex){
+		VERSION=llList2String(objDescList, versionStrIndex+1);
+	}
+
     // Main Init
     llOwnerSay("Begin Initialize...");
 
@@ -54,6 +60,9 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 2.0.6 20260921
+	- 加入从物品描述中获取版本号功能。
+
 - 2.0.5 20260826
 	- 加入移除App指令。
 	- 优化消息指令传递逻辑。
