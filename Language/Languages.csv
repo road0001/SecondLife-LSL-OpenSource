@@ -1,24 +1,26 @@
 ﻿Original,Chinese,English
 // 主菜单,,
 Chinese,中文,中文
-BACK,返回,
-CLOSE,关闭,
-Lock,上锁,
-Locked,已上锁,
-Unlock,解锁,
-Unlocked,已解锁,
-Leash,牵绳,
-RLV,RLV限制,
-Timer,计时,
-Renamer,易名,
-Animation,动画,
-Access,权限,
-Language,语言,
-Struggle,挣扎,
-Apps,应用,
-Settings,设置,
-Yes,是,
-No,否,
+BACK,↩ 返回,↩ BACK
+CLOSE,✖ 关闭,✖ CLOSE
+←,⬅,⬅
+→,➡,➡
+Lock,🔒 上锁,🔒 Lock
+Locked,🔒 已上锁,🔒 Locked
+Unlock,🔓 解锁,🔓 Unlock
+Unlocked,🔓 已解锁,🔓 Unlocked
+Leash,🔗 牵绳,🔗 Leash
+RLV,🚫 RLV限制,🚫 RLV
+Timer,⏲ 计时,⏲ Timer
+Renamer,💬 易名,💬 Renamer
+Animation,💃 动画,💃 Animation
+Access,🔐 权限,🔐 Access
+Language,🌐 语言,🌐 Language
+Struggle,💪 挣扎,💪 Struggle
+Apps,⚛ 应用,⚛ Apps
+Settings,⚙ 设置,⚙ Settings
+Yes,✅ 是,✅ Yes
+No,❌ 否,❌ No
 Version: %7%\nLocked: %1% %2%\nOwner: %3%\nPublic: %b4%\nGroup: %b5%\nHardcore: %b6%,版本：%7%\n锁定：%1% %2%\n主人：%3%\n公开模式：%b4%\n群组模式：%b5%\n硬核模式：%b6%,
 You're locked and not allow to operate it!,您已被锁住，不允许操作！,
 "You're locked by %1% and timer is running, not allow to operate it!",您已被 %1% 锁住，且正在倒计时，不允许操作！,
@@ -41,16 +43,16 @@ Initialize successful! Version: %1%,初始化成功！版本：%1%,
 "Set menu language, current: %1%.",设置菜单语言，当前语言：%1%。,
 ,,
 // Leash菜单,,
-None,无,
-T.None,材质：无,
+None,无,None
+T.None,⚪ 材质：无,⚪ None
 Ribbon,丝带,
-T.Ribbon,材质：丝带,
+T.Ribbon,🎀 材质：丝带,🎀 Ribbon
 Chain,锁链,
-T.Chain,材质：锁链,
+T.Chain,⛓ 材质：锁链,⛓ Chain
 Leather,皮革,
-T.Leather,材质：皮革,
+T.Leather,🎗 材质：皮革,🎗 Leather
 Rope,绳子,
-T.Rope,材质：绳子,
+T.Rope,🥜 材质：绳子,🥜 Rope
 White,白色,
 Black,黑色,
 Gray,灰色,
@@ -70,58 +72,58 @@ Blood,血红色,
 Anthracite,炭黑色,
 Midnight,午夜蓝,
 This is leash menu.\n%1%%2%,这是牵绳菜单。\n%1%%2%,
-Grab,抓住牵绳,
-Unleash,放开牵绳,
-Yank,拉到身边,
-Follow,跟随,
-Unfollow,停止跟随,
+Grab,🫳 抓住牵绳,🫳 Grab
+Unleash,✖ 放开牵绳,✖ Unleash
+Yank,🫴 拉到身边,🫴 Yank
+Follow,👭 跟随,👭 Follow
+Unfollow,🚶 停止跟随,🚶 Unfollow
 Following:,正在跟随：,
 Leashed to:,牵引者：,
-Anchor,锚点,
-Pass,让渡,
-Length,长度,
-Style,样式,
-Config,配置,
+Anchor,🪧 锚点,🪧 Anchor
+Pass,🤝 让渡,🤝 Pass
+Length,📏 长度,📏 Length
+Style,🎨 样式,🎨 Style
+Config,🎚 配置,🎚 Config
 Select user to %1%.,选择玩家以%1%。,
 Select object to %1%.,选择物品以系到%1%。,
 Current leash length: %1%.,当前长度：%1%。,
 Choose a style and color for leash.\nCurrent size: %1%\nCurrent weight: %2%\nCurrent glow: %3%\nCurrent shine: %b4%\nCurrent color: %5%,为牵绳选择样式和颜色。\n当前粗细：%1%\n当前重量：%2%\n当前发光：%3%\n当前光泽：%b4%\n当前颜色：%5%,
-Bigger,更粗,
-Smaller,更细,
-Glow,发光,
-Heavier,更重,
-Lighter,更轻,
-Shine,光泽,
+Bigger,🔅 更粗,🔅 Bigger
+Smaller,🔆 更细,🔆 Smaller
+Glow,☀ 发光,☀ Glow
+Heavier,🏋 更重,🏋 Heavier
+Lighter,⛹ 更轻,⛹ Lighter
+Shine,✨ 光泽,✨ Shine
 Configs of leash.,牵绳配置。,
-AutoTurn,自动转向,
-StrictMode,严格模式,
+AutoTurn,🔃 自动转向,🔃 AutoTurn
+StrictMode,🔏 严格模式,🔏 StrictMode
 You can't %1% yourself in Strict mode!,严格模式下，您不能%1%！,
 ,,
 // Access菜单,,
-Root,根用户,
-AccessList,权限列表,
-Escape,逃跑,
-OwnerList,主人,
-TrustList,信任,
-BlackList,黑名单,
-Public,公开模式,
-Group,群组模式,
-Hardcore,硬核模式,
-Exceptions,例外模式,
+Root,👤 根用户,👤 Root
+AccessList,🗳 权限列表,🗳 AccessList
+Escape,🏃 逃跑,🏃 Escape
+OwnerList,📘 主人,📘 OwnerList
+TrustList,📙 信任,📙 TrustList
+BlackList,📓 黑名单,📓 BlackList
+Public,✳ 公开模式,✳ Public
+Group,👪 群组模式,👪 Group
+Hardcore,🛐 硬核模式,🛐 Hardcore
+Exceptions,🛂 例外模式,🛂 Exceptions
 "This is access menu, you can manage who can access %1%'s %2%.\nPublic mode: %b3%\nGroup mode: %b4%\nHardcore mode: %b5%\nExceptions mode: %b6%",这是权限菜单，您可以管理谁可以访问 %1% 的 %2% 。\n公开模式：%b3%\n群组模式：%b4%\n硬核模式：%b5%\n例外模式：%b6%,
 "Root owner has the highest permissions.\nCurrent Root: %1%. Click SetRoot to set new Root owner, click Restore to reset Root owner to wearer.",根用户拥有最高权限。\n当前根用户： %1% 。点击[设置根用户]设置新的根用户，点击[恢复]将根用户重置为物品所有者。,
-SetRoot,设置根用户,
-Restore,恢复,
+SetRoot,🔃 设置根用户,🔃 SetRoot
+Restore,🔄 恢复,🔄 Restore
 Click AddOwner to add owner.,点击[添加主人]添加一个新主人。,
 Click RemoveOwner to remove owner.,点击[移除主人]将主人移除。,
-AddOwner,添加主人,
-RemoveOwner,移除主人,
+AddOwner,+ 添加主人,+ AddOwner
+RemoveOwner,- 移除主人,- RemoveOwner
 Click AddTrust to add trust user.\nClick RemoveTrust to remove trust user.,点击[添加信任]将玩家加入信任列表。\n点击[移除信任]将玩家移出信任列表。,
-AddTrust,添加信任,
-RemoveTrust,移除信任,
+AddTrust,+ 添加信任,+ AddTrust
+RemoveTrust,- 移除信任,- RemoveTrust
 Click AddBlack to add black user.\nClick RemoveBlack to remove black user.,点击[添加黑名单]将玩家加入黑名单。\n点击[移除黑名单]将玩家移出黑名单。,
-AddBlack,添加黑名单,
-RemoveBlack,移除黑名单,
+AddBlack,+ 添加黑名单,+ AddBlack
+RemoveBlack,- 移除黑名单,- RemoveBlack
 Your public mode is set to %b1%.,您的公开模式已被设为%b1%。,
 Your group mode is set to %b1%.,您的群组模式已被设为%b1%。,
 Your hardcore mode is set to %b1%.,您的硬核模式已被设为%b1%。,
@@ -129,19 +131,19 @@ Your exceptions mode is set to %b1%.,您的例外模式已被设为%b1%。,
 "Are you sure to escape? This will unlock your %1%, and restore Root to yourself.",您确定要逃离？这将解锁您的%1%，并恢复根用户为您自己。,
 You have escaped successful.,您成功逃跑。,
 %1% %2% success!,%1%%2%成功！,
-Root:,根用户：,
-Owners:,主人：,
-TrustList:,信任：,
-BlackList:,黑名单：,
-Public mode: %b1%,公开模式：%b1%,
-Group mode: %b1%,群组模式：%b1%,
-Hardcore mode: %b1%,硬核模式：%b1%,
-Exceptions mode: %b1%,例外模式：%b1%,
-Public mode: %b1%\nGroup mode: %b2%\nHardcore mode: %b3%\nExceptions mode: %b4%,公开模式：%b1%\n群组模式：%b2%\n硬核模式：%b3%\n例外模式：%b4%,
+Root:,👤 根用户：,👤 Root:
+Owners:,📘 主人：,📘 Owners:
+TrustList:,📙 信任：,📙 TrustList:
+BlackList:,📓 黑名单：,📓 BlackList:
+Public mode: %b1%,✳ 公开模式：%b1%,✳ Public mode: %b1%
+Group mode: %b1%,👪 群组模式：%b1%,👪 Group mode: %b1%
+Hardcore mode: %b1%,🛐 硬核模式：%b1%,🛐 Hardcore mode: %b1%
+Exceptions mode: %b1%,🛂 例外模式：%b1%,🛂 Exceptions mode: %b1%
+Public mode: %b1%\nGroup mode: %b2%\nHardcore mode: %b3%\nExceptions mode: %b4%,✳ 公开模式：%b1%\n👪 群组模式：%b2%\n🛐 硬核模式：%b3%\n🛂 例外模式：%b4%,✳ Public mode: %b1%\n👪 Group mode: %b2%\n🛐 Hardcore mode: %b3%\n🛂 Exceptions mode: %b4%
 [Empty],[空],
-×Root×,×根用户×,
-×Escape×,×逃跑×,
-×Hardcore×,×硬核模式×,
+×Root×,🚫 根用户 🚫,🚫 Root 🚫
+×Escape×,🚫 逃跑 🚫,🚫 Escape 🚫
+×Hardcore×,🚫 硬核模式 🚫,🚫 Hardcore 🚫
 You don't have permission to set Root!,您没有权限设置根用户！,
 You can't escape in Hardcore mode!,在硬核模式下，您无法逃跑！,
 You don't have permission to set Hardcore mode!,您没有权限设置硬核模式！,
@@ -151,9 +153,9 @@ This is RLV %1% menu.,这是RLV - %1%菜单。,
 [ALL],[全部],
 Your %1% - %2% restrictions is set to %3%.,您的[%1% - %2%]RLV限制已被设为[%3%]。,
 %4%'s %1% - %2% restrictions is set to %3%.,%4% 的[%1% - %2%]RLV限制已被设为[%3%]。,
-ON,开,
-OFF,关,
-Vision,视觉,
+ON,🚫 开,🚫 ON
+OFF,🟢 关,🟢 OFF
+Vision,👀 视觉,👀 Vision
 LightBlind,轻盲视野,
 HeavyBlind,重盲视野,
 Camera,镜头,
@@ -165,7 +167,7 @@ Near,附近的人,
 TextWorld,世界文字,
 TextHUD,HUD文字,
 TextAll,所有文字,
-Touch,触摸,
+Touch,✋ 触摸,✋ Touch
 Far,触摸远处,
 World,触摸世界,
 Me,触摸自己,
@@ -175,14 +177,14 @@ OtherAttach,触摸别人,
 HUD,触摸HUD,
 All,触摸所有,
 Interact,交互,
-Inventory,库存,
+Inventory,💼 库存,💼 Inventory
 Note,记事卡,
 Script,脚本,
 Texture,纹理,
 Edit,编辑,
 Rez,放置,
 Share,分享,
-Move,移动,
+Move,🚷 移动,🚷 Move
 Run,跑步,
 Fly,飞行,
 Sit,坐下,
@@ -190,7 +192,7 @@ Jump,跳跃,
 Slow,减速,
 Turn,转向,
 MoveTurn,移动&转向,
-Chat,聊天,
+Chat,💬 聊天,💬 Chat
 SendChat,发送聊天,
 RecvChat,接收聊天,
 SendGesture,发送手势,
@@ -198,7 +200,7 @@ RecvGesture,接收手势,
 StartIM,发起私聊,
 SendIM,发送私聊,
 RecvIM,接收私聊,
-Location,传送,
+Location,🗺 传送,🗺 Location
 TPLocal,本地传送,
 TPLM,地图传送,
 TPLocation,链接传送,
@@ -207,16 +209,16 @@ TPRequest,请求传送,
 WorldMap,世界地图,
 MiniMap,迷你地图,
 ShowLocation,显示地点,
-Attach,装扮,
+Attach,👗 装扮,👗 Attach
 Add,穿戴装扮,
 Remove,移除装扮,
 ,,
 // Renamer菜单,,
 This is Renamer menu.\nCurrent name: %1%,这是易名器菜单。\n当前名字：%1%,
 Enabled,启用,
-SetName,设置名字,
-Confusion,混淆,
-Voice,语音,
+SetName,🪪 设置名字,🪪 SetName
+Confusion,😷 混淆,😷 Confusion
+Voice,🗣 语音,🗣 Voice
 This is Renamer confusion menu.\nCurrent confusion: %1%.,这是混淆菜单。\n当前混淆：%1%。,
 Loose,轻松,
 Middle,中等,
@@ -228,9 +230,9 @@ HiveChannel,Hive频道,
 "This is Renamer voice menu.\nCurrent voice: %1%, volume: %2%.",这是语音菜单。\n当前语音：%1%，音量：%2%。,
 Multiple random,随机播放,
 Too long,太长,
-Volume,音量,
-Random,随机,
-Input,输入,
+Volume,🔊 音量,🔊 Volume
+Random,🔀 随机,🔀 Random
+Input,⌨ 输入,⌨ Input
 Input Renamer name (Current: %1%):\nDisplay Name: %2%\nFull Name: %3%\nUser Name: %4%\nObject Name: %5%,请输入您的名字（当前：%1%）：\n显示名：%2%\n全名：%3%\n用户名：%4%\n物品名：%5%,
 "Input voice name or uuid, multiple voices using [,] to separate:","输入语音文件名或UUID，多个语音请使用[,]分隔：",
 "Input Muffle text, blank to off (Current: %1%):",输入消音时说的文本，留空为取消（当前：%1%）：,
@@ -242,14 +244,14 @@ ConfusionOthers,中文替换,
 "Input Confusion words for other languages, separate with "";"", blank to off (Current: %1%):",输入中文或其他语言的混淆替换文字，使用“;”分隔，留空禁用（当前：%1%）：,
 ,,
 // Timer菜单,,
-RealTime,现实时间,
-OnlineTime,在线时间,
-Stopped,已停止,
-Running,运行中,
-ShowTimer,显示倒计时,
-StartTimer,开始计时,
-Clear,清除,
-Restart,重开,
+RealTime,🕰 现实时间,🕰 RealTime
+OnlineTime,⏲ 在线时间,⏲ OnlineTime
+Stopped,⏹ 已停止,⏹ Stopped
+Running,▶ 运行中,▶ Running
+ShowTimer,📺 显示倒计时,📺 ShowTimer
+StartTimer,开始计时,StartTimer
+Clear,🕛 清除,🕛 Clear
+Restart,⏮ 重开,⏮ Restart
 +5 Minute,+5分钟,
 -5 Minute,-5分钟,
 +30 Minute,+30分钟,
@@ -265,25 +267,25 @@ Day,天,
 // Animation菜单,,
 Animation Menu\nCurrent Playing: %1%,动画菜单\n正在播放：%1%,
 This is Animation [%1%] menu.\nCurrent Playing: %2%,这是动画[%1%]菜单。\n正在播放：%2%,
-[STOP],[停止],
-[Adjust],[调整],
-[Save],[保存],
-[Restore],[恢复],
+[STOP],⏹ [停止],⏹ [STOP]
+[Adjust],📊 [调整],📊 [Adjust]
+[Save],💾 [保存],💾 [Save]
+[Restore],↪ [恢复],↪ [Restore]
 This is Animation [Adjust] menu.\nCurrent User: %1%\nCurrent Anim: %2%\nCurrent Pos: %3%,这是动画[调整]菜单。\n当前于用户： %1% \n当前动画：%2%\n当前位置：%3%,
 Play animation,播放动画,
 "Playing multiplayer animation, must STOP first!",正在播放多人动画，请先停止！,
 ,,
 // Struggle菜单,,
-Struggling...,正在挣扎……,
-Random key,随机按键,
-Correct key,正确按键,
-Struggle!,开始挣扎！,
-Stop!,停止挣扎！,
+Struggling...,💪 正在挣扎……,💪 Struggling...
+Random key,🔀 随机按键,🔀 Random key
+Correct key,✅ 正确按键,✅ Correct key
+Struggle!,💪 开始挣扎！,💪 Struggle!
+Stop!,⏹ 停止挣扎！,⏹ Stop!
 This is struggle menu.\nStruggle type: %1%,这是挣扎菜单。\n挣扎类型：%1%,
 ,,
 // Capture菜单,,
-Capture,抓捕,
-Unsit,站立,
+Capture,🫳 抓捕,🫳 Capture
+Unsit,🧍 站立,🧍 Unsit
 %b1%Locked,%b1%已上锁,
 This is Capture menu.\nScan distance: %1%\nShow notice: %2%,这是抓捕设置菜单。\n扫描距离：%1%\n显示通知：%2%,
 C:AutoLock,自动上锁,
@@ -303,18 +305,18 @@ This is apps menu.,这是应用菜单。,
 ,,
 // Settings菜单,,
 This is settings menu.,这是设置菜单。,
-PermaLock,永久锁定,
+PermaLock,♾ 永久锁定,♾ PermaLock
 ,,
 // 永久锁定菜单,,
 "%1% is requesting to PERMANENT LOCK your %2%, are you sure to be PERMANENT LOCKED?\nOnce confirmed, you will be permanently locked out and unable to unlock!",%1% 正在请求【永久锁定】您的%2%，您是否确认被【永久锁定】？\n一旦确认，您将被永久锁定并且无法解锁！,
 You are permanent locked by %1%!,您已被 %1% 永久锁定！,
 You permanent locked %1%!,您已永久锁定了 %1% ！,
 %1% refused to accept your permanent lock request!,%1% 拒绝接受您的永久锁定请求！,
-PermaLocked,已永久锁定,
+PermaLocked,♾ 永久锁定 ♾,♾ PermaLocked ♾
 %1% is PERMANENT LOCKED by %2%!,%1% 已被 %2% 永久锁定！,
 ,,
 // App-Arousal菜单,,
-Arousal,PA2唤起,
+Arousal,💦 PA2唤起,💦 Arousal
 Your Arousal mode is set to: %1%,您的唤起模式已被设为：%1%,
 Your Arousal edge mode is set to: %b1%,您的唤起寸止模式已被设为：%b1%,
 You had a powerful orgasm.,您强烈地高潮了。,
@@ -332,7 +334,7 @@ A:Orgasm,高潮,
 "Input %1% (0~100), blank to return (Current: %2%):",请输入%1%（0-100），留空直接返回（当前：%2%）：,
 ,,
 // App-Title菜单,,
-Title,浮动文本,
+Title,📰 浮动文本,📰 Title
 This is Title menu.\nCurrent title: %1%\nColor: %2%\nAlpha: %3%,这是浮动文本配置菜单。\n当前文本：%1%\n颜色：%2%\n透明度：%3%,
 T:SetTitle,设置文本,
 T:SetColor,设置颜色,
@@ -343,8 +345,10 @@ Input your title (Current: %1%):,请输入要显示的浮动文本（当前：%1
 "Input your alpha (0.0~1.0, Current: %1%):",请输入浮动文本透明度（0.0~1.0，当前：%1%）：,
 ,,
 // App-Remote菜单,,
-Remote,遥控,
-This is Remote menu.,这是遥控配置菜单。,
+Remote,📱 遥控,📱 Remote
+This is Command and Remote menu.\n%b1%Local Command\n%b2%Channel Command\n%b3%Remote\nCommand channel: %4%\nAvailable Commands: %5%,这是遥控配置菜单。\n%b1%本地语音指令\n%b2%频道语音指令\n%b3%启用遥控\n命令频道：%4%\n可用命令：%5%,
+R:LocalCommand,本地语音指令,
+R:ChannelCommand,频道语音指令,
 R:EnableRemote,启用遥控,
 You're controlled by %1% 's %2% .,你被 %1% 的 %2% 控制了。,
 Select a user to connect:,请选择用户：,
@@ -356,7 +360,7 @@ Scanning available objects...,正在扫描可用物品……,
 OpenCollarMode,OpenColllar模式,
 ,,
 // App-Punish菜单,,
-Punish,惩罚,
+Punish,❣ 惩罚,❣ Punish
 "This is Punish menu.\nPunishment for self banned speaking: %b1%\nPunishment for self necessary speaking: %b2%\nPunishment for other's banned speaking: %b3%\nArousal enabled: %b4%, each increase value: %5%\nCurrent banned words: %6%\nCurrent needed words: %7%\nCurrent others words: %8%\nCurrent volume: %9%\nCurrent punish time range: %10%~%11%s\nCurrent blackout time range: %12%~%13%s",这是惩罚配置菜单。\n违禁词惩罚：%b1%\n必须词惩罚：%b2%\n他人违禁词惩罚：%b3%\n启用PA2唤起：%b4%，唤起增加值：%5%\n违禁词：%6%\n必须词：%7%\n他人违禁词：%8%\n当前音量：%9%\n当前惩罚时间范围：%10%～%11%秒\n当前晕厥时间范围：%12%～%13%秒,
 P:Punish,立即惩罚,
 P:Blackout,立即晕厥,
@@ -384,13 +388,13 @@ Remaining time: %1%s!,剩余时间：%1%秒！,
 "Input %1% (each punishment value), blank to return (Current: %2%):",请输入%1%（每帧增加值），留空返回（当前：%2%）：,
 ,,
 // App-Sound菜单,,
-Sound,声音,
+Sound,🔊 声音,🔊 Sound
 This is %1% menu.\nVolume: %2%\nWalk sound volume: %3%,这是%1%设置菜单。\n音量：%2%\n行走音量：%2%,
-S:TouchSound,触摸声音,
-S:MenuSound,菜单声音,
-S:LockSound,上锁声音,
-S:WalkSound,行走声音,
-S:SetWalkSound,设置行走声音,
-S:Volume,声音音量,
-S:VolumeWalkSound,行走声音音量,
+S:TouchSound,👆 触摸声音,👆 TouchSound
+S:MenuSound,📋 菜单声音,📋 MenuSound
+S:LockSound,🔒 上锁声音,🔒 LockSound
+S:WalkSound,🚶 行走声音,🚶 WalkSound
+S:SetWalkSound,🚶 设置行走声音,🚶 SetWalkSound
+S:Volume,🔊 声音音量,🔊 VolumeSound
+S:VolumeWalkSound,🔊 行走声音音量,🔊 VolumeWalkSound
 This is %1% menu.\nCurrent: %2%,这是%1%菜单。\n当前：%2%,

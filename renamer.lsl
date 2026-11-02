@@ -22,6 +22,9 @@ Author: JMRY
 Description: A better RLV Renamer management system, use link_message to operate Renamer restraints.
 
 ***更新记录***
+- 1.1.15 20261102
+    - 修复声音使用UUID时无法播放的bug。
+
 - 1.1.14 20260828
     - 加入为其他Renamer让步的机制。
     - 加入Renamer优先级功能。
@@ -376,7 +379,7 @@ integer renamerSay(string name, string msg, integer type) {
         list voiceList=strSplit(renamerVoice, ",");
         integer rand = (integer)llFrand(llGetListLength(voiceList));
         string voiceName=llList2String(voiceList, rand);
-        if(llGetInventoryType(voiceName)==INVENTORY_SOUND){
+        if(llGetInventoryType(voiceName)==INVENTORY_SOUND || llStringLength(voiceName)==36){
             llTriggerSound(voiceName, renamerVolume); // 使用TriggerSound兼容hud时的音效可在世界播放。缺点：无法跟踪人物实时定位
         }
     }

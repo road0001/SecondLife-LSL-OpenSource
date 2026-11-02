@@ -1,4 +1,18 @@
 initMain(){
+    localCmdEnabled=TRUE;
+    channelCmdEnabled=TRUE;
+    remoteEnabled=TRUE;
+    cmdChannel=1;
+    cmdMain="menu";
+    cmdList=[
+		cmdMain, MAIN_MSG_NUM, "MAIN.MENU",
+		"leash", LEASH_MSG_NUM, "LEASH.TO|%user%",
+		"follow", LEASH_MSG_NUM, "LEASH.TO|%user%|0",
+		"yank", LEASH_MSG_NUM, "LEASH.YANK|%user%",
+		"unleash", LEASH_MSG_NUM, "LEASH.TO",
+		"unfollow", LEASH_MSG_NUM, "LEASH.TO",
+		"rlv", RLV_MSG_NUM, "RLV.APPLY|%param1%|%param2%|%param3%"
+	];
 	REMOTE_CONTROL_CHANNEL=131793;
 	REMOTE_OBJECT_CHANNEL=131794;
 }
@@ -10,6 +24,15 @@ Author: JMRY
 Description: A remote controller for restraint items.
 
 ***更新记录***
+- 1.1.2 20261102
+    - 优化遥控菜单的指令显示方式。
+
+- 1.1.1 20261031
+    - 修复带参数的命令无法生效的bug。
+
+- 1.1 20261030
+    - 加入本地命令和频道命令。
+
 - 1.0.1 20260501
     - 优化消息发送逻辑。
 
@@ -161,6 +184,23 @@ list getRelationship(string type){
     }
 }
 
+integer localCmdEnabled=TRUE;
+integer channelCmdEnabled=TRUE;
+setCommandEnabled(integer localBool, integer channelBool){
+    localCmdEnabled=localBool;
+    channelCmdEnabled=channelBool;
+
+    llListenRemove(localCmdListenHandle);
+    llListenRemove(cmdListenHandle);
+
+    if(channelCmdEnabled==TRUE){
+        cmdListenHandle=llListen(cmdChannel, "", NULL_KEY, "");
+    }
+    if(localCmdEnabled==TRUE){
+        localCmdListenHandle=llListen(0, "", NULL_KEY, "");
+    }
+}
+
 integer remoteEnabled=TRUE;
 setRemoteEnabled(integer bool){
 	remoteEnabled=bool;
@@ -176,23 +216,53 @@ string menuName="RemoteMenu";
 string menuParent="";
 showMenu(string parent, key user){
     menuParent=parent;
-    string menuText="This is Remote menu.";
+    list cmdStringList=[];
+    string prefix=llGetSubString(llGetUsername(llGetOwner()), 0, 1);
+    integer i;
+    for(i=0; i<llGetListLength(cmdList); i+=cmdDataLength){
+        cmdStringList+=[prefix+llList2String(cmdList, i)];
+    }
+    string menuText="This is Command and Remote menu.\n%b1%Local Command\n%b2%Channel Command\n%b3%Remote\nCommand channel: %4%\nAvailable Commands: %5%%%;"+(string)localCmdEnabled+";"+(string)channelCmdEnabled+";"+(string)remoteEnabled+";"+(string)cmdChannel+";\\NL"+llDumpList2String(cmdStringList, ", ");
     list menuList=[
-        "["+(string)remoteEnabled+"]R:EnableRemote"
+        "["+(string)localCmdEnabled+"]R:LocalCommand", "["+(string)channelCmdEnabled+"]R:ChannelCommand", "["+(string)remoteEnabled+"]R:EnableRemote"
     ];
     llMessageLinked(LINK_SET, MENU_MSG_NUM, "MENU.REG.OPEN|"+menuName+"|"+menuText+"|"+llDumpList2String(menuList, ";")+"|"+parent, user);
 }
 
+integer cmdListenHandle;
+integer localCmdListenHandle;
+integer cmdChannel=1;
+string cmdMain="";
+list cmdList=[];
+integer cmdDataLength=3;
 
 integer REMOTE_CONTROL_CHANNEL=131793;
 integer REMOTE_OBJECT_CHANNEL=131794;
 
+// Main Interfaces
+integer MAIN_MSG_NUM=9000;
+integer CONF_MSG_NUM=8000;
 integer MENU_MSG_NUM=1000;
 integer RLV_MSG_NUM=1001;
+integer RENAMER_MSG_NUM=10011;
+integer RLVEXT_MSG_NUM=10012;
 integer ACCESS_MSG_NUM=1002;
+integer LAN_MSG_NUM=1003;
 integer TIMER_MSG_NUM=1004;
-integer MAIN_MSG_NUM=9000;
+integer LEASH_MSG_NUM=1005;
+integer ANIM_MSG_NUM=1006;
+integer STRUGGLE_MSG_NUM=1007;
+integer TEXT_MSG_NUM=1008;
+integer CAPTURE_MSG_NUM=1009;
+
+// App Interfaces
+integer AROUSAL_MSG_NUM=90001;
+integer TITLE_MSG_NUM=90002;
 integer REMOTE_MSG_NUM=90003;
+integer PUNISH_MSG_NUM=90004;
+integer SOUND_MSG_NUM=90005;
+integer MUSIC_MSG_NUM=90006;
+
 integer listenHandle;
 
 integer REZ_MODE=FALSE;
@@ -203,6 +273,7 @@ key CONNECT_UUID=NULL_KEY;
 default{
     state_entry(){
         initMain();
+        setCommandEnabled(localCmdEnabled, channelCmdEnabled);
 		setRemoteEnabled(remoteEnabled);
 		if(llGetAttached()){
             REZ_MODE=FALSE;
@@ -225,11 +296,13 @@ default{
 	attach(key user){
 		REZ_MODE=FALSE;
 		if(user!=NULL_KEY){
+			setCommandEnabled(localCmdEnabled, channelCmdEnabled);
 			setRemoteEnabled(remoteEnabled);
 			VICTIM_UUID=llGetOwner();
 		}
 	}
 	on_rez(integer start_param){
+        setCommandEnabled(localCmdEnabled, channelCmdEnabled);
 		setRemoteEnabled(remoteEnabled);
 		integer attached=llGetAttached();
         if(attached){
@@ -249,7 +322,30 @@ default{
 		if(!allowOperate(user)){
 			return;
 		}
-		if(channel==REMOTE_OBJECT_CHANNEL){
+        if(channel==0 || channel==cmdChannel){
+            string prefix=llGetSubString(llGetUsername(llGetOwner()), 0, 1);
+            if(llGetSubString(message, 0, 1) == prefix){
+                key user=llGetOwnerKey(id); // 支持使用物品发出命令。user为说话者的uuid，因此需要获取它的所有者uuid。
+                string cmdBody=llGetSubString(message, 2, -1);
+                list cmdParams=llParseStringKeepNulls(cmdBody,[" "],[""]);
+                string cmdHeader=llList2String(cmdParams, 0);
+                integer cmdIndex=llListFindList(cmdList, [cmdHeader]);
+                if(~cmdIndex){
+                    integer cmdMsgNum=llList2Integer(cmdList, cmdIndex+1);
+                    string cmdLinkMsg=llList2String(cmdList, cmdIndex+2);
+                    // 处理user转义
+                    cmdLinkMsg=llReplaceSubString(cmdLinkMsg, "%user%", (string)user, 0);
+                    // 处理参数转义
+                    integer i;
+                    for(i=0; i<llGetListLength(cmdParams); i++){
+                        cmdLinkMsg=llReplaceSubString(cmdLinkMsg, "%param"+(string)i+"%", llList2String(cmdParams, i), 0);
+                    }
+                    llMessageLinked(LINK_THIS, cmdMsgNum, cmdLinkMsg, user);
+                }
+            }
+            // llOwnerSay("NAME: "+name+" MSG: "+message);
+        }
+		else if(channel==REMOTE_OBJECT_CHANNEL){
 			list msgList=strSplit(message, "|");
 			string msgHeader=llList2String(msgList, 0);
 			list msgHeaderGroup=llParseStringKeepNulls(msgHeader, ["."], [""]);
@@ -274,7 +370,7 @@ default{
 				// Object <- Output connect target
 				else if(headerSub=="CONNECT"){
 					if((key)msg1 == llGetKey()){
-                        llRegionSayTo(CONNECT_UUID, REMOTE_CONTROL_CHANNEL, "REMOTE.DISCONNECTED");
+                        llRegionSayTo(CONNECT_UUID, REMOTE_CONTROL_CHANNEL, "REMOTE.DISCONNECTED"); // 先断开之前的，再连接新的
 						CONTROL_UUID=id;
 						CONNECT_UUID=user;
 						if(user!=NULL_KEY){
@@ -342,7 +438,17 @@ default{
                 showMenu(msg1,user);
             }
 			else if(msg1==menuName && msg2!=""){
-				if(msg2=="R:EnableRemote"){
+				if(msg2=="R:LocalCommand"){
+					localCmdEnabled=!localCmdEnabled;
+					setCommandEnabled(localCmdEnabled, channelCmdEnabled);
+					showMenu(menuParent,user);
+				}
+				if(msg2=="R:ChannelCommand"){
+					channelCmdEnabled=!channelCmdEnabled;
+					setCommandEnabled(localCmdEnabled, channelCmdEnabled);
+					showMenu(menuParent,user);
+				}
+				else if(msg2=="R:EnableRemote"){
 					remoteEnabled=!remoteEnabled;
 					setRemoteEnabled(remoteEnabled);
 					showMenu(menuParent,user);

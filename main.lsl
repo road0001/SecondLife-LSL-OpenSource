@@ -1,4 +1,4 @@
-string VERSION="2.0.6 20260921";
+string VERSION="2.0.7 20261030";
 /*PRE END*/
 initMain(){
     // Main Config
@@ -15,16 +15,8 @@ initMain(){
 		"Text",     TEXT_MSG_NUM,       "TEXT.GET.READY",    "TEXT.READY",               FALSE,  FALSE,
 		"Language", LAN_MSG_NUM,        "LANGUAGE.INIT",     "",                         FALSE,  FALSE
 	];
-	cmdList=[
-		"menu", MAIN_MSG_NUM, "MAIN.MENU",
-		"leash", LEASH_MSG_NUM, "LEASH.TO|%user%",
-		"follow", LEASH_MSG_NUM, "LEASH.TO|%user%|0",
-		"yank", LEASH_MSG_NUM, "LEASH.YANK|%user%",
-		"unleash", LEASH_MSG_NUM, "LEASH.TO",
-		"unfollow", LEASH_MSG_NUM, "LEASH.TO"
-	];
+
     initTimer=0.1;
-    cmdChannel=1;
     allowPermaLock=TRUE;
     allowSit=TRUE;
 	allowPublicInit=TRUE;
@@ -45,9 +37,8 @@ initMain(){
         llSitTarget(<0.0, 0.0, 0.0>, ZERO_ROTATION);
         llSetSitText("");
     }
-    llListenRemove(listenHandle);
+    
     llSleep(initTimer);
-    listenHandle=llListen(cmdChannel, "", NULL_KEY, "");
     initIndex=0;
     timerFlag=2;
     llSetTimerEvent(initTimer); // 重置时，设置计时器，5秒后重新初始化，防止初始化失败
@@ -60,6 +51,10 @@ Author: JMRY
 Description: A main controller for restraint items.
 
 ***更新记录***
+- 2.0.7 20261030
+	- 移除本地命令，将其迁移到Remote App。
+	- 优化内存占用。
+
 - 2.0.6 20260921
 	- 加入从物品描述中获取版本号功能。
 
@@ -751,11 +746,6 @@ integer allowPublicInit=TRUE;
 integer REZ_MODE=FALSE;
 key VICTIM_UUID=NULL_KEY;
 
-integer cmdChannel=1;
-list cmdList=[];
-
-integer attachFlag=TRUE;
-
 integer timeoutRunning=FALSE;
 integer timerFlag=0; // 0: None; 1: Menu timeout flag; 2: Init timeout flag
 integer listenHandle;
@@ -851,31 +841,6 @@ default{
 		llMessageLinked(LINK_SET, MAIN_MSG_NUM, "MAIN.TOUCH|"+(string)num_detected, llDetectedKey(0));
 	}
 	listen(integer channel, string name, key id, string message){
-		if(channel==cmdChannel){
-            string prefix=llGetSubString(llGetUsername(llGetOwner()), 0, 1);
-            if(llGetSubString(message, 0, 1) == prefix){
-                key user=llGetOwnerKey(id); // 支持使用物品发出命令。user为说话者的uuid，因此需要获取它的所有者uuid。
-                if(!allowOperate(user, FALSE)){
-                    return;
-                }
-                string cmdBody=llToLower(llGetSubString(message, 2, -1));
-                list cmdParams=llParseStringKeepNulls(cmdBody,[" "],[""]);
-                integer cmdIndex=llListFindList(cmdList, [cmdBody]);
-                if(~cmdIndex){
-                    integer cmdMsgNum=llList2Integer(cmdList, cmdIndex+1);
-                    string cmdLinkMsg=llList2String(cmdList, cmdIndex+2);
-                    // 处理user转义
-                    cmdLinkMsg=llReplaceSubString(cmdLinkMsg, "%user%", (string)user, 0);
-                    // 处理参数转义
-                    integer i;
-                    for(i=0; i<llGetListLength(cmdParams); i++){
-                        cmdLinkMsg=llReplaceSubString(cmdLinkMsg, "%param"+(string)i+"%", llList2String(cmdParams, i), 0);
-                    }
-                    llMessageLinked(LINK_THIS, cmdMsgNum, cmdLinkMsg, user);
-                }
-            }
-            // llOwnerSay("NAME: "+name+" MSG: "+message);
-        }
 		llMessageLinked(LINK_SET, MAIN_MSG_NUM, "MAIN.LISTEN|"+(string)channel+"|"+name+"|"+message, id);
 	}
 	link_message(integer sender_num, integer num, string msg, key user){
@@ -1137,12 +1102,5 @@ default{
 
         // llSleep(0.01);
         // llOwnerSay("RLV Memory Used: "+(string)llGetUsedMemory()+"/"+(string)(65536-llGetUsedMemory())+" Free: "+(string)llGetFreeMemory());
-	}
-	run_time_permissions(integer perm){
-		if (perm & PERMISSION_ATTACH){
-			if(attachFlag==FALSE){
-				llDetachFromAvatar();
-			}
-		}
 	}
 }
